@@ -585,6 +585,10 @@ def main() -> None:
         "white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
         "[data-testid='stSidebar'] .stButton>button:hover{background-color:#5a7f6a;color:#fff}"
         "[data-testid='stSidebar'] .stButton>button:focus{box-shadow:none;outline:none}"
+        ".st-key-rf_a .stButton>button,.st-key-rf_b .stButton>button{"
+        "background-color:#9b6e6e !important;color:#fff !important}"
+        ".st-key-rf_a .stButton>button:hover,.st-key-rf_b .stButton>button:hover{"
+        "background-color:#7f5a5a !important}"
         "[data-testid='stSidebar'] .pill-panel{"
         "background:#bfc0c2;border-radius:6px;padding:6px 8px;margin-bottom:4px}"
         "</style>",
@@ -693,16 +697,17 @@ def main() -> None:
             "Red Flags</p>",
             unsafe_allow_html=True,
         )
-        _rc1, _rc2, _rc3 = st.columns(3)
-        with _rc1:
-            if st.button("Tier 1", key="btn_a_rf_t1", use_container_width=True):
-                st.session_state.pill_a_rf_t1 = not st.session_state.pill_a_rf_t1
-        with _rc2:
-            if st.button("Tier 2", key="btn_a_rf_t2", use_container_width=True):
-                st.session_state.pill_a_rf_t2 = not st.session_state.pill_a_rf_t2
-        with _rc3:
-            if st.button("Tier 3", key="btn_a_rf_t3", use_container_width=True):
-                st.session_state.pill_a_rf_t3 = not st.session_state.pill_a_rf_t3
+        with st.container(key="rf_a"):
+            _rc1, _rc2, _rc3 = st.columns(3)
+            with _rc1:
+                if st.button("Tier 1", key="btn_a_rf_t1", use_container_width=True):
+                    st.session_state.pill_a_rf_t1 = not st.session_state.pill_a_rf_t1
+            with _rc2:
+                if st.button("Tier 2", key="btn_a_rf_t2", use_container_width=True):
+                    st.session_state.pill_a_rf_t2 = not st.session_state.pill_a_rf_t2
+            with _rc3:
+                if st.button("Tier 3", key="btn_a_rf_t3", use_container_width=True):
+                    st.session_state.pill_a_rf_t3 = not st.session_state.pill_a_rf_t3
 
         flags_changed = False
         _a_rf_panels = [
@@ -774,13 +779,14 @@ def main() -> None:
             "Red Flags</p>",
             unsafe_allow_html=True,
         )
-        _bc1, _bc2 = st.columns(2)
-        with _bc1:
-            if st.button("Defensives", key="btn_b_rf_def", use_container_width=True):
-                st.session_state.pill_b_rf_def = not st.session_state.pill_b_rf_def
-        with _bc2:
-            if st.button("Growth/Infra", key="btn_b_rf_growth", use_container_width=True):
-                st.session_state.pill_b_rf_growth = not st.session_state.pill_b_rf_growth
+        with st.container(key="rf_b"):
+            _bc1, _bc2 = st.columns(2)
+            with _bc1:
+                if st.button("Defensives", key="btn_b_rf_def", use_container_width=True):
+                    st.session_state.pill_b_rf_def = not st.session_state.pill_b_rf_def
+            with _bc2:
+                if st.button("Growth/Infra", key="btn_b_rf_growth", use_container_width=True):
+                    st.session_state.pill_b_rf_growth = not st.session_state.pill_b_rf_growth
 
         flags_b_changed = False
         _b_rf_panels = [
