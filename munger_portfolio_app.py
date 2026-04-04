@@ -341,23 +341,14 @@ def main() -> None:
 
     # ── Light-theme CSS overrides ─────────────────────────────────────────────
     st.markdown(
-        """
-        <style>
-        /* Main page and sidebar background */
-        .stApp, [data-testid="stAppViewContainer"] {
-            background-color: #BDBDBF;
-        }
-        [data-testid="stSidebar"], [data-testid="stSidebarContent"] {
-            background-color: #CACBCD;
-        }
-        /* Keep metric cards on the same grey tone */
-        [data-testid="metric-container"] {
-            background-color: #c8c9cb;
-            border-radius: 6px;
-            padding: 8px;
-        }
-        </style>
-        """,
+        "<style>"
+        ".stApp,[data-testid='stAppViewContainer']{background-color:#BDBDBF}"
+        "[data-testid='stSidebar'],[data-testid='stSidebarContent']{background-color:#CACBCD}"
+        "[data-testid='metric-container']{background-color:#c8c9cb;border-radius:6px;padding:8px}"
+        "[data-testid='stSidebar'] [data-testid='stExpander'] summary{background-color:#6e9b82;color:#ffffff;border-radius:6px;padding:6px 10px}"
+        "[data-testid='stSidebar'] [data-testid='stExpander'] summary:hover{background-color:#5a7f6a}"
+        "[data-testid='stSidebar'] [data-testid='stExpander'] summary svg{fill:#ffffff}"
+        "</style>",
         unsafe_allow_html=True,
     )
 
