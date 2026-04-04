@@ -21,8 +21,9 @@ import yfinance as yf
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-RED_FLAGS_FILE   = os.path.join(os.path.dirname(os.path.abspath(__file__)), "red_flags.json")
-RED_FLAGS_FILE_B = os.path.join(os.path.dirname(os.path.abspath(__file__)), "red_flags_b.json")
+RED_FLAGS_FILE    = os.path.join(os.path.dirname(os.path.abspath(__file__)), "red_flags.json")
+RED_FLAGS_FILE_B  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "red_flags_b.json")
+CUSTOM_TICKERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "custom_tickers.json")
 
 FLAG_NAMES = [
     "Accounting Issues",
@@ -434,6 +435,25 @@ def save_red_flags_b(flags: dict) -> None:
     _save_flags(RED_FLAGS_FILE_B, flags)
 
 
+# ── Custom tickers persistence ────────────────────────────────────────────────
+
+def load_custom_tickers() -> list:
+    """Load custom tickers from JSON. Returns list of {ticker, portfolio, fair_pe} dicts."""
+    if os.path.exists(CUSTOM_TICKERS_FILE):
+        try:
+            with open(CUSTOM_TICKERS_FILE) as fh:
+                data = json.load(fh)
+            return data if isinstance(data, list) else []
+        except Exception:
+            pass
+    return []
+
+
+def save_custom_tickers(custom: list) -> None:
+    with open(CUSTOM_TICKERS_FILE, "w") as fh:
+        json.dump(custom, fh, indent=2)
+
+
 # ── yfinance data layer ───────────────────────────────────────────────────────
 
 @st.cache_data(show_spinner=False)
@@ -572,6 +592,7 @@ def compute_row(
         "Ticker": ticker,
         "Tier": meta["tier"],
         "Rank": meta["rank"],
+        "Is Custom": meta.get("is_custom", False),
         "Price": price,
         "Metric": metric_label,
         "Current": current_multiple,
@@ -676,8 +697,9 @@ def fmt_pct(v: Optional[float], plus: bool = False) -> str:
 def build_display_df(rows: list[dict]) -> pd.DataFrame:
     records = []
     for r in rows:
+        _is_custom = r.get("Is Custom", False)
         records.append({
-            "Ticker":       r["Ticker"],
+            "Ticker":       ("★ " + r["Ticker"]) if _is_custom else r["Ticker"],
             "Tier":         r["Tier"],
             "#":            r["Rank"],
             "Price":        fmt_price(r["Price"]),
@@ -835,6 +857,18 @@ def main() -> None:
         ".st-key-refresh_b button:hover{background-color:#5a7a8c !important;border-color:#5a7a8c !important}"
         "[data-testid='stSidebar'] .pill-panel{"
         "background:#bfc0c2;border-radius:6px;padding:6px 8px;margin-bottom:4px}"
+        ".st-key-btn_add_stock .stButton>button{"
+        "background-color:#a07060 !important;color:#fff !important}"
+        ".st-key-btn_add_stock .stButton>button:hover{"
+        "background-color:#8a5e50 !important}"
+        ".st-key-btn_fetch_preview .stButton>button{"
+        "background-color:#7a8fa0 !important;color:#fff !important;font-size:11px !important}"
+        ".st-key-btn_fetch_preview .stButton>button:hover{"
+        "background-color:#627888 !important}"
+        ".st-key-btn_add_to_portfolio .stButton>button{"
+        "background-color:#5a7f6a !important;color:#fff !important;font-size:11px !important}"
+        ".st-key-btn_add_to_portfolio .stButton>button:hover{"
+        "background-color:#4a6a58 !important}"
         "</style>",
         unsafe_allow_html=True,
     )
@@ -868,12 +902,29 @@ def main() -> None:
         st.session_state.macro_brk_status = "NORMAL"
     if "macro_brk_note" not in st.session_state:
         st.session_state.macro_brk_note = "Cash ~$325B, no major acquisitions signaled (Q4 2024)"
+    if "custom_tickers" not in st.session_state:
+        st.session_state.custom_tickers = load_custom_tickers()
+    if "raw_rows_custom_a" not in st.session_state:
+        st.session_state.raw_rows_custom_a = None
+    if "raw_rows_custom_b" not in st.session_state:
+        st.session_state.raw_rows_custom_b = None
+    if "add_stock_preview" not in st.session_state:
+        st.session_state.add_stock_preview = None
+
+    # Ensure custom tickers have red-flag entries
+    for _ct in st.session_state.custom_tickers:
+        _ctk = _ct["ticker"]
+        if _ct["portfolio"] == "A":
+            st.session_state.red_flags.setdefault(_ctk, {f: False for f in FLAG_NAMES})
+        else:
+            st.session_state.red_flags_b.setdefault(_ctk, {f: False for f in FLAG_NAMES})
 
     # ── Pill toggle states ────────────────────────────────────────────────────
     for _pk in [
         "pill_a_fair_t1", "pill_a_fair_t2", "pill_a_fair_t3",
         "pill_a_rf_t1",   "pill_a_rf_t2",   "pill_a_rf_t3",
         "pill_b_ov",      "pill_b_rf_def",   "pill_b_rf_growth",
+        "pill_add_stock",
     ]:
         if _pk not in st.session_state:
             st.session_state[_pk] = False
@@ -1069,6 +1120,115 @@ def main() -> None:
         if flags_b_changed:
             save_red_flags_b(st.session_state.red_flags_b)
 
+        # ── Add a Stock sidebar ───────────────────────────────────────────────
+        st.markdown(
+            "<div style='background:#a07060;color:#fff;padding:4px 10px;border-radius:4px;"
+            "font-weight:700;font-size:18px;margin:10px 0 4px 0;text-align:center'>"
+            "── Add a Stock ──</div>",
+            unsafe_allow_html=True,
+        )
+        with st.container(key="btn_add_stock"):
+            if st.button("+ Add Stock", key="btn_add_stock_toggle", use_container_width=False):
+                st.session_state.pill_add_stock = not st.session_state.pill_add_stock
+
+        if st.session_state.pill_add_stock:
+            st.text_input("Ticker Symbol", key="add_ticker_input", placeholder="e.g. NVDA")
+            st.selectbox(
+                "Add to Portfolio",
+                options=["Portfolio A", "Portfolio B"],
+                key="add_portfolio_select",
+            )
+            st.number_input(
+                "Fair P/E (or Fair P/B)",
+                min_value=0.1, max_value=200.0,
+                value=20.0, step=0.5,
+                key="add_fair_pe_input",
+            )
+
+            _add_col1, _add_col2 = st.columns(2)
+            with _add_col1:
+                with st.container(key="btn_fetch_preview"):
+                    if st.button("Fetch & Preview", key="btn_fetch_preview_btn", use_container_width=True):
+                        _ticker_input = st.session_state.get("add_ticker_input", "").strip().upper()
+                        if _ticker_input:
+                            _preview_info = fetch_info(_ticker_input)
+                            st.session_state.add_stock_preview = {
+                                "ticker": _ticker_input,
+                                "info": _preview_info,
+                            }
+                        else:
+                            st.session_state.add_stock_preview = None
+
+            with _add_col2:
+                with st.container(key="btn_add_to_portfolio"):
+                    if st.button("Add to Portfolio", key="btn_add_to_port_btn", use_container_width=True):
+                        _ticker_input = st.session_state.get("add_ticker_input", "").strip().upper()
+                        _portfolio_sel = st.session_state.get("add_portfolio_select", "Portfolio A")
+                        _fair_pe_val = float(st.session_state.get("add_fair_pe_input", 20.0))
+                        _port_key = "A" if _portfolio_sel == "Portfolio A" else "B"
+                        _all_existing = (
+                            set(ALL_TICKERS) | set(ALL_TICKERS_B)
+                            | {_ct["ticker"] for _ct in st.session_state.custom_tickers}
+                        )
+                        if not _ticker_input:
+                            st.warning("Enter a ticker symbol.")
+                        elif _ticker_input in _all_existing:
+                            st.warning(f"{_ticker_input} already in portfolios.")
+                        else:
+                            _new_entry = {
+                                "ticker": _ticker_input,
+                                "portfolio": _port_key,
+                                "fair_pe": _fair_pe_val,
+                            }
+                            st.session_state.custom_tickers.append(_new_entry)
+                            save_custom_tickers(st.session_state.custom_tickers)
+                            if _port_key == "A":
+                                st.session_state.red_flags[_ticker_input] = {
+                                    f: False for f in FLAG_NAMES
+                                }
+                                save_red_flags(st.session_state.red_flags)
+                                st.session_state.raw_rows_custom_a = None
+                            else:
+                                st.session_state.red_flags_b[_ticker_input] = {
+                                    f: False for f in FLAG_NAMES
+                                }
+                                save_red_flags_b(st.session_state.red_flags_b)
+                                st.session_state.raw_rows_custom_b = None
+                            st.session_state.add_stock_preview = None
+                            st.rerun()
+
+            # Preview card
+            _preview = st.session_state.add_stock_preview
+            if _preview:
+                _pinfo = _preview["info"]
+                _pticker = _preview["ticker"]
+                _pprice = _float(_pinfo, "currentPrice") or _float(_pinfo, "regularMarketPrice")
+                _ppe = _float(_pinfo, "trailingPE")
+                _proe_raw = _float(_pinfo, "returnOnEquity")
+                _proe = _proe_raw * 100.0 if _proe_raw is not None else None
+                _pfcf = _float(_pinfo, "freeCashflow")
+                _pmktcap = _float(_pinfo, "marketCap")
+                _pfcfy = (
+                    (_pfcf / _pmktcap * 100.0)
+                    if (_pfcf and _pmktcap and _pmktcap > 0) else None
+                )
+                _prev_raw = _float(_pinfo, "revenueGrowth")
+                _prev_gr = _prev_raw * 100.0 if _prev_raw is not None else None
+                _pde_raw = _float(_pinfo, "debtToEquity")
+                _pde = _pde_raw / 100.0 if _pde_raw is not None else None
+                _pname = _pinfo.get("shortName") or _pinfo.get("longName") or _pticker
+                st.markdown(
+                    f"<div style='background:#e8e4d8;border:1px solid #b0a888;border-radius:6px;"
+                    f"padding:8px 10px;margin-top:6px;font-size:0.8rem;color:#333'>"
+                    f"<b style='font-size:0.9rem;color:#5a3a28'>{_pticker}</b>"
+                    f"<span style='font-size:0.72rem;color:#666;margin-left:6px'>{_pname}</span><br>"
+                    f"<b>Price:</b> {fmt_price(_pprice)} &nbsp; <b>P/E:</b> {fmt_mult(_ppe)}<br>"
+                    f"<b>ROE:</b> {fmt_pct(_proe)} &nbsp; <b>FCFy:</b> {fmt_pct(_pfcfy)}<br>"
+                    f"<b>RevGr:</b> {fmt_pct(_prev_gr, plus=True)} &nbsp; <b>D/E:</b> {fmt_mult(_pde)}"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+
     # ── Header ────────────────────────────────────────────────────────────────
     st.title("Munger Toll Bridge Portfolio")
 
@@ -1084,6 +1244,7 @@ def main() -> None:
             if st.button("Refresh Data", key="refresh_a", type="primary", use_container_width=True):
                 fetch_info.clear()
                 st.session_state.raw_rows = None
+                st.session_state.raw_rows_custom_a = None
 
         if st.session_state.raw_rows is None:
             progress = st.progress(0, text="Fetching market data…")
@@ -1118,6 +1279,38 @@ def main() -> None:
 
         for tier_name in PORTFOLIO:
             render_table(df_display, df_raw, tier_name, mos_pct)
+
+        # ── Custom tickers (Portfolio A) ──────────────────────────────────────
+        _custom_a = [_ct for _ct in st.session_state.custom_tickers if _ct["portfolio"] == "A"]
+        if _custom_a:
+            if st.session_state.raw_rows_custom_a is None:
+                _custom_rows_a: list[dict] = []
+                for _ci, _ct in enumerate(_custom_a, start=1):
+                    _ctk = _ct["ticker"]
+                    _cmeta = {_ctk: {"tier": "Custom", "rank": _ci, "base_fair": _ct["fair_pe"], "is_custom": True}}
+                    _custom_rows_a.append(
+                        compute_row(_ctk, None, mos_pct, st.session_state.red_flags, _cmeta)
+                    )
+                st.session_state.raw_rows_custom_a = _custom_rows_a
+            _df_raw_ca = pd.DataFrame(st.session_state.raw_rows_custom_a)
+            _df_disp_ca = build_display_df(st.session_state.raw_rows_custom_a)
+            _n_buy_ca = (_df_raw_ca["Decision"] == "BUY").sum()
+            st.subheader(f"Custom Watchlist  ·  BUY signals: {_n_buy_ca}")
+            _ca_disp = _df_disp_ca[DISPLAY_COLS + ["_signal"]].reset_index(drop=True)
+            _ca_signals = _ca_disp["_signal"]
+            _ca_disp = _ca_disp[DISPLAY_COLS].copy()
+            _ca_styled = _style_df(_ca_disp, _ca_signals)
+            st.dataframe(
+                _ca_styled,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "#":            st.column_config.NumberColumn("#", width="small"),
+                    "Signal":       st.column_config.TextColumn("Signal", width="small"),
+                    "Decision":     st.column_config.TextColumn("Decision", width="small"),
+                    "Fail Reasons": st.column_config.TextColumn("Fail Reasons", width="large"),
+                },
+            )
 
         st.divider()
         csv_bytes = df_display[["Tier"] + DISPLAY_COLS].to_csv(index=False).encode()
@@ -1167,6 +1360,7 @@ def main() -> None:
             if st.button("Refresh Data", key="refresh_b", type="primary", use_container_width=True):
                 fetch_info.clear()
                 st.session_state.raw_rows_b = None
+                st.session_state.raw_rows_custom_b = None
 
         if st.session_state.raw_rows_b is None:
             progress_b = st.progress(0, text="Fetching market data…")
@@ -1222,6 +1416,38 @@ def main() -> None:
                 "Fail Reasons": st.column_config.TextColumn("Fail Reasons", width="large"),
             },
         )
+
+        # ── Custom tickers (Portfolio B) ──────────────────────────────────────
+        _custom_b = [_ct for _ct in st.session_state.custom_tickers if _ct["portfolio"] == "B"]
+        if _custom_b:
+            if st.session_state.raw_rows_custom_b is None:
+                _custom_rows_b: list[dict] = []
+                for _ci, _ct in enumerate(_custom_b, start=1):
+                    _ctk = _ct["ticker"]
+                    _cmeta = {_ctk: {"tier": "Portfolio B", "rank": len(ALL_TICKERS_B) + _ci, "base_fair": _ct["fair_pe"], "is_custom": True}}
+                    _custom_rows_b.append(
+                        compute_row(_ctk, None, mos_pct, st.session_state.red_flags_b, _cmeta)
+                    )
+                st.session_state.raw_rows_custom_b = _custom_rows_b
+            _df_raw_cb = pd.DataFrame(st.session_state.raw_rows_custom_b)
+            _df_disp_cb = build_display_df(st.session_state.raw_rows_custom_b)
+            _n_buy_cb = (_df_raw_cb["Decision"] == "BUY").sum()
+            st.subheader(f"Custom Watchlist  ·  BUY signals: {_n_buy_cb}")
+            _cb_disp = _df_disp_cb[DISPLAY_COLS + ["_signal"]].reset_index(drop=True)
+            _cb_signals = _cb_disp["_signal"]
+            _cb_disp = _cb_disp[DISPLAY_COLS].copy()
+            _cb_styled = _style_df(_cb_disp, _cb_signals)
+            st.dataframe(
+                _cb_styled,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "#":            st.column_config.NumberColumn("#", width="small"),
+                    "Signal":       st.column_config.TextColumn("Signal", width="small"),
+                    "Decision":     st.column_config.TextColumn("Decision", width="small"),
+                    "Fail Reasons": st.column_config.TextColumn("Fail Reasons", width="large"),
+                },
+            )
 
         st.divider()
         csv_bytes_b = df_display_b[DISPLAY_COLS].to_csv(index=False).encode()
