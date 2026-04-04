@@ -175,7 +175,8 @@ USES_PB: set[str] = {"BRK-B"}
 FAIR_PB: dict[str, float] = {"BRK-B": 1.35}
 
 # Skip ROE gate; use D/E ≤ 1.5 threshold
-BANKS: set[str] = {"JPM", "PGR", "CB", "BLK"}
+# PM has negative book equity from buybacks, making ROE meaningless — same exception as JPM
+BANKS: set[str] = {"JPM", "PGR", "CB", "BLK", "PM"}
 
 # Higher D/E tolerance ≤ 2.5
 MLPS: set[str] = {"EPD", "KMI", "BIP", "PLD"}
@@ -564,11 +565,17 @@ def main() -> None:
         ".stApp,[data-testid='stAppViewContainer']{background-color:#BDBDBF}"
         "[data-testid='stSidebar'],[data-testid='stSidebarContent']{background-color:#CACBCD}"
         "[data-testid='metric-container']{background-color:#c8c9cb;border-radius:6px;padding:8px}"
-        ".stTabs [data-baseweb='tab-list']{gap:6px;border-bottom:2px solid #8a8b8d}"
-        ".stTabs [data-baseweb='tab']{font-size:1.15rem;font-weight:700;padding:10px 28px;border-radius:8px 8px 0 0;color:#555555;background-color:#b0b1b3;border:none;letter-spacing:0.02em}"
+        ".stTabs [data-baseweb='tab-list']{gap:6px;border-bottom:2px solid #8a8b8d;margin-top:0}"
+        ".stTabs [data-baseweb='tab']{font-size:1.15rem;font-weight:700;padding:6px 28px;border-radius:8px 8px 0 0;color:#555555;background-color:#b0b1b3;border:none;letter-spacing:0.02em}"
         ".stTabs [data-baseweb='tab']:hover{background-color:#9a9b9d;color:#333333}"
         ".stTabs [data-baseweb='tab'][aria-selected='true']{background-color:#5a7f6a !important;color:#ffffff !important;border-bottom:3px solid #5a7f6a}"
         ".stTabs [data-baseweb='tab-highlight']{display:none}"
+        ".block-container{padding-top:0.75rem !important;padding-bottom:1rem !important}"
+        "h1{margin-bottom:0.25rem !important;margin-top:0 !important}"
+        ".stTabs{margin-top:0 !important}"
+        ".stButton{margin-top:0 !important}"
+        "[data-testid='stMetric']{margin-bottom:0 !important}"
+        "hr{margin-top:0.4rem !important;margin-bottom:0.4rem !important}"
         "[data-testid='stSidebarContent'] .block-container{padding-top:0.5rem}"
         "[data-testid='stSidebar'] hr{margin:0.4rem 0}"
         "[data-testid='stSidebar'] .stSlider{padding-top:0;margin-top:0}"
