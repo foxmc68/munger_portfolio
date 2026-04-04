@@ -1355,12 +1355,13 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             styled_r,
             use_container_width=True,
             hide_index=True,
+            wrap_text=True,
             column_config={
                 "From":           st.column_config.TextColumn("From", width="small"),
                 "Date Retired":   st.column_config.TextColumn("Date Retired", width="medium"),
                 "Price":          st.column_config.TextColumn("Price", width="small"),
                 "P/E":            st.column_config.TextColumn("P/E", width="small"),
-                "Removal Reason": st.column_config.TextColumn("Removal Reason", width="large"),
+                "Removal Reason": st.column_config.TextColumn("Removal Reason", width=320),
             },
         )
 
