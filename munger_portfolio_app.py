@@ -569,6 +569,7 @@ def main() -> None:
         ".stTabs [data-baseweb='tab']{font-size:1.15rem;font-weight:700;padding:6px 28px;border-radius:8px 8px 0 0;color:#555555;background-color:#b0b1b3;border:none;letter-spacing:0.02em}"
         ".stTabs [data-baseweb='tab']:hover{background-color:#9a9b9d;color:#333333}"
         ".stTabs [data-baseweb='tab'][aria-selected='true']{background-color:#5a7f6a !important;color:#ffffff !important;border-bottom:3px solid #5a7f6a}"
+        ".stTabs [data-baseweb='tab']:nth-child(2)[aria-selected='true']{background-color:#5a7a8c !important;color:#ffffff !important;border-bottom:3px solid #5a7a8c !important}"
         ".stTabs [data-baseweb='tab-highlight']{display:none}"
         ".block-container{padding-top:0.75rem !important;padding-bottom:1rem !important}"
         "h1{margin-bottom:0.25rem !important;margin-top:0 !important}"
@@ -585,10 +586,16 @@ def main() -> None:
         "white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
         "[data-testid='stSidebar'] .stButton>button:hover{background-color:#5a7f6a;color:#fff}"
         "[data-testid='stSidebar'] .stButton>button:focus{box-shadow:none;outline:none}"
-        ".st-key-rf_a .stButton>button,.st-key-rf_b .stButton>button{"
+        ".st-key-rf_a .stButton>button{"
         "background-color:#9b6e6e !important;color:#fff !important}"
-        ".st-key-rf_a .stButton>button:hover,.st-key-rf_b .stButton>button:hover{"
+        ".st-key-rf_a .stButton>button:hover{"
         "background-color:#7f5a5a !important}"
+        ".st-key-rf_b .stButton>button,.st-key-btn_b_ov .stButton>button{"
+        "background-color:#6e8fa0 !important;color:#fff !important}"
+        ".st-key-rf_b .stButton>button:hover,.st-key-btn_b_ov .stButton>button:hover{"
+        "background-color:#5a7a8c !important}"
+        ".st-key-refresh_b button{background-color:#6e8fa0 !important;border-color:#6e8fa0 !important;color:#fff !important}"
+        ".st-key-refresh_b button:hover{background-color:#5a7a8c !important;border-color:#5a7a8c !important}"
         "[data-testid='stSidebar'] .pill-panel{"
         "background:#bfc0c2;border-radius:6px;padding:6px 8px;margin-bottom:4px}"
         "</style>",
@@ -638,7 +645,7 @@ def main() -> None:
         # ── Portfolio A sidebar ───────────────────────────────────────────────
         st.markdown(
             "<div style='background:#5a7f6a;color:#fff;padding:4px 10px;border-radius:4px;"
-            "font-weight:700;font-size:0.85rem;margin:8px 0 4px 0'>── Portfolio A ──</div>",
+            "font-weight:700;font-size:15px;margin:8px 0 4px 0;text-align:center'>── Portfolio A ──</div>",
             unsafe_allow_html=True,
         )
 
@@ -738,8 +745,8 @@ def main() -> None:
 
         # ── Portfolio B sidebar ───────────────────────────────────────────────
         st.markdown(
-            "<div style='background:#5a7f6a;color:#fff;padding:4px 10px;border-radius:4px;"
-            "font-weight:700;font-size:0.85rem;margin:10px 0 4px 0'>── Portfolio B ──</div>",
+            "<div style='background:#6e8fa0;color:#fff;padding:4px 10px;border-radius:4px;"
+            "font-weight:700;font-size:15px;margin:10px 0 4px 0;text-align:center'>── Portfolio B ──</div>",
             unsafe_allow_html=True,
         )
 
