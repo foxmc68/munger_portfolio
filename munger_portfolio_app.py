@@ -794,16 +794,19 @@ def main() -> None:
         "[data-testid='stSidebar'],[data-testid='stSidebarContent']{background-color:#CACBCD}"
         "[data-testid='metric-container']{background-color:#c8c9cb;border-radius:6px;padding:8px}"
         ".stTabs [data-baseweb='tab-list']{gap:6px;border-bottom:2px solid #8a8b8d;margin-top:0}"
-        ".stTabs [data-baseweb='tab']{font-size:1.15rem;font-weight:700;padding:6px 28px;border-radius:8px 8px 0 0;color:#555555;background-color:#b0b1b3;border:none;letter-spacing:0.02em}"
-        ".stTabs [data-baseweb='tab']:hover{background-color:#9a9b9d;color:#333333}"
-        ".stTabs [data-baseweb='tab'][aria-selected='true']{background-color:#5a7f6a !important;color:#ffffff !important;border-bottom:3px solid #5a7f6a}"
-        ".stTabs [data-baseweb='tab']:nth-child(2)[aria-selected='true']{background-color:#5a7a8c !important;color:#ffffff !important;border-bottom:3px solid #5a7a8c !important}"
+        ".stTabs [data-baseweb='tab']{font-size:1.15rem;font-weight:700;padding:6px 28px;border-radius:8px 8px 0 0;color:#ffffff;background-color:#b0b1b3;border:none;letter-spacing:0.02em}"
+        ".stTabs [data-baseweb='tab']:nth-child(1){background-color:#6e9b82 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(1):hover{background-color:#5f8a72 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(1)[aria-selected='true']{background-color:#4d7a5f !important;color:#ffffff !important;border-bottom:3px solid #4d7a5f !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(2){background-color:#6e8fa0 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(2):hover{background-color:#5f7e90 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(2)[aria-selected='true']{background-color:#4d6e80 !important;color:#ffffff !important;border-bottom:3px solid #4d6e80 !important}"
         ".stTabs [data-baseweb='tab']:nth-child(3){background-color:#8e8eaa !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(3):hover{background-color:#7a7a98 !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(3)[aria-selected='true']{background-color:#5a5a7f !important;color:#ffffff !important;border-bottom:3px solid #5a5a7f !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(4){background-color:#c4aa88 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(4):hover{background-color:#b09674 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(4)[aria-selected='true']{background-color:#a08c6e !important;color:#ffffff !important;border-bottom:3px solid #a08c6e !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4){background-color:#b88070 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4):hover{background-color:#a87060 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4)[aria-selected='true']{background-color:#a07060 !important;color:#ffffff !important;border-bottom:3px solid #a07060 !important}"
         ".stTabs [data-baseweb='tab-highlight']{display:none}"
         ".block-container{padding-top:0.75rem !important;padding-bottom:1rem !important}"
         "h1{margin-bottom:0.25rem !important;margin-top:0 !important}"
@@ -1381,7 +1384,7 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
     # ══════════════════════════════════════════════════════════════════════════
     with tab_m:
         st.markdown(
-            "<div style='background:#a08c6e;color:#fff;padding:10px 16px;border-radius:6px;"
+            "<div style='background:#a07060;color:#fff;padding:10px 16px;border-radius:6px;"
             "margin-bottom:10px'>"
             "<strong>Macro Signals Dashboard</strong> — 10 macro indicators for SGOV deployment "
             "decisions. "
@@ -1480,7 +1483,7 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
 
         # ── Signal cards — 2-column grid ──────────────────────────────────────
         st.markdown(
-            "<p style='font-size:0.82rem;font-weight:700;color:#a08c6e;margin:0 0 6px 0'>"
+            "<p style='font-size:20px;font-weight:700;color:#000000;margin:0 0 8px 0'>"
             "LIVE SIGNALS — fetched from Yahoo Finance</p>",
             unsafe_allow_html=True,
         )
@@ -1640,7 +1643,7 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
 
         # ── Manual signals section ────────────────────────────────────────────
         st.markdown(
-            "<p style='font-size:0.82rem;font-weight:700;color:#a08c6e;margin:8px 0 6px 0'>"
+            "<p style='font-size:20px;font-weight:700;color:#000000;margin:12px 0 8px 0'>"
             "MANUAL SIGNALS — updated quarterly from public sources</p>",
             unsafe_allow_html=True,
         )
