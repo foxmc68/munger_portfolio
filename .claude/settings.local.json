@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python3:*)",
+      "WebFetch(domain:site.financialmodelingprep.com)",
+      "WebFetch(domain:financialmodelingprep.com)",
+      "WebFetch(domain:intelligence.financialmodelingprep.com)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:dlthub.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:medium.com)"
+    ]
+  }
+}

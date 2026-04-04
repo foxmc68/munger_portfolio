@@ -314,10 +314,11 @@ def build_display_df(rows: list[dict]) -> pd.DataFrame:
 # ── Row styling ───────────────────────────────────────────────────────────────
 
 _SIGNAL_STYLE: dict[str, str] = {
-    "DREAM": "background-color:#1b5e20;color:#ffffff",
-    "FAIR":  "background-color:#bf360c;color:#ffffff",
-    "WAIT":  "background-color:#7f0000;color:#ffcdd2",
-    "N/A":   "background-color:#212121;color:#757575",
+    # Muted, light-theme-friendly traffic-light palette
+    "DREAM": "background-color:#b7d4b0;color:#1a3a1f",   # sage green
+    "FAIR":  "background-color:#f0d080;color:#3d2800",   # amber / gold
+    "WAIT":  "background-color:#dfa898;color:#3d0f00",   # dusty terracotta
+    "N/A":   "background-color:#d0d0d2;color:#555555",   # neutral grey
 }
 
 
@@ -336,6 +337,28 @@ def main() -> None:
         page_title="Munger Toll Bridge Portfolio",
         layout="wide",
         initial_sidebar_state="expanded",
+    )
+
+    # ── Light-theme CSS overrides ─────────────────────────────────────────────
+    st.markdown(
+        """
+        <style>
+        /* Main page and sidebar background */
+        .stApp, [data-testid="stAppViewContainer"] {
+            background-color: #BDBDBF;
+        }
+        [data-testid="stSidebar"], [data-testid="stSidebarContent"] {
+            background-color: #CACBCD;
+        }
+        /* Keep metric cards on the same grey tone */
+        [data-testid="metric-container"] {
+            background-color: #c8c9cb;
+            border-radius: 6px;
+            padding: 8px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
 
     # ── Session state ─────────────────────────────────────────────────────────
