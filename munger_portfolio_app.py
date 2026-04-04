@@ -170,6 +170,186 @@ RETIRED_STOCKS: list[dict] = [
 
 ALL_TICKERS_RETIRED: list[str] = [s["ticker"] for s in RETIRED_STOCKS]
 
+# ── Macro Signals configuration ───────────────────────────────────────────────
+# Each signal has live-fetch or static-manual data. Direction "above" means
+# exceeding the threshold is bad; "below" means falling below is bad.
+
+MACRO_SIGNALS_CONFIG: list[dict] = [
+    {
+        "id": "treasury_10y",
+        "name": "10-yr Treasury Yield",
+        "ticker": "^TNX",
+        "fetch_live": True,
+        "type": "numeric",
+        "format": "pct",
+        "invert": False,
+        "danger": 5.5,
+        "crisis": 7.0,
+        "direction": "above",
+        "action_normal": "BUY — short-duration SGOV safe",
+        "action_danger": "CAUTION — bond market stress rising",
+        "action_crisis": "AVOID DURATION — fiscal/inflation crisis",
+        "frequency": "Daily",
+        "description": "High yields = inflation or fiscal stress. SGOV (0-3 mo T-bills) is insulated vs long bonds.",
+    },
+    {
+        "id": "dxy",
+        "name": "DXY Dollar Index",
+        "ticker": "DX-Y.NYB",
+        "fetch_live": True,
+        "type": "numeric",
+        "format": "number_2dp",
+        "invert": False,
+        "danger": 98.0,
+        "crisis": 90.0,
+        "direction": "below",
+        "action_normal": "BUY — dollar strength supports SGOV",
+        "action_danger": "CAUTION — dollar weakness emerging",
+        "action_crisis": "AVOID USD CASH — reserve currency stress",
+        "frequency": "Daily",
+        "description": "Dollar falling below 98 = foreign selling of US assets. Below 90 = potential reserve-currency crisis.",
+    },
+    {
+        "id": "real_fed_funds",
+        "name": "Real Fed Funds Rate",
+        "ticker": "^IRX",
+        "fetch_live": True,
+        "type": "computed_real_rate",
+        "format": "pct",
+        "invert": False,
+        "danger": -1.0,
+        "crisis": -3.0,
+        "direction": "below",
+        "action_normal": "BUY — positive real rates favor cash",
+        "action_danger": "CAUTION — financial repression risk",
+        "action_crisis": "AVOID SGOV — real return deeply negative",
+        "frequency": "Monthly (CPI) / Daily (rate)",
+        "description": "Nominal Fed Funds Rate minus CPI. Negative = savers punished. Deep negative = financial repression destroying cash holders.",
+    },
+    {
+        "id": "gold",
+        "name": "Gold Price",
+        "ticker": "GC=F",
+        "fetch_live": True,
+        "type": "numeric",
+        "format": "price",
+        "invert": False,
+        "danger": 5000.0,
+        "crisis": 6000.0,
+        "direction": "above",
+        "action_normal": "BUY — no systemic monetary fear",
+        "action_danger": "CAUTION — inflation/geopolitical fear elevated",
+        "action_crisis": "AVOID USD CASH — safe-haven panic signal",
+        "frequency": "Daily",
+        "description": "Gold is the fear gauge. Above $5K signals serious monetary distrust; above $6K = systemic crisis underway.",
+    },
+    {
+        "id": "crude_oil",
+        "name": "WTI Crude Oil",
+        "ticker": "CL=F",
+        "fetch_live": True,
+        "type": "numeric",
+        "format": "price",
+        "invert": False,
+        "danger": 120.0,
+        "crisis": 150.0,
+        "direction": "above",
+        "action_normal": "BUY — energy costs manageable",
+        "action_danger": "CAUTION — stagflation risk rising",
+        "action_crisis": "AVOID — oil shock / recession likely",
+        "frequency": "Daily",
+        "description": "High oil = stagflationary shock. Fed cannot cut without inflaming inflation; SGOV stays competitive.",
+    },
+    {
+        "id": "fiscal_deficit",
+        "name": "US Fiscal Deficit % GDP",
+        "ticker": None,
+        "fetch_live": False,
+        "type": "numeric",
+        "format": "pct",
+        "invert": False,
+        "default": 6.5,
+        "danger": 8.0,
+        "crisis": 10.0,
+        "direction": "above",
+        "action_normal": "BUY — deficit manageable",
+        "action_danger": "CAUTION — bond vigilantes may act",
+        "action_crisis": "AVOID LONG USD — monetization risk rising",
+        "frequency": "Quarterly (CBO / OMB data)",
+        "description": "US federal deficit as % of GDP. High deficits = Treasury supply flood, yields spike, dollar debasement risk.",
+    },
+    {
+        "id": "vix",
+        "name": "VIX Volatility Index",
+        "ticker": "^VIX",
+        "fetch_live": True,
+        "type": "numeric",
+        "format": "number_2dp",
+        "invert": False,
+        "danger": 30.0,
+        "crisis": 45.0,
+        "direction": "above",
+        "action_normal": "BUY — market calm, SGOV safe",
+        "action_danger": "CAUTION — market stress, hold dry powder",
+        "action_crisis": "AVOID EQUITIES — systemic fear / liquidation risk",
+        "frequency": "Daily",
+        "description": "VIX above 30 = elevated fear. Above 45 = systemic panic. SGOV is safe haven but watch for credit dislocation.",
+    },
+    {
+        "id": "msft_azure",
+        "name": "MSFT Azure Growth",
+        "ticker": None,
+        "fetch_live": False,
+        "type": "numeric",
+        "format": "pct",
+        "invert": False,
+        "default": 33.0,
+        "danger": 32.0,
+        "crisis": 25.0,
+        "direction": "below",
+        "action_normal": "BUY — AI/cloud thesis intact",
+        "action_danger": "CAUTION — cloud growth decelerating",
+        "action_crisis": "AVOID MSFT heavy — growth thesis breaking",
+        "frequency": "Quarterly (earnings)",
+        "description": "Azure YoY growth rate. Proxy for AI/cloud infrastructure demand. Deceleration = overvaluation risk for MSFT-heavy portfolios.",
+    },
+    {
+        "id": "yen_dollar",
+        "name": "Yen / Dollar  (JPY per USD)",
+        "ticker": "JPYUSD=X",
+        "fetch_live": True,
+        "type": "numeric",
+        "format": "number_1dp",
+        "invert": True,   # JPYUSD=X gives USD per JPY; invert → JPY per USD
+        "danger": 140.0,
+        "crisis": 125.0,
+        "direction": "below",
+        "action_normal": "BUY — yen stable, no carry unwind",
+        "action_danger": "CAUTION — yen carry trade unwind risk",
+        "action_crisis": "AVOID RISK — global deleveraging likely",
+        "frequency": "Daily",
+        "description": "Yen strengthening below 140/USD = carry trade unwind risk. Sharp yen moves historically trigger global liquidations.",
+    },
+    {
+        "id": "brk_cash",
+        "name": "BRK.B Cash Position",
+        "ticker": None,
+        "fetch_live": False,
+        "type": "manual_status",
+        "format": None,
+        "invert": False,
+        "default_note": "Cash ~$325B, no major acquisitions signaled (Q4 2024)",
+        "danger": None,
+        "crisis": None,
+        "direction": None,
+        "action_normal": "BUY — Buffett hoarding cash = patience signal",
+        "action_danger": "CAUTION — Berkshire beginning acquisitions",
+        "action_crisis": "AVOID EQUITIES — Buffett deploying $50B+ in one quarter",
+        "frequency": "Quarterly (13-F / earnings)",
+        "description": "Berkshire cash deployment is a Buffett market-valuation signal. Big acquisitions = he sees value; contrarian BUY for equities.",
+    },
+]
+
 # Special valuation / debt rules (applies across both portfolios)
 USES_PB: set[str] = {"BRK-B"}
 FAIR_PB: dict[str, float] = {"BRK-B": 1.35}
@@ -433,6 +613,54 @@ def compute_retired_row(stock: dict) -> dict:
 
 # ── Formatting helpers ────────────────────────────────────────────────────────
 
+def compute_macro_status(value: float, danger: float, crisis: float, direction: str) -> str:
+    """Return NORMAL / DANGER / CRISIS based on thresholds and direction."""
+    if direction == "above":
+        if value >= crisis:
+            return "CRISIS"
+        if value >= danger:
+            return "DANGER"
+        return "NORMAL"
+    else:  # "below"
+        if value <= crisis:
+            return "CRISIS"
+        if value <= danger:
+            return "DANGER"
+        return "NORMAL"
+
+
+_MACRO_STATUS_BG: dict[str, str] = {
+    "NORMAL": "#4d8c68",
+    "DANGER": "#b8860b",
+    "CRISIS": "#9b3333",
+    "N/A":    "#777777",
+}
+_MACRO_STATUS_BORDER: dict[str, str] = {
+    "NORMAL": "#4d8c68",
+    "DANGER": "#c8a030",
+    "CRISIS": "#b85c5c",
+    "N/A":    "#999999",
+}
+
+
+def fmt_macro_value(value: float, fmt: str) -> str:
+    if fmt == "pct":
+        return f"{value:.2f}%"
+    if fmt == "price":
+        return f"${value:,.0f}"
+    if fmt == "number_1dp":
+        return f"{value:.1f}"
+    return f"{value:.2f}"
+
+
+def fmt_macro_threshold(value: float, fmt: str) -> str:
+    if fmt == "pct":
+        return f"{value:.1f}%"
+    if fmt == "price":
+        return f"${value:,.0f}"
+    return f"{value:.1f}"
+
+
 def fmt_price(v: Optional[float]) -> str:
     return f"${v:,.2f}" if v is not None else "—"
 
@@ -573,6 +801,9 @@ def main() -> None:
         ".stTabs [data-baseweb='tab']:nth-child(3){background-color:#8e8eaa !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(3):hover{background-color:#7a7a98 !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(3)[aria-selected='true']{background-color:#5a5a7f !important;color:#ffffff !important;border-bottom:3px solid #5a5a7f !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4){background-color:#c4aa88 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4):hover{background-color:#b09674 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4)[aria-selected='true']{background-color:#a08c6e !important;color:#ffffff !important;border-bottom:3px solid #a08c6e !important}"
         ".stTabs [data-baseweb='tab-highlight']{display:none}"
         ".block-container{padding-top:0.75rem !important;padding-bottom:1rem !important}"
         "h1{margin-bottom:0.25rem !important;margin-top:0 !important}"
@@ -622,6 +853,18 @@ def main() -> None:
         st.session_state.raw_rows_retired = None
     if "last_fetched_retired" not in st.session_state:
         st.session_state.last_fetched_retired = None
+    if "macro_last_fetched" not in st.session_state:
+        st.session_state.macro_last_fetched = None
+    if "macro_cpi_rate" not in st.session_state:
+        st.session_state.macro_cpi_rate = 2.8
+    if "macro_fiscal_deficit" not in st.session_state:
+        st.session_state.macro_fiscal_deficit = 6.5
+    if "macro_azure_growth" not in st.session_state:
+        st.session_state.macro_azure_growth = 33.0
+    if "macro_brk_status" not in st.session_state:
+        st.session_state.macro_brk_status = "NORMAL"
+    if "macro_brk_note" not in st.session_state:
+        st.session_state.macro_brk_note = "Cash ~$325B, no major acquisitions signaled (Q4 2024)"
 
     # ── Pill toggle states ────────────────────────────────────────────────────
     for _pk in [
@@ -827,7 +1070,7 @@ def main() -> None:
     st.title("Munger Toll Bridge Portfolio")
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    tab_a, tab_b, tab_r = st.tabs(["Portfolio A", "Portfolio B", "Retired"])
+    tab_a, tab_b, tab_r, tab_m = st.tabs(["Portfolio A", "Portfolio B", "Retired", "Macro Signals"])
 
     # ══════════════════════════════════════════════════════════════════════════
     # PORTFOLIO A
@@ -1130,6 +1373,425 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
         st.caption(
             "Row color: blue-grey = removed from Portfolio A · amber-grey = removed from Portfolio B.  "
             "Data: Yahoo Finance via yfinance.  Not financial advice."
+        )
+
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # MACRO SIGNALS
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_m:
+        st.markdown(
+            "<div style='background:#a08c6e;color:#fff;padding:10px 16px;border-radius:6px;"
+            "margin-bottom:10px'>"
+            "<strong>Macro Signals Dashboard</strong> — 10 macro indicators for SGOV deployment "
+            "decisions. "
+            "<span style='background:rgba(255,255,255,0.25);padding:1px 8px;border-radius:10px;"
+            "font-size:0.85rem'>&#9679; NORMAL</span>&nbsp;"
+            "deploy freely &nbsp;|&nbsp; "
+            "<span style='background:rgba(255,255,255,0.25);padding:1px 8px;border-radius:10px;"
+            "font-size:0.85rem'>&#9650; DANGER</span>&nbsp;"
+            "caution &nbsp;|&nbsp; "
+            "<span style='background:rgba(255,255,255,0.25);padding:1px 8px;border-radius:10px;"
+            "font-size:0.85rem'>&#9888; CRISIS</span>&nbsp;"
+            "avoid / reduce"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        # ── Refresh + manual inputs ───────────────────────────────────────────
+        col_rm, col_tm, col_cpi = st.columns([1, 3, 2])
+        with col_rm:
+            if st.button("Refresh Data", key="refresh_m", type="primary", use_container_width=True):
+                fetch_info.clear()
+                st.session_state.macro_last_fetched = None
+
+        # Force a "first fetch" timestamp so we can show it
+        if st.session_state.macro_last_fetched is None:
+            st.session_state.macro_last_fetched = datetime.now()
+
+        macro_ts_str = st.session_state.macro_last_fetched.strftime("%Y-%m-%d  %H:%M:%S")
+        with col_tm:
+            st.caption(
+                f"Last fetched: **{macro_ts_str}**  ·  "
+                "Live signals via Yahoo Finance (yfinance)  ·  Static signals updated manually"
+            )
+
+        with col_cpi:
+            new_cpi = st.number_input(
+                "CPI Rate % (for Real Fed Funds)",
+                min_value=-5.0, max_value=25.0,
+                value=float(st.session_state.macro_cpi_rate),
+                step=0.1, format="%.1f",
+                key="macro_cpi_input",
+                help="Enter latest CPI YoY % — used to compute Real Fed Funds Rate = nominal rate − CPI",
+            )
+            st.session_state.macro_cpi_rate = new_cpi
+
+        # ── Manual / static signal inputs ────────────────────────────────────
+        with st.expander("Update Manual Signals (Fiscal Deficit, Azure Growth, BRK.B)", expanded=False):
+            st.markdown(
+                "<p style='font-size:0.85rem;color:#555;margin:0 0 8px 0'>"
+                "These signals are updated quarterly from public sources. "
+                "Edit values here and they apply immediately to the cards below.</p>",
+                unsafe_allow_html=True,
+            )
+            _mc1, _mc2, _mc3 = st.columns(3)
+            with _mc1:
+                new_deficit = st.number_input(
+                    "Fiscal Deficit % GDP",
+                    min_value=0.0, max_value=30.0,
+                    value=float(st.session_state.macro_fiscal_deficit),
+                    step=0.1, format="%.1f",
+                    key="macro_deficit_input",
+                    help="Source: CBO / OMB — update quarterly",
+                )
+                st.session_state.macro_fiscal_deficit = new_deficit
+                st.caption("Source: CBO / OMB budget outlook")
+
+            with _mc2:
+                new_azure = st.number_input(
+                    "MSFT Azure Growth %",
+                    min_value=0.0, max_value=100.0,
+                    value=float(st.session_state.macro_azure_growth),
+                    step=0.5, format="%.1f",
+                    key="macro_azure_input",
+                    help="Azure YoY revenue growth % — from MSFT quarterly earnings",
+                )
+                st.session_state.macro_azure_growth = new_azure
+                st.caption("Source: MSFT quarterly earnings")
+
+            with _mc3:
+                new_brk_status = st.selectbox(
+                    "BRK.B Cash Status",
+                    options=["NORMAL", "DANGER", "CRISIS"],
+                    index=["NORMAL", "DANGER", "CRISIS"].index(st.session_state.macro_brk_status),
+                    key="macro_brk_status_input",
+                )
+                st.session_state.macro_brk_status = new_brk_status
+                new_brk_note = st.text_area(
+                    "BRK.B Note",
+                    value=st.session_state.macro_brk_note,
+                    height=68,
+                    key="macro_brk_note_input",
+                )
+                st.session_state.macro_brk_note = new_brk_note
+
+        st.divider()
+
+        # ── Signal cards — 2-column grid ──────────────────────────────────────
+        st.markdown(
+            "<p style='font-size:0.82rem;font-weight:700;color:#a08c6e;margin:0 0 6px 0'>"
+            "LIVE SIGNALS — fetched from Yahoo Finance</p>",
+            unsafe_allow_html=True,
+        )
+
+        # Render live signals (first 7) then separator then manual signals (last 3)
+        _LIVE_SIGNALS   = MACRO_SIGNALS_CONFIG[:7]
+        _MANUAL_SIGNALS = MACRO_SIGNALS_CONFIG[7:]
+
+        grid_cols_live = st.columns(2)
+        for _idx, _sig in enumerate(_LIVE_SIGNALS):
+            _col = grid_cols_live[_idx % 2]
+            with _col:
+
+                # ── Determine current value and status ────────────────────────
+                _display_val: Optional[float] = None
+                _status: str = "N/A"
+                _value_str: str = "—"
+                _extra_label: str = ""
+
+                if _sig["type"] == "manual_status":
+                    _status = st.session_state.macro_brk_status
+                    _value_str = st.session_state.macro_brk_note
+
+                elif _sig["type"] == "computed_real_rate":
+                    _irx_info = fetch_info(_sig["ticker"])
+                    _nominal = (
+                        _float(_irx_info, "regularMarketPrice")
+                        or _float(_irx_info, "currentPrice")
+                    )
+                    if _nominal is not None:
+                        _display_val = _nominal - st.session_state.macro_cpi_rate
+                        _status = compute_macro_status(
+                            _display_val, _sig["danger"], _sig["crisis"], _sig["direction"]
+                        )
+                        _value_str = fmt_macro_value(_display_val, _sig["format"])
+                        _extra_label = (
+                            f"nominal {_nominal:.2f}% − CPI {st.session_state.macro_cpi_rate:.1f}%"
+                        )
+                    else:
+                        _value_str = "—"
+
+                elif _sig["fetch_live"]:
+                    _live_info = fetch_info(_sig["ticker"])
+                    _raw = (
+                        _float(_live_info, "regularMarketPrice")
+                        or _float(_live_info, "currentPrice")
+                    )
+                    if _raw is not None:
+                        _display_val = (1.0 / _raw) if (_sig["invert"] and _raw != 0) else _raw
+                        _status = compute_macro_status(
+                            _display_val, _sig["danger"], _sig["crisis"], _sig["direction"]
+                        )
+                        _value_str = fmt_macro_value(_display_val, _sig["format"])
+                    else:
+                        _value_str = "—"
+
+                else:
+                    # Static numeric
+                    _static_key = {
+                        "fiscal_deficit": "macro_fiscal_deficit",
+                        "msft_azure":     "macro_azure_growth",
+                    }.get(_sig["id"])
+                    if _static_key:
+                        _display_val = float(st.session_state.get(_static_key, _sig.get("default", 0.0)))
+                        _status = compute_macro_status(
+                            _display_val, _sig["danger"], _sig["crisis"], _sig["direction"]
+                        )
+                        _value_str = fmt_macro_value(_display_val, _sig["format"])
+
+                # ── Choose action label by status ─────────────────────────────
+                _action_map = {
+                    "NORMAL": _sig["action_normal"],
+                    "DANGER": _sig["action_danger"],
+                    "CRISIS": _sig["action_crisis"],
+                    "N/A":    "—",
+                }
+                _card_action = _action_map.get(_status, "—")
+
+                # ── Threshold display strings ─────────────────────────────────
+                if _sig["danger"] is not None:
+                    _dir_word_d = "above" if _sig["direction"] == "above" else "below"
+                    _dir_word_c = _dir_word_d
+                    _danger_str = f"{_dir_word_d} {fmt_macro_threshold(_sig['danger'], _sig['format'])}"
+                    _crisis_str = f"{_dir_word_c} {fmt_macro_threshold(_sig['crisis'], _sig['format'])}"
+                else:
+                    _danger_str = "Manual"
+                    _crisis_str = "Manual"
+
+                # ── Ticker badge ──────────────────────────────────────────────
+                _ticker_badge = (
+                    f"<span style='font-size:0.72rem;color:#888;background:#ddd;"
+                    f"padding:1px 6px;border-radius:4px;margin-left:6px'>{_sig['ticker']}</span>"
+                    if _sig["ticker"] else
+                    "<span style='font-size:0.72rem;color:#888;background:#ddd;"
+                    "padding:1px 6px;border-radius:4px;margin-left:6px'>manual</span>"
+                )
+
+                # ── Status pill colors ────────────────────────────────────────
+                _sbg   = _MACRO_STATUS_BG.get(_status, "#777777")
+                _sbord = _MACRO_STATUS_BORDER.get(_status, "#999999")
+
+                # ── Extra note line ───────────────────────────────────────────
+                _extra_html = (
+                    f"<div style='font-size:0.75rem;color:#666;margin-top:2px'>{_extra_label}</div>"
+                    if _extra_label else ""
+                )
+
+                # ── BRK.B: show note as description instead of numeric value ──
+                _value_display_html = (
+                    f"<div style='font-size:0.85rem;color:#444;margin:4px 0 6px 0;"
+                    f"font-style:italic;line-height:1.3'>{_value_str}</div>"
+                    if _sig["type"] == "manual_status"
+                    else
+                    f"<div style='font-size:2rem;font-weight:700;color:#1a1a1a;"
+                    f"margin:2px 0;letter-spacing:-0.02em'>{_value_str}</div>"
+                    f"{_extra_html}"
+                )
+
+                st.markdown(
+                    f"<div style='background:#c8c9cb;border-radius:8px;padding:14px 16px;"
+                    f"margin-bottom:10px;border-left:5px solid {_sbord}'>"
+                    # Header row
+                    f"<div style='display:flex;justify-content:space-between;align-items:flex-start'>"
+                    f"  <div style='font-size:0.88rem;font-weight:700;color:#333'>"
+                    f"    {_sig['name']}{_ticker_badge}"
+                    f"  </div>"
+                    f"  <span style='background:{_sbg};color:#fff;padding:3px 12px;"
+                    f"border-radius:14px;font-size:0.82rem;font-weight:700;white-space:nowrap;"
+                    f"margin-left:8px'>{_status}</span>"
+                    f"</div>"
+                    # Value
+                    f"{_value_display_html}"
+                    # Thresholds
+                    f"<div style='margin:6px 0 4px 0'>"
+                    f"  <span style='background:#c8a030;color:#fff;padding:2px 8px;"
+                    f"border-radius:4px;font-size:0.76rem;margin-right:6px'>"
+                    f"    Danger: {_danger_str}</span>"
+                    f"  <span style='background:#9b3333;color:#fff;padding:2px 8px;"
+                    f"border-radius:4px;font-size:0.76rem'>"
+                    f"    Crisis: {_crisis_str}</span>"
+                    f"</div>"
+                    # Action
+                    f"<div style='font-size:0.8rem;color:#333;margin-top:6px'>"
+                    f"  <b>Signal:</b> {_card_action}"
+                    f"</div>"
+                    # Description
+                    f"<div style='font-size:0.75rem;color:#666;margin-top:4px;line-height:1.35'>"
+                    f"  {_sig['description']}"
+                    f"</div>"
+                    # Frequency
+                    f"<div style='font-size:0.72rem;color:#888;margin-top:5px'>"
+                    f"  Frequency: {_sig['frequency']}"
+                    f"</div>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+
+        # ── Manual signals section ────────────────────────────────────────────
+        st.markdown(
+            "<p style='font-size:0.82rem;font-weight:700;color:#a08c6e;margin:8px 0 6px 0'>"
+            "MANUAL SIGNALS — updated quarterly from public sources</p>",
+            unsafe_allow_html=True,
+        )
+        grid_cols_manual = st.columns(2)
+        for _idx, _sig in enumerate(_MANUAL_SIGNALS):
+            _col = grid_cols_manual[_idx % 2]
+            with _col:
+
+                # ── Determine current value and status ────────────────────────
+                _display_val: Optional[float] = None
+                _status: str = "N/A"
+                _value_str: str = "—"
+                _extra_label: str = ""
+
+                if _sig["type"] == "manual_status":
+                    _status = st.session_state.macro_brk_status
+                    _value_str = st.session_state.macro_brk_note
+                else:
+                    _static_key = {
+                        "fiscal_deficit": "macro_fiscal_deficit",
+                        "msft_azure":     "macro_azure_growth",
+                    }.get(_sig["id"])
+                    if _static_key:
+                        _display_val = float(st.session_state.get(_static_key, _sig.get("default", 0.0)))
+                        _status = compute_macro_status(
+                            _display_val, _sig["danger"], _sig["crisis"], _sig["direction"]
+                        )
+                        _value_str = fmt_macro_value(_display_val, _sig["format"])
+
+                _action_map2 = {
+                    "NORMAL": _sig["action_normal"],
+                    "DANGER": _sig["action_danger"],
+                    "CRISIS": _sig["action_crisis"],
+                    "N/A":    "—",
+                }
+                _card_action2 = _action_map2.get(_status, "—")
+
+                if _sig["danger"] is not None:
+                    _dw = "above" if _sig["direction"] == "above" else "below"
+                    _danger_str2 = f"{_dw} {fmt_macro_threshold(_sig['danger'], _sig['format'])}"
+                    _crisis_str2 = f"{_dw} {fmt_macro_threshold(_sig['crisis'], _sig['format'])}"
+                else:
+                    _danger_str2 = "Manual"
+                    _crisis_str2 = "Manual"
+
+                _ticker_badge2 = (
+                    "<span style='font-size:0.72rem;color:#888;background:#ddd;"
+                    "padding:1px 6px;border-radius:4px;margin-left:6px'>manual</span>"
+                )
+                _sbg2   = _MACRO_STATUS_BG.get(_status, "#777777")
+                _sbord2 = _MACRO_STATUS_BORDER.get(_status, "#999999")
+
+                _value_display_html2 = (
+                    f"<div style='font-size:0.85rem;color:#444;margin:4px 0 6px 0;"
+                    f"font-style:italic;line-height:1.3'>{_value_str}</div>"
+                    if _sig["type"] == "manual_status"
+                    else
+                    f"<div style='font-size:2rem;font-weight:700;color:#1a1a1a;"
+                    f"margin:2px 0;letter-spacing:-0.02em'>{_value_str}</div>"
+                )
+
+                st.markdown(
+                    f"<div style='background:#c8c9cb;border-radius:8px;padding:14px 16px;"
+                    f"margin-bottom:10px;border-left:5px solid {_sbord2}'>"
+                    f"<div style='display:flex;justify-content:space-between;align-items:flex-start'>"
+                    f"  <div style='font-size:0.88rem;font-weight:700;color:#333'>"
+                    f"    {_sig['name']}{_ticker_badge2}"
+                    f"  </div>"
+                    f"  <span style='background:{_sbg2};color:#fff;padding:3px 12px;"
+                    f"border-radius:14px;font-size:0.82rem;font-weight:700;white-space:nowrap;"
+                    f"margin-left:8px'>{_status}</span>"
+                    f"</div>"
+                    f"{_value_display_html2}"
+                    f"<div style='margin:6px 0 4px 0'>"
+                    f"  <span style='background:#c8a030;color:#fff;padding:2px 8px;"
+                    f"border-radius:4px;font-size:0.76rem;margin-right:6px'>"
+                    f"    Danger: {_danger_str2}</span>"
+                    f"  <span style='background:#9b3333;color:#fff;padding:2px 8px;"
+                    f"border-radius:4px;font-size:0.76rem'>"
+                    f"    Crisis: {_crisis_str2}</span>"
+                    f"</div>"
+                    f"<div style='font-size:0.8rem;color:#333;margin-top:6px'>"
+                    f"  <b>Signal:</b> {_card_action2}"
+                    f"</div>"
+                    f"<div style='font-size:0.75rem;color:#666;margin-top:4px;line-height:1.35'>"
+                    f"  {_sig['description']}"
+                    f"</div>"
+                    f"<div style='font-size:0.72rem;color:#888;margin-top:5px'>"
+                    f"  Frequency: {_sig['frequency']}"
+                    f"</div>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+
+        # ── Summary banner ────────────────────────────────────────────────────
+        st.divider()
+        _statuses: list[str] = []
+        for _s in MACRO_SIGNALS_CONFIG:
+            if _s["type"] == "manual_status":
+                _statuses.append(st.session_state.macro_brk_status)
+            elif _s["type"] == "computed_real_rate":
+                _irx2 = fetch_info(_s["ticker"])
+                _n2 = _float(_irx2, "regularMarketPrice") or _float(_irx2, "currentPrice")
+                if _n2 is not None:
+                    _rv = _n2 - st.session_state.macro_cpi_rate
+                    _statuses.append(compute_macro_status(_rv, _s["danger"], _s["crisis"], _s["direction"]))
+                else:
+                    _statuses.append("N/A")
+            elif _s["fetch_live"]:
+                _li2 = fetch_info(_s["ticker"])
+                _r2 = _float(_li2, "regularMarketPrice") or _float(_li2, "currentPrice")
+                if _r2 is not None:
+                    _dv2 = (1.0 / _r2) if (_s["invert"] and _r2 != 0) else _r2
+                    _statuses.append(compute_macro_status(_dv2, _s["danger"], _s["crisis"], _s["direction"]))
+                else:
+                    _statuses.append("N/A")
+            else:
+                _sk2 = {"fiscal_deficit": "macro_fiscal_deficit", "msft_azure": "macro_azure_growth"}.get(_s["id"])
+                if _sk2:
+                    _sv2 = float(st.session_state.get(_sk2, _s.get("default", 0.0)))
+                    _statuses.append(compute_macro_status(_sv2, _s["danger"], _s["crisis"], _s["direction"]))
+                else:
+                    _statuses.append("N/A")
+
+        _cnt_normal  = _statuses.count("NORMAL")
+        _cnt_danger  = _statuses.count("DANGER")
+        _cnt_crisis  = _statuses.count("CRISIS")
+        _cnt_na      = _statuses.count("N/A")
+
+        _sum_c1, _sum_c2, _sum_c3, _sum_c4 = st.columns(4)
+        _sum_c1.metric("NORMAL",  _cnt_normal,  delta_color="off")
+        _sum_c2.metric("DANGER",  _cnt_danger,  delta_color="off")
+        _sum_c3.metric("CRISIS",  _cnt_crisis,  delta_color="off")
+        _sum_c4.metric("N/A",     _cnt_na,      delta_color="off")
+
+        _sgov_ok = _cnt_crisis == 0 and _cnt_danger <= 2
+        _sgov_label = "DEPLOY SGOV" if _sgov_ok else ("CAUTION" if _cnt_crisis == 0 else "AVOID / REDUCE")
+        _sgov_color = "#4d8c68" if _sgov_ok else ("#b8860b" if _cnt_crisis == 0 else "#9b3333")
+        st.markdown(
+            f"<div style='background:{_sgov_color};color:#fff;padding:10px 18px;border-radius:6px;"
+            f"font-size:1.05rem;font-weight:700;margin-top:8px;text-align:center'>"
+            f"Overall SGOV Stance: {_sgov_label}  ·  "
+            f"{_cnt_normal}/10 Normal · {_cnt_danger}/10 Danger · {_cnt_crisis}/10 Crisis"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+        st.caption(
+            "Live data: Yahoo Finance via yfinance.  "
+            "Static data: update quarterly from CBO/OMB, MSFT earnings, Berkshire 13-F.  "
+            "Not financial advice."
         )
 
 
