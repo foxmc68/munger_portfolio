@@ -1386,17 +1386,18 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
         st.markdown(
             "<div style='background:#a07060;color:#fff;padding:10px 16px;border-radius:6px;"
             "margin-bottom:10px'>"
-            "<strong>Macro Signals Dashboard</strong> — 10 macro indicators for SGOV deployment "
-            "decisions. "
-            "<span style='background:rgba(255,255,255,0.25);padding:1px 8px;border-radius:10px;"
+            "<div><strong>Macro Signals Dashboard</strong> — 10 macro indicators for SGOV deployment decisions.</div>"
+            "<div style='margin-top:4px;white-space:nowrap'>"
+            "<span style='background:#5a8a5a;color:#fff;padding:1px 8px;border-radius:10px;"
             "font-size:0.85rem'>&#9679; NORMAL</span>&nbsp;"
             "deploy freely &nbsp;|&nbsp; "
-            "<span style='background:rgba(255,255,255,0.25);padding:1px 8px;border-radius:10px;"
+            "<span style='background:#b8860b;color:#fff;padding:1px 8px;border-radius:10px;"
             "font-size:0.85rem'>&#9650; DANGER</span>&nbsp;"
             "caution &nbsp;|&nbsp; "
-            "<span style='background:rgba(255,255,255,0.25);padding:1px 8px;border-radius:10px;"
+            "<span style='background:#8a3a3a;color:#fff;padding:1px 8px;border-radius:10px;"
             "font-size:0.85rem'>&#9888; CRISIS</span>&nbsp;"
             "avoid / reduce"
+            "</div>"
             "</div>",
             unsafe_allow_html=True,
         )
