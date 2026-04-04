@@ -1695,6 +1695,60 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
 
         st.divider()
 
+        # ── Summary scorecard ─────────────────────────────────────────────────
+        _statuses: list[str] = []
+        for _s in MACRO_SIGNALS_CONFIG:
+            if _s["type"] == "manual_status":
+                _statuses.append(st.session_state.macro_brk_status)
+            elif _s["type"] == "computed_real_rate":
+                _irx2 = fetch_info(_s["ticker"])
+                _n2 = _float(_irx2, "regularMarketPrice") or _float(_irx2, "currentPrice")
+                if _n2 is not None:
+                    _rv = _n2 - st.session_state.macro_cpi_rate
+                    _statuses.append(compute_macro_status(_rv, _s["danger"], _s["crisis"], _s["direction"]))
+                else:
+                    _statuses.append("N/A")
+            elif _s["fetch_live"]:
+                _li2 = fetch_info(_s["ticker"])
+                _r2 = _float(_li2, "regularMarketPrice") or _float(_li2, "currentPrice")
+                if _r2 is not None:
+                    _dv2 = (1.0 / _r2) if (_s["invert"] and _r2 != 0) else _r2
+                    _statuses.append(compute_macro_status(_dv2, _s["danger"], _s["crisis"], _s["direction"]))
+                else:
+                    _statuses.append("N/A")
+            else:
+                _sk2 = {"fiscal_deficit": "macro_fiscal_deficit", "msft_azure": "macro_azure_growth"}.get(_s["id"])
+                if _sk2:
+                    _sv2 = float(st.session_state.get(_sk2, _s.get("default", 0.0)))
+                    _statuses.append(compute_macro_status(_sv2, _s["danger"], _s["crisis"], _s["direction"]))
+                else:
+                    _statuses.append("N/A")
+
+        _cnt_normal  = _statuses.count("NORMAL")
+        _cnt_danger  = _statuses.count("DANGER")
+        _cnt_crisis  = _statuses.count("CRISIS")
+        _cnt_na      = _statuses.count("N/A")
+
+        _sum_c1, _sum_c2, _sum_c3, _sum_c4 = st.columns(4)
+        _sum_c1.metric("NORMAL",  _cnt_normal,  delta_color="off")
+        _sum_c2.metric("DANGER",  _cnt_danger,  delta_color="off")
+        _sum_c3.metric("CRISIS",  _cnt_crisis,  delta_color="off")
+        _sum_c4.metric("N/A",     _cnt_na,      delta_color="off")
+
+        _sgov_ok = _cnt_crisis == 0 and _cnt_danger <= 2
+        _sgov_label = "DEPLOY SGOV" if _sgov_ok else ("CAUTION" if _cnt_crisis == 0 else "AVOID / REDUCE")
+        _sgov_color = "#4d8c68" if _sgov_ok else ("#b8860b" if _cnt_crisis == 0 else "#9b3333")
+        st.markdown(
+            f"<div style='background:{_sgov_color};color:#fff;padding:10px 18px;border-radius:6px;"
+            f"font-size:1.05rem;font-weight:700;margin-top:8px;text-align:center'>"
+            f"Overall SGOV Stance: {_sgov_label}  ·  "
+            f"{_cnt_normal}/10 Normal · {_cnt_danger}/10 Danger · {_cnt_crisis}/10 Crisis"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+        st.divider()
+
         # ── Signal cards — 2-column grid ──────────────────────────────────────
         st.subheader("LIVE SIGNALS — fetched from Yahoo Finance")
 
@@ -1943,59 +1997,6 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
                     f"</div>",
                     unsafe_allow_html=True,
                 )
-
-        # ── Summary banner ────────────────────────────────────────────────────
-        st.divider()
-        _statuses: list[str] = []
-        for _s in MACRO_SIGNALS_CONFIG:
-            if _s["type"] == "manual_status":
-                _statuses.append(st.session_state.macro_brk_status)
-            elif _s["type"] == "computed_real_rate":
-                _irx2 = fetch_info(_s["ticker"])
-                _n2 = _float(_irx2, "regularMarketPrice") or _float(_irx2, "currentPrice")
-                if _n2 is not None:
-                    _rv = _n2 - st.session_state.macro_cpi_rate
-                    _statuses.append(compute_macro_status(_rv, _s["danger"], _s["crisis"], _s["direction"]))
-                else:
-                    _statuses.append("N/A")
-            elif _s["fetch_live"]:
-                _li2 = fetch_info(_s["ticker"])
-                _r2 = _float(_li2, "regularMarketPrice") or _float(_li2, "currentPrice")
-                if _r2 is not None:
-                    _dv2 = (1.0 / _r2) if (_s["invert"] and _r2 != 0) else _r2
-                    _statuses.append(compute_macro_status(_dv2, _s["danger"], _s["crisis"], _s["direction"]))
-                else:
-                    _statuses.append("N/A")
-            else:
-                _sk2 = {"fiscal_deficit": "macro_fiscal_deficit", "msft_azure": "macro_azure_growth"}.get(_s["id"])
-                if _sk2:
-                    _sv2 = float(st.session_state.get(_sk2, _s.get("default", 0.0)))
-                    _statuses.append(compute_macro_status(_sv2, _s["danger"], _s["crisis"], _s["direction"]))
-                else:
-                    _statuses.append("N/A")
-
-        _cnt_normal  = _statuses.count("NORMAL")
-        _cnt_danger  = _statuses.count("DANGER")
-        _cnt_crisis  = _statuses.count("CRISIS")
-        _cnt_na      = _statuses.count("N/A")
-
-        _sum_c1, _sum_c2, _sum_c3, _sum_c4 = st.columns(4)
-        _sum_c1.metric("NORMAL",  _cnt_normal,  delta_color="off")
-        _sum_c2.metric("DANGER",  _cnt_danger,  delta_color="off")
-        _sum_c3.metric("CRISIS",  _cnt_crisis,  delta_color="off")
-        _sum_c4.metric("N/A",     _cnt_na,      delta_color="off")
-
-        _sgov_ok = _cnt_crisis == 0 and _cnt_danger <= 2
-        _sgov_label = "DEPLOY SGOV" if _sgov_ok else ("CAUTION" if _cnt_crisis == 0 else "AVOID / REDUCE")
-        _sgov_color = "#4d8c68" if _sgov_ok else ("#b8860b" if _cnt_crisis == 0 else "#9b3333")
-        st.markdown(
-            f"<div style='background:{_sgov_color};color:#fff;padding:10px 18px;border-radius:6px;"
-            f"font-size:1.05rem;font-weight:700;margin-top:8px;text-align:center'>"
-            f"Overall SGOV Stance: {_sgov_label}  ·  "
-            f"{_cnt_normal}/10 Normal · {_cnt_danger}/10 Danger · {_cnt_crisis}/10 Crisis"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
 
         st.caption(
             "Live data: Yahoo Finance via yfinance.  "
