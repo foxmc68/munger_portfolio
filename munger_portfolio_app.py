@@ -348,12 +348,6 @@ def main() -> None:
         "[data-testid='stSidebar'] [data-testid='stExpander'] summary{background-color:#6e9b82;color:#ffffff;border-radius:6px;padding:6px 10px}"
         "[data-testid='stSidebar'] [data-testid='stExpander'] summary:hover{background-color:#5a7f6a}"
         "[data-testid='stSidebar'] [data-testid='stExpander'] summary svg{fill:#ffffff}"
-        ".stMarkdownContainer:has(.rf-start) ~ [data-testid='stExpander'] summary,"
-        ".stMarkdownContainer:has(.rf-start) ~ div [data-testid='stExpander'] summary"
-        "{background-color:#9b6e6e !important;color:#ffffff !important}"
-        ".stMarkdownContainer:has(.rf-start) ~ [data-testid='stExpander'] summary:hover,"
-        ".stMarkdownContainer:has(.rf-start) ~ div [data-testid='stExpander'] summary:hover"
-        "{background-color:#7f5a5a !important}"
         "</style>",
         unsafe_allow_html=True,
     )
@@ -402,7 +396,6 @@ def main() -> None:
         st.divider()
         st.subheader("Red Flags")
         st.caption("Toggling a flag saves immediately to red_flags.json.")
-        st.markdown('<span class="rf-start"></span>', unsafe_allow_html=True)
 
         flags_changed = False
         for tier_name, td in PORTFOLIO.items():
