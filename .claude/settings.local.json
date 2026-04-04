@@ -11,7 +11,8 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:dlthub.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:medium.com)"
+      "WebFetch(domain:medium.com)",
+      "Bash(python -m py_compile munger_portfolio_app.py)"
     ]
   }
 }

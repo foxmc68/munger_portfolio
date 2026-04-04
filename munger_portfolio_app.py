@@ -483,6 +483,15 @@ def main() -> None:
         "[data-testid='stSidebar'] [data-testid='stExpander'] summary{background-color:#6e9b82;color:#ffffff;border-radius:6px;padding:6px 10px}"
         "[data-testid='stSidebar'] [data-testid='stExpander'] summary:hover{background-color:#5a7f6a}"
         "[data-testid='stSidebar'] [data-testid='stExpander'] summary svg{fill:#ffffff}"
+        ".stTabs [data-baseweb='tab-list']{gap:6px;border-bottom:2px solid #8a8b8d}"
+        ".stTabs [data-baseweb='tab']{font-size:1.15rem;font-weight:700;padding:10px 28px;border-radius:8px 8px 0 0;color:#555555;background-color:#b0b1b3;border:none;letter-spacing:0.02em}"
+        ".stTabs [data-baseweb='tab']:hover{background-color:#9a9b9d;color:#333333}"
+        ".stTabs [data-baseweb='tab'][aria-selected='true']{background-color:#5a7f6a !important;color:#ffffff !important;border-bottom:3px solid #5a7f6a}"
+        ".stTabs [data-baseweb='tab-highlight']{display:none}"
+        "[data-testid='stSidebarContent'] .block-container{padding-top:0.5rem}"
+        "[data-testid='stSidebar'] hr{margin:0.4rem 0}"
+        "[data-testid='stSidebar'] .stSlider{padding-top:0;margin-top:0}"
+        "[data-testid='stSidebar'] .stExpander{margin-bottom:2px}"
         "</style>",
         unsafe_allow_html=True,
     )
@@ -503,8 +512,10 @@ def main() -> None:
 
     # ── Sidebar ───────────────────────────────────────────────────────────────
     with st.sidebar:
-        st.title("Controls")
-
+        st.markdown(
+            "<p style='font-size:1.1rem;font-weight:700;margin:0 0 4px 0;color:#333'>Controls</p>",
+            unsafe_allow_html=True,
+        )
         st.divider()
         mos_pct = st.slider(
             "Dream Margin of Safety %",
@@ -513,10 +524,15 @@ def main() -> None:
         )
 
         # ── Portfolio A sidebar ───────────────────────────────────────────────
-        st.divider()
-        st.subheader("Portfolio A")
-        st.subheader("Fair Multiple Overrides")
-        st.caption("Leave at default to use tier standard.")
+        st.markdown(
+            "<div style='background:#5a7f6a;color:#fff;padding:4px 10px;border-radius:4px;"
+            "font-weight:700;font-size:0.85rem;margin:8px 0 4px 0'>── Portfolio A ──</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "<p style='font-size:0.8rem;font-weight:600;color:#444;margin:2px 0'>Fair Multiple Overrides</p>",
+            unsafe_allow_html=True,
+        )
 
         fair_overrides: dict[str, Optional[float]] = {}
         for tier_name, td in PORTFOLIO.items():
@@ -532,8 +548,10 @@ def main() -> None:
                     )
                     fair_overrides[tk] = val if val != default_val else None
 
-        st.subheader("Red Flags")
-        st.caption("Toggling saves immediately to red_flags.json.")
+        st.markdown(
+            "<p style='font-size:0.8rem;font-weight:600;color:#444;margin:6px 0 2px 0'>Red Flags</p>",
+            unsafe_allow_html=True,
+        )
 
         flags_changed = False
         for tier_name, td in PORTFOLIO.items():
@@ -551,10 +569,15 @@ def main() -> None:
             save_red_flags(st.session_state.red_flags)
 
         # ── Portfolio B sidebar ───────────────────────────────────────────────
-        st.divider()
-        st.subheader("Portfolio B")
-        st.subheader("Fair P/E Overrides")
-        st.caption("Leave at default to use per-ticker standard.")
+        st.markdown(
+            "<div style='background:#5a7f6a;color:#fff;padding:4px 10px;border-radius:4px;"
+            "font-weight:700;font-size:0.85rem;margin:10px 0 4px 0'>── Portfolio B ──</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "<p style='font-size:0.8rem;font-weight:600;color:#444;margin:2px 0'>Fair P/E Overrides</p>",
+            unsafe_allow_html=True,
+        )
 
         fair_overrides_b: dict[str, Optional[float]] = {}
         with st.expander("All tickers", expanded=False):
@@ -567,8 +590,10 @@ def main() -> None:
                 )
                 fair_overrides_b[tk] = val if val != default_pe else None
 
-        st.subheader("Red Flags")
-        st.caption("Toggling saves immediately to red_flags_b.json.")
+        st.markdown(
+            "<p style='font-size:0.8rem;font-weight:600;color:#444;margin:6px 0 2px 0'>Red Flags</p>",
+            unsafe_allow_html=True,
+        )
 
         flags_b_changed = False
         with st.expander("All tickers", expanded=False):
