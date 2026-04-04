@@ -480,9 +480,6 @@ def main() -> None:
         ".stApp,[data-testid='stAppViewContainer']{background-color:#BDBDBF}"
         "[data-testid='stSidebar'],[data-testid='stSidebarContent']{background-color:#CACBCD}"
         "[data-testid='metric-container']{background-color:#c8c9cb;border-radius:6px;padding:8px}"
-        "[data-testid='stSidebar'] [data-testid='stExpander'] summary{background-color:#6e9b82;color:#ffffff;border-radius:6px;padding:6px 10px}"
-        "[data-testid='stSidebar'] [data-testid='stExpander'] summary:hover{background-color:#5a7f6a}"
-        "[data-testid='stSidebar'] [data-testid='stExpander'] summary svg{fill:#ffffff}"
         ".stTabs [data-baseweb='tab-list']{gap:6px;border-bottom:2px solid #8a8b8d}"
         ".stTabs [data-baseweb='tab']{font-size:1.15rem;font-weight:700;padding:10px 28px;border-radius:8px 8px 0 0;color:#555555;background-color:#b0b1b3;border:none;letter-spacing:0.02em}"
         ".stTabs [data-baseweb='tab']:hover{background-color:#9a9b9d;color:#333333}"
@@ -491,7 +488,14 @@ def main() -> None:
         "[data-testid='stSidebarContent'] .block-container{padding-top:0.5rem}"
         "[data-testid='stSidebar'] hr{margin:0.4rem 0}"
         "[data-testid='stSidebar'] .stSlider{padding-top:0;margin-top:0}"
-        "[data-testid='stSidebar'] .stExpander{margin-bottom:2px}"
+        "[data-testid='stSidebar'] .stButton>button{"
+        "font-size:12px;padding:3px 6px;border-radius:20px;height:auto;min-height:0;"
+        "line-height:1.5;font-weight:600;background-color:#6e9b82;color:#fff;border:none;"
+        "white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
+        "[data-testid='stSidebar'] .stButton>button:hover{background-color:#5a7f6a;color:#fff}"
+        "[data-testid='stSidebar'] .stButton>button:focus{box-shadow:none;outline:none}"
+        "[data-testid='stSidebar'] .pill-panel{"
+        "background:#bfc0c2;border-radius:6px;padding:6px 8px;margin-bottom:4px}"
         "</style>",
         unsafe_allow_html=True,
     )
@@ -509,6 +513,15 @@ def main() -> None:
         st.session_state.last_fetched = None
     if "last_fetched_b" not in st.session_state:
         st.session_state.last_fetched_b = None
+
+    # ── Pill toggle states ────────────────────────────────────────────────────
+    for _pk in [
+        "pill_a_fair_t1", "pill_a_fair_t2", "pill_a_fair_t3",
+        "pill_a_rf_t1",   "pill_a_rf_t2",   "pill_a_rf_t3",
+        "pill_b_ov",      "pill_b_rf_def",   "pill_b_rf_growth",
+    ]:
+        if _pk not in st.session_state:
+            st.session_state[_pk] = False
 
     # ── Sidebar ───────────────────────────────────────────────────────────────
     with st.sidebar:
@@ -529,41 +542,96 @@ def main() -> None:
             "font-weight:700;font-size:0.85rem;margin:8px 0 4px 0'>── Portfolio A ──</div>",
             unsafe_allow_html=True,
         )
+
+        # -- Fair Multiple Overrides: row of 3 pill buttons -------------------
         st.markdown(
-            "<p style='font-size:0.8rem;font-weight:600;color:#444;margin:2px 0'>Fair Multiple Overrides</p>",
+            "<p style='font-size:0.82rem;font-weight:700;color:#333;margin:4px 0 2px 0'>"
+            "Fair Multiple Overrides</p>",
             unsafe_allow_html=True,
         )
+        _pc1, _pc2, _pc3 = st.columns(3)
+        with _pc1:
+            if st.button("Tier 1", key="btn_a_fair_t1", use_container_width=True):
+                st.session_state.pill_a_fair_t1 = not st.session_state.pill_a_fair_t1
+        with _pc2:
+            if st.button("Tier 2", key="btn_a_fair_t2", use_container_width=True):
+                st.session_state.pill_a_fair_t2 = not st.session_state.pill_a_fair_t2
+        with _pc3:
+            if st.button("Tier 3", key="btn_a_fair_t3", use_container_width=True):
+                st.session_state.pill_a_fair_t3 = not st.session_state.pill_a_fair_t3
 
-        fair_overrides: dict[str, Optional[float]] = {}
-        for tier_name, td in PORTFOLIO.items():
-            with st.expander(tier_name, expanded=False):
-                for tk in td["tickers"]:
-                    default_val = float(FAIR_PB.get(tk, td["fair_pe"]))
-                    label = f"{tk}  ({'P/B' if tk in USES_PB else 'P/E'})"
-                    val = st.number_input(
-                        label,
-                        min_value=0.1, max_value=200.0,
-                        value=default_val, step=0.5,
-                        key=f"ov_{tk}",
+        _a_fair_panels = [
+            ("Tier 1", "pill_a_fair_t1"),
+            ("Tier 2", "pill_a_fair_t2"),
+            ("Tier 3", "pill_a_fair_t3"),
+        ]
+        for _tier_name, _state_key in _a_fair_panels:
+            if st.session_state[_state_key]:
+                _td = PORTFOLIO[_tier_name]
+                with st.container():
+                    st.markdown(
+                        f"<p style='font-size:0.75rem;font-weight:700;color:#5a7f6a;"
+                        f"margin:4px 0 2px 0'>{_tier_name}</p>",
+                        unsafe_allow_html=True,
                     )
-                    fair_overrides[tk] = val if val != default_val else None
+                    for _tk in _td["tickers"]:
+                        _default_val = float(FAIR_PB.get(_tk, _td["fair_pe"]))
+                        _label = f"{_tk}  ({'P/B' if _tk in USES_PB else 'P/E'})"
+                        st.number_input(
+                            _label,
+                            min_value=0.1, max_value=200.0,
+                            value=_default_val, step=0.5,
+                            key=f"ov_{_tk}",
+                        )
 
+        # Build fair_overrides from session state (works whether panel is open or not)
+        fair_overrides: dict[str, Optional[float]] = {}
+        for _tier_name, _td in PORTFOLIO.items():
+            for _tk in _td["tickers"]:
+                _default_val = float(FAIR_PB.get(_tk, _td["fair_pe"]))
+                _val = st.session_state.get(f"ov_{_tk}", _default_val)
+                fair_overrides[_tk] = _val if _val != _default_val else None
+
+        # -- Red Flags: row of 3 pill buttons ---------------------------------
         st.markdown(
-            "<p style='font-size:0.8rem;font-weight:600;color:#444;margin:6px 0 2px 0'>Red Flags</p>",
+            "<p style='font-size:0.82rem;font-weight:700;color:#333;margin:6px 0 2px 0'>"
+            "Red Flags</p>",
             unsafe_allow_html=True,
         )
+        _rc1, _rc2, _rc3 = st.columns(3)
+        with _rc1:
+            if st.button("Tier 1", key="btn_a_rf_t1", use_container_width=True):
+                st.session_state.pill_a_rf_t1 = not st.session_state.pill_a_rf_t1
+        with _rc2:
+            if st.button("Tier 2", key="btn_a_rf_t2", use_container_width=True):
+                st.session_state.pill_a_rf_t2 = not st.session_state.pill_a_rf_t2
+        with _rc3:
+            if st.button("Tier 3", key="btn_a_rf_t3", use_container_width=True):
+                st.session_state.pill_a_rf_t3 = not st.session_state.pill_a_rf_t3
 
         flags_changed = False
-        for tier_name, td in PORTFOLIO.items():
-            with st.expander(tier_name, expanded=False):
-                for tk in td["tickers"]:
-                    st.markdown(f"**{tk}**")
-                    for fl in FLAG_NAMES:
-                        cur = st.session_state.red_flags.get(tk, {}).get(fl, False)
-                        new = st.checkbox(fl, value=cur, key=f"rf_{tk}_{fl}")
-                        if new != cur:
-                            st.session_state.red_flags[tk][fl] = new
-                            flags_changed = True
+        _a_rf_panels = [
+            ("Tier 1", "pill_a_rf_t1"),
+            ("Tier 2", "pill_a_rf_t2"),
+            ("Tier 3", "pill_a_rf_t3"),
+        ]
+        for _tier_name, _state_key in _a_rf_panels:
+            if st.session_state[_state_key]:
+                _td = PORTFOLIO[_tier_name]
+                with st.container():
+                    st.markdown(
+                        f"<p style='font-size:0.75rem;font-weight:700;color:#5a7f6a;"
+                        f"margin:4px 0 2px 0'>{_tier_name}</p>",
+                        unsafe_allow_html=True,
+                    )
+                    for _tk in _td["tickers"]:
+                        st.markdown(f"**{_tk}**")
+                        for _fl in FLAG_NAMES:
+                            _cur = st.session_state.red_flags.get(_tk, {}).get(_fl, False)
+                            _new = st.checkbox(_fl, value=_cur, key=f"rf_{_tk}_{_fl}")
+                            if _new != _cur:
+                                st.session_state.red_flags[_tk][_fl] = _new
+                                flags_changed = True
 
         if flags_changed:
             save_red_flags(st.session_state.red_flags)
@@ -574,37 +642,72 @@ def main() -> None:
             "font-weight:700;font-size:0.85rem;margin:10px 0 4px 0'>── Portfolio B ──</div>",
             unsafe_allow_html=True,
         )
+
+        # -- Fair P/E Overrides: single pill button ---------------------------
         st.markdown(
-            "<p style='font-size:0.8rem;font-weight:600;color:#444;margin:2px 0'>Fair P/E Overrides</p>",
+            "<p style='font-size:0.82rem;font-weight:700;color:#333;margin:4px 0 2px 0'>"
+            "Fair P/E Overrides</p>",
             unsafe_allow_html=True,
         )
+        if st.button("Overrides", key="btn_b_ov", use_container_width=False):
+            st.session_state.pill_b_ov = not st.session_state.pill_b_ov
+
+        if st.session_state.pill_b_ov:
+            with st.container():
+                for _tk, _default_pe in PORTFOLIO_B_TICKERS.items():
+                    st.number_input(
+                        f"{_tk}  (P/E)",
+                        min_value=0.1, max_value=200.0,
+                        value=float(_default_pe), step=0.5,
+                        key=f"ov_b_{_tk}",
+                    )
 
         fair_overrides_b: dict[str, Optional[float]] = {}
-        with st.expander("All tickers", expanded=False):
-            for tk, default_pe in PORTFOLIO_B_TICKERS.items():
-                val = st.number_input(
-                    f"{tk}  (P/E)",
-                    min_value=0.1, max_value=200.0,
-                    value=float(default_pe), step=0.5,
-                    key=f"ov_b_{tk}",
-                )
-                fair_overrides_b[tk] = val if val != default_pe else None
+        for _tk, _default_pe in PORTFOLIO_B_TICKERS.items():
+            _val = st.session_state.get(f"ov_b_{_tk}", float(_default_pe))
+            fair_overrides_b[_tk] = _val if _val != _default_pe else None
+
+        # -- Red Flags: Defensives | Growth/Infra pill buttons ----------------
+        _B_DEFENSIVES = ["PG", "KMB", "KO", "CHD", "CL", "ABBV", "JNJ"]
+        _B_GROWTH = [
+            "NEE", "PGR", "PLD", "TXN", "XOM", "BLK", "BIP",
+            "CB", "AVGO", "FCX", "ITW", "EOG", "EMR", "KMI",
+        ]
 
         st.markdown(
-            "<p style='font-size:0.8rem;font-weight:600;color:#444;margin:6px 0 2px 0'>Red Flags</p>",
+            "<p style='font-size:0.82rem;font-weight:700;color:#333;margin:6px 0 2px 0'>"
+            "Red Flags</p>",
             unsafe_allow_html=True,
         )
+        _bc1, _bc2 = st.columns(2)
+        with _bc1:
+            if st.button("Defensives", key="btn_b_rf_def", use_container_width=True):
+                st.session_state.pill_b_rf_def = not st.session_state.pill_b_rf_def
+        with _bc2:
+            if st.button("Growth/Infra", key="btn_b_rf_growth", use_container_width=True):
+                st.session_state.pill_b_rf_growth = not st.session_state.pill_b_rf_growth
 
         flags_b_changed = False
-        with st.expander("All tickers", expanded=False):
-            for tk in ALL_TICKERS_B:
-                st.markdown(f"**{tk}**")
-                for fl in FLAG_NAMES:
-                    cur = st.session_state.red_flags_b.get(tk, {}).get(fl, False)
-                    new = st.checkbox(fl, value=cur, key=f"rf_b_{tk}_{fl}")
-                    if new != cur:
-                        st.session_state.red_flags_b[tk][fl] = new
-                        flags_b_changed = True
+        _b_rf_panels = [
+            ("Defensives", "pill_b_rf_def", _B_DEFENSIVES),
+            ("Growth/Infra", "pill_b_rf_growth", _B_GROWTH),
+        ]
+        for _label, _state_key, _tickers in _b_rf_panels:
+            if st.session_state[_state_key]:
+                with st.container():
+                    st.markdown(
+                        f"<p style='font-size:0.75rem;font-weight:700;color:#5a7f6a;"
+                        f"margin:4px 0 2px 0'>{_label}</p>",
+                        unsafe_allow_html=True,
+                    )
+                    for _tk in _tickers:
+                        st.markdown(f"**{_tk}**")
+                        for _fl in FLAG_NAMES:
+                            _cur = st.session_state.red_flags_b.get(_tk, {}).get(_fl, False)
+                            _new = st.checkbox(_fl, value=_cur, key=f"rf_b_{_tk}_{_fl}")
+                            if _new != _cur:
+                                st.session_state.red_flags_b[_tk][_fl] = _new
+                                flags_b_changed = True
 
         if flags_b_changed:
             save_red_flags_b(st.session_state.red_flags_b)
