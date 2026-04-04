@@ -1336,23 +1336,8 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
 
         st.subheader(f"Retired Positions  ·  {len(RETIRED_STOCKS)} stocks")
 
-        # Style rows: Portfolio A = soft blue-grey, Portfolio B = soft amber-grey
-        _FROM_STYLE = {
-            "A": "background-color:#c8d4e0;color:#1a2a3a",
-            "B": "background-color:#e0d4b8;color:#3a2a1a",
-        }
-
-        def _style_retired(df: pd.DataFrame) -> pd.DataFrame:
-            styles = pd.DataFrame("", index=df.index, columns=df.columns)
-            for idx in df.index:
-                from_val = df.at[idx, "From"]
-                css = _FROM_STYLE.get(from_val, "")
-                styles.iloc[idx, :] = css
-            return styles
-
-        styled_r = df_retired.style.apply(_style_retired, axis=None)
         st.dataframe(
-            styled_r,
+            df_retired,
             use_container_width=True,
             hide_index=True,
             wrap_text=True,
@@ -1361,7 +1346,7 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
                 "Date Retired":   st.column_config.TextColumn("Date Retired", width="medium"),
                 "Price":          st.column_config.TextColumn("Price", width="small"),
                 "P/E":            st.column_config.TextColumn("P/E", width="small"),
-                "Removal Reason": st.column_config.TextColumn("Removal Reason", width=320),
+                "Removal Reason": st.column_config.TextColumn("Removal Reason", width="large"),
             },
         )
 
