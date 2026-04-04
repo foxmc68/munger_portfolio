@@ -570,6 +570,9 @@ def main() -> None:
         ".stTabs [data-baseweb='tab']:hover{background-color:#9a9b9d;color:#333333}"
         ".stTabs [data-baseweb='tab'][aria-selected='true']{background-color:#5a7f6a !important;color:#ffffff !important;border-bottom:3px solid #5a7f6a}"
         ".stTabs [data-baseweb='tab']:nth-child(2)[aria-selected='true']{background-color:#5a7a8c !important;color:#ffffff !important;border-bottom:3px solid #5a7a8c !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(3){background-color:#8e8eaa !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(3):hover{background-color:#7a7a98 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(3)[aria-selected='true']{background-color:#5a5a7f !important;color:#ffffff !important;border-bottom:3px solid #5a5a7f !important}"
         ".stTabs [data-baseweb='tab-highlight']{display:none}"
         ".block-container{padding-top:0.75rem !important;padding-bottom:1rem !important}"
         "h1{margin-bottom:0.25rem !important;margin-top:0 !important}"
@@ -645,7 +648,7 @@ def main() -> None:
         # ── Portfolio A sidebar ───────────────────────────────────────────────
         st.markdown(
             "<div style='background:#5a7f6a;color:#fff;padding:4px 10px;border-radius:4px;"
-            "font-weight:700;font-size:15px;margin:8px 0 4px 0;text-align:center'>── Portfolio A ──</div>",
+            "font-weight:700;font-size:18px;margin:8px 0 4px 0;text-align:center'>── Portfolio A ──</div>",
             unsafe_allow_html=True,
         )
 
@@ -746,7 +749,7 @@ def main() -> None:
         # ── Portfolio B sidebar ───────────────────────────────────────────────
         st.markdown(
             "<div style='background:#6e8fa0;color:#fff;padding:4px 10px;border-radius:4px;"
-            "font-weight:700;font-size:15px;margin:10px 0 4px 0;text-align:center'>── Portfolio B ──</div>",
+            "font-weight:700;font-size:18px;margin:10px 0 4px 0;text-align:center'>── Portfolio B ──</div>",
             unsafe_allow_html=True,
         )
 
