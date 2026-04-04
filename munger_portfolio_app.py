@@ -172,10 +172,16 @@ def compute_row(
         else:
             current_multiple = None
         metric_label = "P/B"
+        bvps_b = (book_a / 1500) if book_a else None
+        fair_price: Optional[float] = bvps_b * fair_multiple if bvps_b else None
+        dream_price: Optional[float] = bvps_b * dream_multiple if bvps_b else None
     else:
         # True trailing P/E from yfinance (calculated from trailing 12-month EPS)
         current_multiple = _float(info, "trailingPE")
         metric_label = "P/E"
+        eps = _float(info, "trailingEps")
+        fair_price = eps * fair_multiple if eps is not None else None
+        dream_price = eps * dream_multiple if eps is not None else None
 
     # ── Valuation signal ─────────────────────────────────────────────────────
     if current_multiple and current_multiple > 0:
@@ -254,6 +260,8 @@ def compute_row(
         "Current": current_multiple,
         "Fair": fair_multiple,
         "Dream": dream_multiple,
+        "Fair Price": fair_price,
+        "Dream Price": dream_price,
         "Discount%": discount_pct,
         "Signal": signal,
         "ROE%": roic,
@@ -295,6 +303,8 @@ def build_display_df(rows: list[dict]) -> pd.DataFrame:
             "Current":      fmt_mult(r["Current"]),
             "Fair":         fmt_mult(r["Fair"]),
             "Dream":        fmt_mult(r["Dream"]),
+            "Fair Price $": fmt_price(r["Fair Price"]),
+            "Dream Price $": fmt_price(r["Dream Price"]),
             "Discount":     fmt_pct(r["Discount%"], plus=True),
             "Signal":       r["Signal"],
             "ROE%*":        fmt_pct(r["ROE%"]),
@@ -462,6 +472,7 @@ def main() -> None:
     # ── Per-tier tables ───────────────────────────────────────────────────────
     display_cols = [
         "Ticker", "#", "Price", "Metric", "Current", "Fair", "Dream",
+        "Fair Price $", "Dream Price $",
         "Discount", "Signal", "ROE%*", "FCFy%", "RevGr%", "D/E",
         "Quality", "Fail Reasons", "Red Flags", "Active Flags", "Decision",
     ]
