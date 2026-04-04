@@ -103,6 +103,73 @@ PORTFOLIO_B_TICKERS: dict[str, float] = {
 
 ALL_TICKERS_B: list[str] = list(PORTFOLIO_B_TICKERS.keys())
 
+# ── Retired stocks ────────────────────────────────────────────────────────────
+
+RETIRED_STOCKS: list[dict] = [
+    {
+        "ticker": "SCHW",
+        "from_portfolio": "A",
+        "date_retired": "2026-04-04",
+        "removal_reason": "Financial repression victim — net interest income destroyed by compressed real rates",
+    },
+    {
+        "ticker": "WFC",
+        "from_portfolio": "A",
+        "date_retired": "2026-04-04",
+        "removal_reason": "Inferior to JPM in every thesis-relevant dimension — no global diversification",
+    },
+    {
+        "ticker": "ODFL",
+        "from_portfolio": "A",
+        "date_retired": "2026-04-04",
+        "removal_reason": "100% US domestic freight, no currency hedge, no real asset backing — wrong macro fit",
+    },
+    {
+        "ticker": "AMT",
+        "from_portfolio": "B",
+        "date_retired": "2026-04-04",
+        "removal_reason": "ROIC barely clears WACC, $45B debt, REIT P/E distortion — model calibration error",
+    },
+    {
+        "ticker": "TROW",
+        "from_portfolio": "B",
+        "date_retired": "2026-04-04",
+        "removal_reason": "Structurally declining active asset manager — secular erosion from passive indexing",
+    },
+    {
+        "ticker": "PAYX",
+        "from_portfolio": "A",
+        "date_retired": "2026-04-04",
+        "removal_reason": "Redundant to ADP with smaller moat, float income at risk in financial repression",
+    },
+    {
+        "ticker": "SYY",
+        "from_portfolio": "B",
+        "date_retired": "2026-04-04",
+        "removal_reason": "Low-margin US food distribution, no pricing power, no currency hedge",
+    },
+    {
+        "ticker": "HRL",
+        "from_portfolio": "B",
+        "date_retired": "2026-04-04",
+        "removal_reason": "Weakest consumer staples name, minimal international presence, low ROIC",
+    },
+    {
+        "ticker": "PSX",
+        "from_portfolio": "A",
+        "date_retired": "2026-04-04",
+        "removal_reason": "Refining margins volatile and mean-reverting, no durable moat",
+    },
+    {
+        "ticker": "MDT",
+        "from_portfolio": "B",
+        "date_retired": "2026-04-04",
+        "removal_reason": "Serial execution underperformer, pricing pressure, ROIC 8% mediocre for medical devices",
+    },
+]
+
+ALL_TICKERS_RETIRED: list[str] = [s["ticker"] for s in RETIRED_STOCKS]
+
 # Special valuation / debt rules (applies across both portfolios)
 USES_PB: set[str] = {"BRK-B"}
 FAIR_PB: dict[str, float] = {"BRK-B": 1.35}
@@ -346,6 +413,23 @@ def compute_row(
     }
 
 
+def compute_retired_row(stock: dict) -> dict:
+    ticker = stock["ticker"]
+    info = fetch_info(ticker)
+    price: Optional[float] = (
+        _float(info, "currentPrice") or _float(info, "regularMarketPrice")
+    )
+    pe: Optional[float] = _float(info, "trailingPE")
+    return {
+        "Ticker": ticker,
+        "From": stock["from_portfolio"],
+        "Date Retired": stock["date_retired"],
+        "Price": price,
+        "P/E": pe,
+        "Removal Reason": stock["removal_reason"],
+    }
+
+
 # ── Formatting helpers ────────────────────────────────────────────────────────
 
 def fmt_price(v: Optional[float]) -> str:
@@ -513,6 +597,10 @@ def main() -> None:
         st.session_state.last_fetched = None
     if "last_fetched_b" not in st.session_state:
         st.session_state.last_fetched_b = None
+    if "raw_rows_retired" not in st.session_state:
+        st.session_state.raw_rows_retired = None
+    if "last_fetched_retired" not in st.session_state:
+        st.session_state.last_fetched_retired = None
 
     # ── Pill toggle states ────────────────────────────────────────────────────
     for _pk in [
@@ -716,7 +804,7 @@ def main() -> None:
     st.title("Munger Toll Bridge Portfolio")
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    tab_a, tab_b = st.tabs(["Portfolio A", "Portfolio B"])
+    tab_a, tab_b, tab_r = st.tabs(["Portfolio A", "Portfolio B", "Retired"])
 
     # ══════════════════════════════════════════════════════════════════════════
     # PORTFOLIO A
@@ -920,6 +1008,106 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
 """)
 
         st.caption("Data: Yahoo Finance via yfinance.  Not financial advice.")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # RETIRED
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_r:
+        st.markdown(
+            "<div style='background:#5a5a7f;color:#fff;padding:10px 16px;border-radius:6px;"
+            "margin-bottom:12px'>"
+            "<strong>Thesis Tracking</strong> — Stocks removed from Portfolio A or B are archived "
+            "here so you can verify whether the removal thesis played out correctly over time. "
+            "Live price and P/E are fetched from Yahoo Finance so you can monitor performance "
+            "post-removal against the stated removal rationale."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        col_refresh_r, col_ts_r = st.columns([1, 4])
+        with col_refresh_r:
+            if st.button("Refresh Data", key="refresh_r", type="primary", use_container_width=True):
+                fetch_info.clear()
+                st.session_state.raw_rows_retired = None
+
+        if st.session_state.raw_rows_retired is None:
+            progress_r = st.progress(0, text="Fetching market data…")
+            raw_rows_retired: list[dict] = []
+            for i, stock in enumerate(RETIRED_STOCKS):
+                raw_rows_retired.append(compute_retired_row(stock))
+                progress_r.progress((i + 1) / len(RETIRED_STOCKS), text=f"Fetching {stock['ticker']}…")
+            progress_r.empty()
+            st.session_state.raw_rows_retired = raw_rows_retired
+            st.session_state.last_fetched_retired = datetime.now()
+
+        raw_rows_retired = st.session_state.raw_rows_retired
+
+        fetched_str_r = (
+            st.session_state.last_fetched_retired.strftime("%Y-%m-%d  %H:%M:%S")
+            if st.session_state.last_fetched_retired else "—"
+        )
+        with col_ts_r:
+            st.caption(
+                f"Last fetched: **{fetched_str_r}**  ·  "
+                f"Data: Yahoo Finance (yfinance)"
+            )
+
+        # Build display dataframe
+        retired_records = []
+        for r in raw_rows_retired:
+            retired_records.append({
+                "Ticker":         r["Ticker"],
+                "From":           r["From"],
+                "Date Retired":   r["Date Retired"],
+                "Price":          fmt_price(r["Price"]),
+                "P/E":            fmt_mult(r["P/E"]),
+                "Removal Reason": r["Removal Reason"],
+            })
+        df_retired = pd.DataFrame(retired_records)
+
+        st.subheader(f"Retired Positions  ·  {len(RETIRED_STOCKS)} stocks")
+
+        # Style rows: Portfolio A = soft blue-grey, Portfolio B = soft amber-grey
+        _FROM_STYLE = {
+            "A": "background-color:#c8d4e0;color:#1a2a3a",
+            "B": "background-color:#e0d4b8;color:#3a2a1a",
+        }
+
+        def _style_retired(df: pd.DataFrame) -> pd.DataFrame:
+            styles = pd.DataFrame("", index=df.index, columns=df.columns)
+            for idx in df.index:
+                from_val = df.at[idx, "From"]
+                css = _FROM_STYLE.get(from_val, "")
+                styles.iloc[idx, :] = css
+            return styles
+
+        styled_r = df_retired.style.apply(_style_retired, axis=None)
+        st.dataframe(
+            styled_r,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "From":           st.column_config.TextColumn("From", width="small"),
+                "Date Retired":   st.column_config.TextColumn("Date Retired", width="medium"),
+                "Price":          st.column_config.TextColumn("Price", width="small"),
+                "P/E":            st.column_config.TextColumn("P/E", width="small"),
+                "Removal Reason": st.column_config.TextColumn("Removal Reason", width="large"),
+            },
+        )
+
+        st.divider()
+        csv_bytes_r = df_retired.to_csv(index=False).encode()
+        st.download_button(
+            label="Download Retired as CSV",
+            data=csv_bytes_r,
+            file_name=f"retired_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+            mime="text/csv",
+        )
+
+        st.caption(
+            "Row color: blue-grey = removed from Portfolio A · amber-grey = removed from Portfolio B.  "
+            "Data: Yahoo Finance via yfinance.  Not financial advice."
+        )
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
