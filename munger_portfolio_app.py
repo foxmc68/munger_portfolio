@@ -41,12 +41,12 @@ PORTFOLIO: dict[str, dict] = {
     "Tier 2": {
         "tickers": [
             "ADP", "FICO", "AXP", "BRK-B", "CME", "DHR",
-            "IDXX", "ODFL", "VRSN", "CNI", "BAM", "WM", "AZO",
+            "IDXX", "VRSN", "CNI", "BAM", "WM", "AZO",
         ],
         "fair_pe": 20,
     },
     "Tier 3": {
-        "tickers": ["JPM", "WFC", "SCHW", "CVX", "COP", "EPD", "ASR"],
+        "tickers": ["JPM", "CVX", "COP", "EPD", "ASR", "PM"],
         "fair_pe": 16,
     },
 }
@@ -175,7 +175,7 @@ USES_PB: set[str] = {"BRK-B"}
 FAIR_PB: dict[str, float] = {"BRK-B": 1.35}
 
 # Skip ROE gate; use D/E ≤ 1.5 threshold
-BANKS: set[str] = {"JPM", "WFC", "SCHW", "PGR", "CB", "BLK"}
+BANKS: set[str] = {"JPM", "PGR", "CB", "BLK"}
 
 # Higher D/E tolerance ≤ 2.5
 MLPS: set[str] = {"EPD", "KMI", "BIP", "PLD"}
@@ -863,7 +863,7 @@ def main() -> None:
             st.markdown("""
 | Check | Threshold | Exceptions | Source |
 |---|---|---|---|
-| ROE%\\* | ≥ 15 % | Skipped for banks (JPM, WFC, SCHW) | `returnOnEquity` proxy for ROIC |
+| ROE%\\* | ≥ 15 % | Skipped for banks (JPM) | `returnOnEquity` proxy for ROIC |
 | FCF Yield | ≥ 3.5 % | — | `freeCashflow / marketCap` |
 | Revenue Growth | ≥ 0 % | — | `revenueGrowth` |
 | Debt / Equity | ≤ 0.5× | Banks ≤ 1.5×; EPD ≤ 2.5× | `debtToEquity ÷ 100` |
