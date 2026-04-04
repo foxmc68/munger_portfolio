@@ -1334,10 +1334,19 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             })
         df_retired = pd.DataFrame(retired_records)
 
+        def color_retired_rows(row):
+            if row["From"] == "A":
+                return ["background-color: #d4e6dc"] * len(row)
+            elif row["From"] == "B":
+                return ["background-color: #d4e0e6"] * len(row)
+            return [""] * len(row)
+
+        styled_retired = df_retired.style.apply(color_retired_rows, axis=1)
+
         st.subheader(f"Retired Positions  ·  {len(RETIRED_STOCKS)} stocks")
 
         st.dataframe(
-            df_retired,
+            styled_retired,
             use_container_width=True,
             hide_index=True,
         )
@@ -1352,7 +1361,7 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
         )
 
         st.caption(
-            "Row color: blue-grey = removed from Portfolio A · amber-grey = removed from Portfolio B.  "
+            "Row color: sage green = Portfolio A · slate blue = Portfolio B.  "
             "Data: Yahoo Finance via yfinance.  Not financial advice."
         )
 
