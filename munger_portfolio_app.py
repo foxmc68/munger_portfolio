@@ -1470,11 +1470,7 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
         st.divider()
 
         # ── Signal cards — 2-column grid ──────────────────────────────────────
-        st.markdown(
-            "<p style='font-size:20px;font-weight:700;color:#000000;margin:0 0 8px 0'>"
-            "LIVE SIGNALS — fetched from Yahoo Finance</p>",
-            unsafe_allow_html=True,
-        )
+        st.subheader("LIVE SIGNALS — fetched from Yahoo Finance")
 
         # Render live signals (first 7) then separator then manual signals (last 3)
         _LIVE_SIGNALS   = MACRO_SIGNALS_CONFIG[:7]
@@ -1630,11 +1626,7 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
                 )
 
         # ── Manual signals section ────────────────────────────────────────────
-        st.markdown(
-            "<p style='font-size:20px;font-weight:700;color:#000000;margin:12px 0 8px 0'>"
-            "MANUAL SIGNALS — updated quarterly from public sources</p>",
-            unsafe_allow_html=True,
-        )
+        st.subheader("MANUAL SIGNALS — updated quarterly from public sources")
         grid_cols_manual = st.columns(2)
         for _idx, _sig in enumerate(_MANUAL_SIGNALS):
             _col = grid_cols_manual[_idx % 2]
