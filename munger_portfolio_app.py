@@ -469,6 +469,19 @@ def fetch_info(ticker: str) -> dict:
         return {}
 
 
+@st.cache_data(show_spinner=False)
+def fetch_news(ticker: str) -> list[dict]:
+    """
+    Fetch up to 5 recent news items for a ticker.
+    Cached indefinitely — cleared only by the Refresh button.
+    """
+    try:
+        items = yf.Ticker(ticker).news or []
+        return items[:5]
+    except Exception:
+        return []
+
+
 # ── Core computation ──────────────────────────────────────────────────────────
 
 def _float(info: dict, key: str) -> Optional[float]:
@@ -751,6 +764,68 @@ DISPLAY_COLS = [
     "Discount", "Signal", "ROE%*", "FCFy%", "RevGr%", "D/E",
     "Quality", "Fail Reasons", "Red Flags", "Active Flags", "Decision",
 ]
+
+
+# ── News helpers ──────────────────────────────────────────────────────────────
+
+_PUBLISHER_COLORS: dict[str, str] = {
+    "wall street journal": "#c0392b",
+    "wsj": "#c0392b",
+    "barron": "#2980b9",
+    "morningstar": "#e67e22",
+    "reuters": "#7f8c8d",
+    "bloomberg": "#2c3e50",
+}
+_DEFAULT_PUBLISHER_COLOR = "#6c6c9a"
+
+
+def _publisher_color(publisher: str) -> str:
+    p = publisher.lower()
+    for key, color in _PUBLISHER_COLORS.items():
+        if key in p:
+            return color
+    return _DEFAULT_PUBLISHER_COLOR
+
+
+def _fmt_news_age(ts: int) -> str:
+    diff = max(0, int(datetime.now().timestamp()) - ts)
+    if diff < 3600:
+        return f"{diff // 60}m ago"
+    elif diff < 86400:
+        return f"{diff // 3600}h ago"
+    elif diff < 604800:
+        return f"{diff // 86400}d ago"
+    else:
+        return f"{diff // 604800}w ago"
+
+
+def render_news_expanders(tickers: list[str], panel_label: str = "Recent news") -> None:
+    """Render a collapsed news expander for each ticker below a table."""
+    any_shown = False
+    for tk in tickers:
+        items = fetch_news(tk)
+        if not items:
+            continue
+        any_shown = True
+        with st.expander(f"{tk}  ·  {panel_label}", expanded=False):
+            for item in items:
+                title = item.get("title", "")
+                link = item.get("link", "#")
+                publisher = item.get("publisher", "")
+                pub_time = item.get("providerPublishTime", 0)
+                age = _fmt_news_age(pub_time) if pub_time else ""
+                color = _publisher_color(publisher)
+                st.markdown(
+                    f"<div style='margin:3px 0 5px 0;line-height:1.35'>"
+                    f"<span style='color:{color};font-weight:700;font-size:0.71rem'>{publisher}</span>"
+                    f"<span style='color:#999;font-size:0.7rem;margin-left:6px'>{age}</span><br>"
+                    f"<a href='{link}' target='_blank' style='color:#222;font-size:0.8rem;"
+                    f"text-decoration:none;line-height:1.3'>{title}</a>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+    if any_shown:
+        st.caption("If a headline raises concern, toggle a red flag in the sidebar.")
 
 
 def render_summary_metrics(df_raw: pd.DataFrame, watchlist_size: int) -> None:
@@ -1238,6 +1313,7 @@ def main() -> None:
         with col_refresh_a:
             if st.button("Refresh Data", key="refresh_a", type="primary", use_container_width=True):
                 fetch_info.clear()
+                fetch_news.clear()
                 st.session_state.raw_rows = None
                 st.session_state.raw_rows_custom_a = None
 
@@ -1274,6 +1350,7 @@ def main() -> None:
 
         for tier_name in PORTFOLIO:
             render_table(df_display, df_raw, tier_name, mos_pct)
+            render_news_expanders(PORTFOLIO[tier_name]["tickers"])
 
         # ── Custom tickers (Portfolio A) ──────────────────────────────────────
         _custom_a = [_ct for _ct in st.session_state.custom_tickers if _ct["portfolio"] == "A"]
@@ -1306,6 +1383,7 @@ def main() -> None:
                     "Fail Reasons": st.column_config.TextColumn("Fail Reasons", width="large"),
                 },
             )
+            render_news_expanders([ct["ticker"] for ct in _custom_a])
 
         st.divider()
         csv_bytes = df_display[["Tier"] + DISPLAY_COLS].to_csv(index=False).encode()
@@ -1354,6 +1432,7 @@ def main() -> None:
         with col_refresh_b:
             if st.button("Refresh Data", key="refresh_b", type="primary", use_container_width=True):
                 fetch_info.clear()
+                fetch_news.clear()
                 st.session_state.raw_rows_b = None
                 st.session_state.raw_rows_custom_b = None
 
@@ -1411,6 +1490,7 @@ def main() -> None:
                 "Fail Reasons": st.column_config.TextColumn("Fail Reasons", width="large"),
             },
         )
+        render_news_expanders(ALL_TICKERS_B)
 
         # ── Custom tickers (Portfolio B) ──────────────────────────────────────
         _custom_b = [_ct for _ct in st.session_state.custom_tickers if _ct["portfolio"] == "B"]
@@ -1443,6 +1523,7 @@ def main() -> None:
                     "Fail Reasons": st.column_config.TextColumn("Fail Reasons", width="large"),
                 },
             )
+            render_news_expanders([ct["ticker"] for ct in _custom_b])
 
         st.divider()
         csv_bytes_b = df_display_b[DISPLAY_COLS].to_csv(index=False).encode()
@@ -1518,6 +1599,7 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
         with col_refresh_r:
             if st.button("Refresh Data", key="refresh_r", type="primary", use_container_width=True):
                 fetch_info.clear()
+                fetch_news.clear()
                 st.session_state.raw_rows_retired = None
 
         if st.session_state.raw_rows_retired is None:
@@ -1571,6 +1653,7 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             use_container_width=True,
             hide_index=True,
         )
+        render_news_expanders(ALL_TICKERS_RETIRED, "Post-removal coverage")
 
         st.divider()
         csv_bytes_r = df_retired.to_csv(index=False).encode()
