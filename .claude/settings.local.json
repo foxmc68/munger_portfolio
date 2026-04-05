@@ -13,7 +13,10 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:medium.com)",
       "Bash(python -m py_compile munger_portfolio_app.py)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }

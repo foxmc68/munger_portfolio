@@ -920,12 +920,11 @@ def main() -> None:
             st.session_state.red_flags_b.setdefault(_ctk, {f: False for f in FLAG_NAMES})
 
     # ── Pill toggle states ────────────────────────────────────────────────────
-    for _pk in [
-        "pill_a_fair_t1", "pill_a_fair_t2", "pill_a_fair_t3",
-        "pill_a_rf_t1",   "pill_a_rf_t2",   "pill_a_rf_t3",
-        "pill_b_ov",      "pill_b_rf_def",   "pill_b_rf_growth",
-        "pill_add_stock",
-    ]:
+    # Accordion state: None = all closed, otherwise holds the open tier name
+    for _ak in ["accordion_overrides_a", "accordion_redflags_a", "accordion_redflags_b"]:
+        if _ak not in st.session_state:
+            st.session_state[_ak] = None
+    for _pk in ["pill_b_ov", "pill_add_stock"]:
         if _pk not in st.session_state:
             st.session_state[_pk] = False
 
@@ -958,21 +957,16 @@ def main() -> None:
         _pc1, _pc2, _pc3 = st.columns(3)
         with _pc1:
             if st.button("Tier 1", key="btn_a_fair_t1", use_container_width=True):
-                st.session_state.pill_a_fair_t1 = not st.session_state.pill_a_fair_t1
+                st.session_state.accordion_overrides_a = None if st.session_state.accordion_overrides_a == "Tier 1" else "Tier 1"
         with _pc2:
             if st.button("Tier 2", key="btn_a_fair_t2", use_container_width=True):
-                st.session_state.pill_a_fair_t2 = not st.session_state.pill_a_fair_t2
+                st.session_state.accordion_overrides_a = None if st.session_state.accordion_overrides_a == "Tier 2" else "Tier 2"
         with _pc3:
             if st.button("Tier 3", key="btn_a_fair_t3", use_container_width=True):
-                st.session_state.pill_a_fair_t3 = not st.session_state.pill_a_fair_t3
+                st.session_state.accordion_overrides_a = None if st.session_state.accordion_overrides_a == "Tier 3" else "Tier 3"
 
-        _a_fair_panels = [
-            ("Tier 1", "pill_a_fair_t1"),
-            ("Tier 2", "pill_a_fair_t2"),
-            ("Tier 3", "pill_a_fair_t3"),
-        ]
-        for _tier_name, _state_key in _a_fair_panels:
-            if st.session_state[_state_key]:
+        for _tier_name in ["Tier 1", "Tier 2", "Tier 3"]:
+            if st.session_state.accordion_overrides_a == _tier_name:
                 _td = PORTFOLIO[_tier_name]
                 with st.container():
                     st.markdown(
@@ -1008,22 +1002,17 @@ def main() -> None:
             _rc1, _rc2, _rc3 = st.columns(3)
             with _rc1:
                 if st.button("Tier 1", key="btn_a_rf_t1", use_container_width=True):
-                    st.session_state.pill_a_rf_t1 = not st.session_state.pill_a_rf_t1
+                    st.session_state.accordion_redflags_a = None if st.session_state.accordion_redflags_a == "Tier 1" else "Tier 1"
             with _rc2:
                 if st.button("Tier 2", key="btn_a_rf_t2", use_container_width=True):
-                    st.session_state.pill_a_rf_t2 = not st.session_state.pill_a_rf_t2
+                    st.session_state.accordion_redflags_a = None if st.session_state.accordion_redflags_a == "Tier 2" else "Tier 2"
             with _rc3:
                 if st.button("Tier 3", key="btn_a_rf_t3", use_container_width=True):
-                    st.session_state.pill_a_rf_t3 = not st.session_state.pill_a_rf_t3
+                    st.session_state.accordion_redflags_a = None if st.session_state.accordion_redflags_a == "Tier 3" else "Tier 3"
 
         flags_changed = False
-        _a_rf_panels = [
-            ("Tier 1", "pill_a_rf_t1"),
-            ("Tier 2", "pill_a_rf_t2"),
-            ("Tier 3", "pill_a_rf_t3"),
-        ]
-        for _tier_name, _state_key in _a_rf_panels:
-            if st.session_state[_state_key]:
+        for _tier_name in ["Tier 1", "Tier 2", "Tier 3"]:
+            if st.session_state.accordion_redflags_a == _tier_name:
                 _td = PORTFOLIO[_tier_name]
                 with st.container():
                     st.markdown(
@@ -1093,18 +1082,18 @@ def main() -> None:
             _bc1, _bc2 = st.columns(2)
             with _bc1:
                 if st.button("Defensives", key="btn_b_rf_def", use_container_width=True):
-                    st.session_state.pill_b_rf_def = not st.session_state.pill_b_rf_def
+                    st.session_state.accordion_redflags_b = None if st.session_state.accordion_redflags_b == "Defensives" else "Defensives"
             with _bc2:
                 if st.button("Growth/Infra", key="btn_b_rf_growth", use_container_width=True):
-                    st.session_state.pill_b_rf_growth = not st.session_state.pill_b_rf_growth
+                    st.session_state.accordion_redflags_b = None if st.session_state.accordion_redflags_b == "Growth/Infra" else "Growth/Infra"
 
         flags_b_changed = False
         _b_rf_panels = [
-            ("Defensives", "pill_b_rf_def", _B_DEFENSIVES),
-            ("Growth/Infra", "pill_b_rf_growth", _B_GROWTH),
+            ("Defensives", _B_DEFENSIVES),
+            ("Growth/Infra", _B_GROWTH),
         ]
-        for _label, _state_key, _tickers in _b_rf_panels:
-            if st.session_state[_state_key]:
+        for _label, _tickers in _b_rf_panels:
+            if st.session_state.accordion_redflags_b == _label:
                 with st.container():
                     st.markdown(
                         f"<p style='font-size:0.75rem;font-weight:700;color:#5a7f6a;"
