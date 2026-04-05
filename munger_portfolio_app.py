@@ -473,11 +473,32 @@ def fetch_info(ticker: str) -> dict:
 def fetch_news(ticker: str) -> list[dict]:
     """
     Fetch up to 5 recent news items for a ticker.
+    Handles both the current nested-content format and the legacy flat format.
     Cached indefinitely — cleared only by the Refresh button.
     """
     try:
-        items = yf.Ticker(ticker).news or []
-        return items[:5]
+        raw = yf.Ticker(ticker).news or []
+        items: list[dict] = []
+        for entry in raw[:5]:
+            content = entry.get("content")
+            if content and isinstance(content, dict):
+                canonical = content.get("canonicalUrl") or content.get("clickThroughUrl") or {}
+                items.append({
+                    "title": content.get("title", ""),
+                    "link": canonical.get("url", "#"),
+                    "publisher": (content.get("provider") or {}).get("displayName", ""),
+                    "pubDate": content.get("pubDate"),
+                    "providerPublishTime": None,
+                })
+            else:
+                items.append({
+                    "title": entry.get("title", ""),
+                    "link": entry.get("link", "#"),
+                    "publisher": entry.get("publisher", ""),
+                    "pubDate": None,
+                    "providerPublishTime": entry.get("providerPublishTime", 0),
+                })
+        return items
     except Exception:
         return []
 
@@ -747,6 +768,13 @@ _SIGNAL_STYLE: dict[str, str] = {
     "N/A":   "background-color:#d0d0d2;color:#555555",   # neutral grey
 }
 
+_SIGNAL_ROW_COLORS: dict[str, tuple[str, str]] = {
+    "DREAM": ("#b7d4b0", "#1a3a1f"),
+    "FAIR":  ("#f0d080", "#3d2800"),
+    "WAIT":  ("#dfa898", "#3d0f00"),
+    "N/A":   ("#d0d0d2", "#555555"),
+}
+
 
 def _style_df(display_df: pd.DataFrame, signal_series: pd.Series) -> object:
     styles = pd.DataFrame("", index=display_df.index, columns=display_df.columns)
@@ -763,6 +791,38 @@ DISPLAY_COLS = [
     "Fair Price $", "Dream Price $",
     "Discount", "Signal", "ROE%*", "FCFy%", "RevGr%", "D/E",
     "Quality", "Fail Reasons", "Red Flags", "Active Flags", "Decision",
+]
+
+# HTML row column specs: (header_label, display_df_field, flex_pct, align)
+_TABLE_COLS: list[tuple[str, str, str, str]] = [
+    ("Ticker",   "Ticker",        "8%",    "left"),
+    ("#",        "#",             "2.5%",  "right"),
+    ("Price",    "Price",         "5.5%",  "right"),
+    ("Metric",   "Metric",        "3.5%",  "center"),
+    ("Current",  "Current",       "4.5%",  "right"),
+    ("Fair",     "Fair",          "4.5%",  "right"),
+    ("Dream",    "Dream",         "4.5%",  "right"),
+    ("Fair $",   "Fair Price $",  "6%",    "right"),
+    ("Dream $",  "Dream Price $", "6%",    "right"),
+    ("Disc%",    "Discount",      "5%",    "right"),
+    ("Signal",   "Signal",        "5%",    "center"),
+    ("ROE%*",    "ROE%*",         "4.5%",  "right"),
+    ("FCFy%",    "FCFy%",         "4.5%",  "right"),
+    ("RevGr%",   "RevGr%",        "4.5%",  "right"),
+    ("D/E",      "D/E",           "3.5%",  "right"),
+    ("Quality",  "Quality",       "5%",    "center"),
+    ("Fail",     "Fail Reasons",  "15%",   "left"),
+    ("Flags",    "Active Flags",  "2.5%",  "right"),
+    ("Decision", "Decision",      "5%",    "center"),
+]
+
+_RETIRED_TABLE_COLS: list[tuple[str, str, str, str]] = [
+    ("Ticker",         "Ticker",         "8%",  "left"),
+    ("From",           "From",           "5%",  "center"),
+    ("Date Retired",   "Date Retired",   "10%", "center"),
+    ("Price",          "Price",          "8%",  "right"),
+    ("P/E",            "P/E",            "7%",  "right"),
+    ("Removal Reason", "Removal Reason", "62%", "left"),
 ]
 
 
@@ -787,8 +847,21 @@ def _publisher_color(publisher: str) -> str:
     return _DEFAULT_PUBLISHER_COLOR
 
 
-def _fmt_news_age(ts: int) -> str:
-    diff = max(0, int(datetime.now().timestamp()) - ts)
+def _fmt_news_age(item: dict) -> str:
+    """Return relative age string from a news item dict (ISO pubDate or legacy unix ts)."""
+    from datetime import timezone
+    pub_date = item.get("pubDate")
+    if pub_date:
+        try:
+            dt = datetime.fromisoformat(pub_date.replace("Z", "+00:00"))
+            diff = max(0, int(datetime.now(timezone.utc).timestamp()) - int(dt.timestamp()))
+        except Exception:
+            return ""
+    else:
+        ts = item.get("providerPublishTime") or 0
+        if not ts:
+            return ""
+        diff = max(0, int(datetime.now().timestamp()) - ts)
     if diff < 3600:
         return f"{diff // 60}m ago"
     elif diff < 86400:
@@ -799,32 +872,58 @@ def _fmt_news_age(ts: int) -> str:
         return f"{diff // 604800}w ago"
 
 
-def render_news_expanders(tickers: list[str], panel_label: str = "Recent news") -> None:
-    """Render a collapsed news expander for each ticker below a table."""
-    any_shown = False
-    for tk in tickers:
-        items = fetch_news(tk)
+def _build_table_header(col_spec: list) -> str:
+    cells = "".join(
+        f"<div style='flex:0 0 {w};text-align:{a};padding:0 4px;"
+        f"overflow:hidden;white-space:nowrap;text-overflow:ellipsis'>{lbl}</div>"
+        for lbl, _, w, a in col_spec
+    )
+    return (
+        "<div style='display:flex;align-items:center;"
+        "background:#555;color:#fff;"
+        "font-size:0.71rem;font-weight:700;padding:3px 0;"
+        "font-family:monospace;border-radius:3px 3px 0 0'>"
+        + cells + "</div>"
+    )
+
+
+def _build_table_row(row_dict: dict, bg: str, fg: str, col_spec: list) -> str:
+    cells = "".join(
+        f"<div style='flex:0 0 {w};text-align:{a};padding:0 4px;"
+        f"overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:{fg}'>"
+        f"{row_dict.get(fld, '')}</div>"
+        for _, fld, w, a in col_spec
+    )
+    return (
+        f"<div style='display:flex;align-items:center;background:{bg};"
+        f"font-size:0.77rem;padding:3px 0;"
+        f"font-family:monospace;border-bottom:1px solid rgba(0,0,0,0.1)'>"
+        + cells + "</div>"
+    )
+
+
+def _render_row_news(ticker: str, panel_label: str = "Recent news") -> None:
+    """Render a collapsed news expander for one ticker row."""
+    with st.expander(f"{ticker}  ·  {panel_label}", expanded=False):
+        items = fetch_news(ticker)
         if not items:
-            continue
-        any_shown = True
-        with st.expander(f"{tk}  ·  {panel_label}", expanded=False):
-            for item in items:
-                title = item.get("title", "")
-                link = item.get("link", "#")
-                publisher = item.get("publisher", "")
-                pub_time = item.get("providerPublishTime", 0)
-                age = _fmt_news_age(pub_time) if pub_time else ""
-                color = _publisher_color(publisher)
-                st.markdown(
-                    f"<div style='margin:3px 0 5px 0;line-height:1.35'>"
-                    f"<span style='color:{color};font-weight:700;font-size:0.71rem'>{publisher}</span>"
-                    f"<span style='color:#999;font-size:0.7rem;margin-left:6px'>{age}</span><br>"
-                    f"<a href='{link}' target='_blank' style='color:#222;font-size:0.8rem;"
-                    f"text-decoration:none;line-height:1.3'>{title}</a>"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
-    if any_shown:
+            st.caption("No recent news found.")
+            return
+        for item in items:
+            title = item.get("title", "")
+            link = item.get("link", "#")
+            publisher = item.get("publisher", "")
+            age = _fmt_news_age(item)
+            color = _publisher_color(publisher)
+            st.markdown(
+                f"<div style='margin:3px 0 5px 0;line-height:1.35'>"
+                f"<span style='color:{color};font-weight:700;font-size:0.71rem'>{publisher}</span>"
+                f"<span style='color:#999;font-size:0.7rem;margin-left:6px'>{age}</span><br>"
+                f"<a href='{link}' target='_blank' style='color:#222;font-size:0.8rem;"
+                f"text-decoration:none;line-height:1.3'>{title}</a>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
         st.caption("If a headline raises concern, toggle a red flag in the sidebar.")
 
 
@@ -844,7 +943,7 @@ def render_summary_metrics(df_raw: pd.DataFrame, watchlist_size: int) -> None:
 def render_table(df_display: pd.DataFrame, df_raw: pd.DataFrame, tier_name: str, mos_pct: float) -> None:
     tier_mask = df_display["Tier"] == tier_name
     tier_disp = df_display[tier_mask][DISPLAY_COLS + ["_signal"]].reset_index(drop=True)
-    signals = tier_disp["_signal"]
+    signals = tier_disp["_signal"].tolist()
     tier_disp = tier_disp[DISPLAY_COLS].copy()
 
     n_tier_buy = (df_raw[df_raw["Tier"] == tier_name]["Decision"] == "BUY").sum()
@@ -861,18 +960,13 @@ def render_table(df_display: pd.DataFrame, df_raw: pd.DataFrame, tier_name: str,
     else:
         st.subheader(f"{tier_name}  ·  BUY signals: {n_tier_buy}")
 
-    styled = _style_df(tier_disp, signals)
-    st.dataframe(
-        styled,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "#":            st.column_config.NumberColumn("#", width="small"),
-            "Signal":       st.column_config.TextColumn("Signal", width="small"),
-            "Decision":     st.column_config.TextColumn("Decision", width="small"),
-            "Fail Reasons": st.column_config.TextColumn("Fail Reasons", width="large"),
-        },
-    )
+    st.markdown(_build_table_header(_TABLE_COLS), unsafe_allow_html=True)
+    for i, (_, row) in enumerate(tier_disp.iterrows()):
+        signal = signals[i]
+        bg, fg = _SIGNAL_ROW_COLORS.get(signal, ("#d0d0d2", "#555555"))
+        ticker = str(row.get("Ticker", "")).replace("★ ", "")
+        st.markdown(_build_table_row(row.to_dict(), bg, fg, _TABLE_COLS), unsafe_allow_html=True)
+        _render_row_news(ticker)
 
 
 # ── Streamlit app ─────────────────────────────────────────────────────────────
@@ -944,6 +1038,8 @@ def main() -> None:
         "background-color:#5a7f6a !important;color:#fff !important;font-size:11px !important}"
         ".st-key-btn_add_to_portfolio .stButton>button:hover{"
         "background-color:#4a6a58 !important}"
+        "[data-testid='element-container']:has(+[data-testid='stExpander']){"
+        "margin-bottom:-10px !important}"
         "</style>",
         unsafe_allow_html=True,
     )
@@ -1350,7 +1446,6 @@ def main() -> None:
 
         for tier_name in PORTFOLIO:
             render_table(df_display, df_raw, tier_name, mos_pct)
-            render_news_expanders(PORTFOLIO[tier_name]["tickers"])
 
         # ── Custom tickers (Portfolio A) ──────────────────────────────────────
         _custom_a = [_ct for _ct in st.session_state.custom_tickers if _ct["portfolio"] == "A"]
@@ -1369,21 +1464,15 @@ def main() -> None:
             _n_buy_ca = (_df_raw_ca["Decision"] == "BUY").sum()
             st.subheader(f"Custom Watchlist  ·  BUY signals: {_n_buy_ca}")
             _ca_disp = _df_disp_ca[DISPLAY_COLS + ["_signal"]].reset_index(drop=True)
-            _ca_signals = _ca_disp["_signal"]
+            _ca_signals = _ca_disp["_signal"].tolist()
             _ca_disp = _ca_disp[DISPLAY_COLS].copy()
-            _ca_styled = _style_df(_ca_disp, _ca_signals)
-            st.dataframe(
-                _ca_styled,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "#":            st.column_config.NumberColumn("#", width="small"),
-                    "Signal":       st.column_config.TextColumn("Signal", width="small"),
-                    "Decision":     st.column_config.TextColumn("Decision", width="small"),
-                    "Fail Reasons": st.column_config.TextColumn("Fail Reasons", width="large"),
-                },
-            )
-            render_news_expanders([ct["ticker"] for ct in _custom_a])
+            st.markdown(_build_table_header(_TABLE_COLS), unsafe_allow_html=True)
+            for _ci, (_, _crow) in enumerate(_ca_disp.iterrows()):
+                _csig = _ca_signals[_ci]
+                _cbg, _cfg = _SIGNAL_ROW_COLORS.get(_csig, ("#d0d0d2", "#555555"))
+                _cticker = str(_crow.get("Ticker", "")).replace("★ ", "")
+                st.markdown(_build_table_row(_crow.to_dict(), _cbg, _cfg, _TABLE_COLS), unsafe_allow_html=True)
+                _render_row_news(_cticker)
 
         st.divider()
         csv_bytes = df_display[["Tier"] + DISPLAY_COLS].to_csv(index=False).encode()
@@ -1469,7 +1558,7 @@ def main() -> None:
 
         # Portfolio B is a single group — render one table
         tier_disp_b = df_display_b[DISPLAY_COLS + ["_signal"]].reset_index(drop=True)
-        signals_b = tier_disp_b["_signal"]
+        signals_b = tier_disp_b["_signal"].tolist()
         tier_disp_b = tier_disp_b[DISPLAY_COLS].copy()
         n_buy_b = (df_raw_b["Decision"] == "BUY").sum()
 
@@ -1478,19 +1567,13 @@ def main() -> None:
             f"MoS {mos_pct}%  ·  BUY signals: {n_buy_b}"
         )
 
-        styled_b = _style_df(tier_disp_b, signals_b)
-        st.dataframe(
-            styled_b,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "#":            st.column_config.NumberColumn("#", width="small"),
-                "Signal":       st.column_config.TextColumn("Signal", width="small"),
-                "Decision":     st.column_config.TextColumn("Decision", width="small"),
-                "Fail Reasons": st.column_config.TextColumn("Fail Reasons", width="large"),
-            },
-        )
-        render_news_expanders(ALL_TICKERS_B)
+        st.markdown(_build_table_header(_TABLE_COLS), unsafe_allow_html=True)
+        for _bi, (_, _brow) in enumerate(tier_disp_b.iterrows()):
+            _bsig = signals_b[_bi]
+            _bbg, _bfg = _SIGNAL_ROW_COLORS.get(_bsig, ("#d0d0d2", "#555555"))
+            _bticker = str(_brow.get("Ticker", "")).replace("★ ", "")
+            st.markdown(_build_table_row(_brow.to_dict(), _bbg, _bfg, _TABLE_COLS), unsafe_allow_html=True)
+            _render_row_news(_bticker)
 
         # ── Custom tickers (Portfolio B) ──────────────────────────────────────
         _custom_b = [_ct for _ct in st.session_state.custom_tickers if _ct["portfolio"] == "B"]
@@ -1509,21 +1592,15 @@ def main() -> None:
             _n_buy_cb = (_df_raw_cb["Decision"] == "BUY").sum()
             st.subheader(f"Custom Watchlist  ·  BUY signals: {_n_buy_cb}")
             _cb_disp = _df_disp_cb[DISPLAY_COLS + ["_signal"]].reset_index(drop=True)
-            _cb_signals = _cb_disp["_signal"]
+            _cb_signals = _cb_disp["_signal"].tolist()
             _cb_disp = _cb_disp[DISPLAY_COLS].copy()
-            _cb_styled = _style_df(_cb_disp, _cb_signals)
-            st.dataframe(
-                _cb_styled,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "#":            st.column_config.NumberColumn("#", width="small"),
-                    "Signal":       st.column_config.TextColumn("Signal", width="small"),
-                    "Decision":     st.column_config.TextColumn("Decision", width="small"),
-                    "Fail Reasons": st.column_config.TextColumn("Fail Reasons", width="large"),
-                },
-            )
-            render_news_expanders([ct["ticker"] for ct in _custom_b])
+            st.markdown(_build_table_header(_TABLE_COLS), unsafe_allow_html=True)
+            for _cbi, (_, _cbrow) in enumerate(_cb_disp.iterrows()):
+                _cbsig = _cb_signals[_cbi]
+                _cbbg, _cbfg = _SIGNAL_ROW_COLORS.get(_cbsig, ("#d0d0d2", "#555555"))
+                _cbticker = str(_cbrow.get("Ticker", "")).replace("★ ", "")
+                st.markdown(_build_table_row(_cbrow.to_dict(), _cbbg, _cbfg, _TABLE_COLS), unsafe_allow_html=True)
+                _render_row_news(_cbticker)
 
         st.divider()
         csv_bytes_b = df_display_b[DISPLAY_COLS].to_csv(index=False).encode()
@@ -1635,25 +1712,21 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
                 "P/E":            fmt_mult(r["P/E"]),
                 "Removal Reason": r["Removal Reason"],
             })
-        df_retired = pd.DataFrame(retired_records)
-
-        def color_retired_rows(row):
-            if row["From"] == "A":
-                return ["background-color: #d4e6dc"] * len(row)
-            elif row["From"] == "B":
-                return ["background-color: #d4e0e6"] * len(row)
-            return [""] * len(row)
-
-        styled_retired = df_retired.style.apply(color_retired_rows, axis=1)
+        df_retired = pd.DataFrame(retired_records)  # kept for CSV download
 
         st.subheader(f"Retired Positions  ·  {len(RETIRED_STOCKS)} stocks")
 
-        st.dataframe(
-            styled_retired,
-            use_container_width=True,
-            hide_index=True,
-        )
-        render_news_expanders(ALL_TICKERS_RETIRED, "Post-removal coverage")
+        st.markdown(_build_table_header(_RETIRED_TABLE_COLS), unsafe_allow_html=True)
+        for _rr in retired_records:
+            _rfrom = _rr.get("From", "")
+            if _rfrom == "A":
+                _rbg, _rfg = "#d4e6dc", "#1a3a2a"
+            elif _rfrom == "B":
+                _rbg, _rfg = "#d4e0e6", "#1a2a3a"
+            else:
+                _rbg, _rfg = "#e0e0e0", "#333333"
+            st.markdown(_build_table_row(_rr, _rbg, _rfg, _RETIRED_TABLE_COLS), unsafe_allow_html=True)
+            _render_row_news(_rr.get("Ticker", ""), "Post-removal coverage")
 
         st.divider()
         csv_bytes_r = df_retired.to_csv(index=False).encode()
