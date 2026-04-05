@@ -1042,6 +1042,9 @@ def main() -> None:
 
         if flags_changed:
             save_red_flags(st.session_state.red_flags)
+            st.session_state.raw_rows = None
+            st.session_state.raw_rows_custom_a = None
+            st.rerun()
 
         # ── Portfolio B sidebar ───────────────────────────────────────────────
         st.markdown(
@@ -1119,6 +1122,9 @@ def main() -> None:
 
         if flags_b_changed:
             save_red_flags_b(st.session_state.red_flags_b)
+            st.session_state.raw_rows_b = None
+            st.session_state.raw_rows_custom_b = None
+            st.rerun()
 
         # ── Add a Stock sidebar ───────────────────────────────────────────────
         st.markdown(
