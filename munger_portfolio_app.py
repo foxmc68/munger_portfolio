@@ -960,13 +960,9 @@ def render_table(df_display: pd.DataFrame, df_raw: pd.DataFrame, tier_name: str,
     else:
         st.subheader(f"{tier_name}  ·  BUY signals: {n_tier_buy}")
 
-    st.markdown(_build_table_header(_TABLE_COLS), unsafe_allow_html=True)
-    for i, (_, row) in enumerate(tier_disp.iterrows()):
-        signal = signals[i]
-        bg, fg = _SIGNAL_ROW_COLORS.get(signal, ("#d0d0d2", "#555555"))
-        ticker = str(row.get("Ticker", "")).replace("★ ", "")
-        st.markdown(_build_table_row(row.to_dict(), bg, fg, _TABLE_COLS), unsafe_allow_html=True)
-        _render_row_news(ticker)
+    signal_series = pd.Series(signals)
+    styled = _style_df(tier_disp, signal_series)
+    st.dataframe(styled, use_container_width=True, hide_index=True)
 
 
 # ── Streamlit app ─────────────────────────────────────────────────────────────
@@ -998,6 +994,9 @@ def main() -> None:
         ".stTabs [data-baseweb='tab']:nth-child(4){background-color:#b88070 !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(4):hover{background-color:#a87060 !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(4)[aria-selected='true']{background-color:#a07060 !important;color:#ffffff !important;border-bottom:3px solid #a07060 !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(5){background-color:#6e9b9b !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(5):hover{background-color:#5d8888 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(5)[aria-selected='true']{background-color:#4d7878 !important;color:#ffffff !important;border-bottom:3px solid #4d7878 !important}"
         ".stTabs [data-baseweb='tab-highlight']{display:none}"
         ".block-container{padding-top:0.75rem !important;padding-bottom:1rem !important}"
         "h1{margin-bottom:0.25rem !important;margin-top:0 !important}"
@@ -1399,7 +1398,7 @@ def main() -> None:
     st.title("Munger Toll Bridge Portfolio")
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    tab_a, tab_b, tab_r, tab_m = st.tabs(["Portfolio A", "Portfolio B", "Retired", "Macro Signals"])
+    tab_a, tab_b, tab_r, tab_m, tab_n = st.tabs(["Portfolio A", "Portfolio B", "Retired", "Macro Signals", "News"])
 
     # ══════════════════════════════════════════════════════════════════════════
     # PORTFOLIO A
@@ -1466,13 +1465,9 @@ def main() -> None:
             _ca_disp = _df_disp_ca[DISPLAY_COLS + ["_signal"]].reset_index(drop=True)
             _ca_signals = _ca_disp["_signal"].tolist()
             _ca_disp = _ca_disp[DISPLAY_COLS].copy()
-            st.markdown(_build_table_header(_TABLE_COLS), unsafe_allow_html=True)
-            for _ci, (_, _crow) in enumerate(_ca_disp.iterrows()):
-                _csig = _ca_signals[_ci]
-                _cbg, _cfg = _SIGNAL_ROW_COLORS.get(_csig, ("#d0d0d2", "#555555"))
-                _cticker = str(_crow.get("Ticker", "")).replace("★ ", "")
-                st.markdown(_build_table_row(_crow.to_dict(), _cbg, _cfg, _TABLE_COLS), unsafe_allow_html=True)
-                _render_row_news(_cticker)
+            _ca_sig_series = pd.Series(_ca_signals)
+            _ca_styled = _style_df(_ca_disp, _ca_sig_series)
+            st.dataframe(_ca_styled, use_container_width=True, hide_index=True)
 
         st.divider()
         csv_bytes = df_display[["Tier"] + DISPLAY_COLS].to_csv(index=False).encode()
@@ -1567,13 +1562,9 @@ def main() -> None:
             f"MoS {mos_pct}%  ·  BUY signals: {n_buy_b}"
         )
 
-        st.markdown(_build_table_header(_TABLE_COLS), unsafe_allow_html=True)
-        for _bi, (_, _brow) in enumerate(tier_disp_b.iterrows()):
-            _bsig = signals_b[_bi]
-            _bbg, _bfg = _SIGNAL_ROW_COLORS.get(_bsig, ("#d0d0d2", "#555555"))
-            _bticker = str(_brow.get("Ticker", "")).replace("★ ", "")
-            st.markdown(_build_table_row(_brow.to_dict(), _bbg, _bfg, _TABLE_COLS), unsafe_allow_html=True)
-            _render_row_news(_bticker)
+        _b_signal_series = pd.Series(signals_b)
+        _b_styled = _style_df(tier_disp_b, _b_signal_series)
+        st.dataframe(_b_styled, use_container_width=True, hide_index=True)
 
         # ── Custom tickers (Portfolio B) ──────────────────────────────────────
         _custom_b = [_ct for _ct in st.session_state.custom_tickers if _ct["portfolio"] == "B"]
@@ -1594,13 +1585,9 @@ def main() -> None:
             _cb_disp = _df_disp_cb[DISPLAY_COLS + ["_signal"]].reset_index(drop=True)
             _cb_signals = _cb_disp["_signal"].tolist()
             _cb_disp = _cb_disp[DISPLAY_COLS].copy()
-            st.markdown(_build_table_header(_TABLE_COLS), unsafe_allow_html=True)
-            for _cbi, (_, _cbrow) in enumerate(_cb_disp.iterrows()):
-                _cbsig = _cb_signals[_cbi]
-                _cbbg, _cbfg = _SIGNAL_ROW_COLORS.get(_cbsig, ("#d0d0d2", "#555555"))
-                _cbticker = str(_cbrow.get("Ticker", "")).replace("★ ", "")
-                st.markdown(_build_table_row(_cbrow.to_dict(), _cbbg, _cbfg, _TABLE_COLS), unsafe_allow_html=True)
-                _render_row_news(_cbticker)
+            _cb_sig_series = pd.Series(_cb_signals)
+            _cb_styled = _style_df(_cb_disp, _cb_sig_series)
+            st.dataframe(_cb_styled, use_container_width=True, hide_index=True)
 
         st.divider()
         csv_bytes_b = df_display_b[DISPLAY_COLS].to_csv(index=False).encode()
@@ -1716,17 +1703,15 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
 
         st.subheader(f"Retired Positions  ·  {len(RETIRED_STOCKS)} stocks")
 
-        st.markdown(_build_table_header(_RETIRED_TABLE_COLS), unsafe_allow_html=True)
-        for _rr in retired_records:
-            _rfrom = _rr.get("From", "")
-            if _rfrom == "A":
-                _rbg, _rfg = "#d4e6dc", "#1a3a2a"
-            elif _rfrom == "B":
-                _rbg, _rfg = "#d4e0e6", "#1a2a3a"
-            else:
-                _rbg, _rfg = "#e0e0e0", "#333333"
-            st.markdown(_build_table_row(_rr, _rbg, _rfg, _RETIRED_TABLE_COLS), unsafe_allow_html=True)
-            _render_row_news(_rr.get("Ticker", ""), "Post-removal coverage")
+        def _style_retired_row(row):
+            from_val = row.get("From", "")
+            if from_val == "A":
+                return ["background-color:#d4e6dc;color:#1a3a2a"] * len(row)
+            elif from_val == "B":
+                return ["background-color:#d4e0e6;color:#1a2a3a"] * len(row)
+            return [""] * len(row)
+        _retired_styled = df_retired.style.apply(_style_retired_row, axis=1)
+        st.dataframe(_retired_styled, use_container_width=True, hide_index=True)
 
         st.divider()
         csv_bytes_r = df_retired.to_csv(index=False).encode()
@@ -2154,6 +2139,74 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             "Static data: update quarterly from CBO/OMB, MSFT earnings, Berkshire 13-F.  "
             "Not financial advice."
         )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # NEWS
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_n:
+        col_refresh_n, col_ts_n = st.columns([1, 4])
+        with col_refresh_n:
+            if st.button("Refresh News", key="refresh_n", type="primary", use_container_width=True):
+                fetch_news.clear()
+        with col_ts_n:
+            st.caption(
+                "5 most recent headlines per ticker  ·  "
+                "Publisher color-coded  ·  Click headline to open article"
+            )
+
+        def _render_news_expander(ticker: str, label_prefix: str = "") -> None:
+            header = f"{ticker}  {label_prefix}".strip() if label_prefix else ticker
+            with st.expander(header, expanded=True):
+                items = fetch_news(ticker)
+                if label_prefix:
+                    st.caption(label_prefix)
+                if not items:
+                    st.caption("No recent news found.")
+                    return
+                for item in items:
+                    title = item.get("title", "")
+                    link = item.get("link", "#")
+                    publisher = item.get("publisher", "")
+                    age = _fmt_news_age(item)
+                    color = _publisher_color(publisher)
+                    st.markdown(
+                        f"<div style='margin:3px 0 5px 0;line-height:1.35'>"
+                        f"<span style='color:{color};font-weight:700;font-size:0.71rem'>{publisher}</span>"
+                        f"<span style='color:#999;font-size:0.7rem;margin-left:6px'>{age}</span><br>"
+                        f"<a href='{link}' target='_blank' style='color:#222;font-size:0.8rem;"
+                        f"text-decoration:none;line-height:1.3'>{title}</a>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+
+        # ── Portfolio A ───────────────────────────────────────────────────────
+        st.markdown(
+            "<div style='background:#5a7f6a;color:#fff;padding:6px 14px;border-radius:5px;"
+            "font-weight:700;font-size:1rem;margin:8px 0 4px 0'>Portfolio A  ·  27 tickers</div>",
+            unsafe_allow_html=True,
+        )
+        for _tk in ALL_TICKERS:
+            _render_news_expander(_tk)
+
+        # ── Portfolio B ───────────────────────────────────────────────────────
+        st.markdown(
+            "<div style='background:#6e8fa0;color:#fff;padding:6px 14px;border-radius:5px;"
+            "font-weight:700;font-size:1rem;margin:16px 0 4px 0'>Portfolio B  ·  21 tickers</div>",
+            unsafe_allow_html=True,
+        )
+        for _tk in ALL_TICKERS_B:
+            _render_news_expander(_tk)
+
+        # ── Retired ───────────────────────────────────────────────────────────
+        st.markdown(
+            "<div style='background:#8e8eaa;color:#fff;padding:6px 14px;border-radius:5px;"
+            "font-weight:700;font-size:1rem;margin:16px 0 4px 0'>Retired  ·  10 tickers</div>",
+            unsafe_allow_html=True,
+        )
+        for _rs in RETIRED_STOCKS:
+            _render_news_expander(_rs["ticker"], "Post-removal coverage")
+
+        st.caption("Data: Yahoo Finance via yfinance.  Not financial advice.")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
