@@ -355,8 +355,8 @@ MACRO_SIGNALS_CONFIG: list[dict] = [
 USES_PB: set[str] = {"BRK-B"}
 FAIR_PB: dict[str, float] = {"BRK-B": 1.35}
 
-# Skip ROE gate; use D/E ≤ 1.5 threshold
-# PM has negative book equity from buybacks, making ROE meaningless — same exception as JPM
+# Skip ROIC gate; use D/E ≤ 1.5 threshold
+# PM has negative book equity from buybacks, making ROIC unreliable — same exception as JPM
 BANKS: set[str] = {"JPM", "PGR", "CB", "BLK", "PM"}
 
 # Higher D/E tolerance ≤ 2.5
@@ -574,8 +574,18 @@ def compute_row(
 
     # ── Quality metrics ──────────────────────────────────────────────────────
 
-    roe_raw = _float(info, "returnOnEquity")
-    roic: Optional[float] = roe_raw * 100.0 if roe_raw is not None else None
+    op_income = _float(info, "operatingIncome")
+    tax_rate = _float(info, "effectiveTaxRate")
+    total_assets = _float(info, "totalAssets")
+    current_liabilities = _float(info, "currentLiabilities")
+    cash = _float(info, "cash")
+    if (op_income is not None and tax_rate is not None and
+            total_assets is not None and current_liabilities is not None and cash is not None):
+        nopat = op_income * (1.0 - tax_rate)
+        invested_capital = total_assets - current_liabilities - cash
+        roic: Optional[float] = (nopat / invested_capital * 100.0) if invested_capital > 0 else None
+    else:
+        roic = None
 
     fcf = _float(info, "freeCashflow")
     mktcap = _float(info, "marketCap")
@@ -588,14 +598,20 @@ def compute_row(
     de_ratio: Optional[float] = de_raw / 100.0 if de_raw is not None else None
     de_limit = de_threshold(ticker)
 
+    gm_raw = _float(info, "grossMargins")
+    gm_pct: Optional[float] = gm_raw * 100.0 if gm_raw is not None else None
+
+    insider_raw = _float(info, "heldPercentInsiders")
+    insider_pct: Optional[float] = insider_raw * 100.0 if insider_raw is not None else None
+
     # ── Quality gate ─────────────────────────────────────────────────────────
     fails: list[str] = []
 
     if ticker not in BANKS:
         if roic is None:
-            fails.append("ROE N/A")
+            fails.append("ROIC N/A")
         elif roic < 15.0:
-            fails.append(f"ROE {roic:.1f}% < 15%")
+            fails.append(f"ROIC {roic:.1f}% < 15%")
 
     if fcfy is None:
         fails.append("FCFy N/A")
@@ -636,9 +652,11 @@ def compute_row(
         "Dream Price": dream_price,
         "Discount%": discount_pct,
         "Signal": signal,
-        "ROE%": roic,
+        "ROIC%": roic,
         "FCFy%": fcfy,
         "RevGr%": rev_growth,
+        "GM%": gm_pct,
+        "Insider%": insider_pct,
         "D/E": de_ratio,
         "D/E Lim": de_limit,
         "Quality": quality,
@@ -745,9 +763,11 @@ def build_display_df(rows: list[dict]) -> pd.DataFrame:
             "Dream Price $": fmt_price(r["Dream Price"]),
             "Discount":     fmt_pct(r["Discount%"], plus=True),
             "Signal":       r["Signal"],
-            "ROE%*":        fmt_pct(r["ROE%"]),
+            "ROIC%":        fmt_pct(r["ROIC%"]),
             "FCFy%":        fmt_pct(r["FCFy%"]),
             "RevGr%":       fmt_pct(r["RevGr%"], plus=True),
+            "GM%":          fmt_pct(r["GM%"]),
+            "Insider%":     fmt_pct(r["Insider%"]),
             "D/E":          fmt_mult(r["D/E"]),
             "Quality":      r["Quality"],
             "Fail Reasons": r["Fail Reasons"],
@@ -789,7 +809,7 @@ def _style_df(display_df: pd.DataFrame, signal_series: pd.Series) -> object:
 DISPLAY_COLS = [
     "Ticker", "#", "Price", "Metric", "Current", "Fair", "Dream",
     "Fair Price $", "Dream Price $",
-    "Discount", "Signal", "ROE%*", "FCFy%", "RevGr%", "D/E",
+    "Discount", "Signal", "ROIC%", "FCFy%", "RevGr%", "GM%", "Insider%", "D/E",
     "Quality", "Fail Reasons", "Red Flags", "Active Flags", "Decision",
 ]
 
@@ -806,9 +826,11 @@ _TABLE_COLS: list[tuple[str, str, str, str]] = [
     ("Dream $",  "Dream Price $", "6%",    "right"),
     ("Disc%",    "Discount",      "5%",    "right"),
     ("Signal",   "Signal",        "5%",    "center"),
-    ("ROE%*",    "ROE%*",         "4.5%",  "right"),
+    ("ROIC%",    "ROIC%",         "4.5%",  "right"),
     ("FCFy%",    "FCFy%",         "4.5%",  "right"),
     ("RevGr%",   "RevGr%",        "4.5%",  "right"),
+    ("GM%",      "GM%",           "4.5%",  "right"),
+    ("Insider%", "Insider%",      "4.5%",  "right"),
     ("D/E",      "D/E",           "3.5%",  "right"),
     ("Quality",  "Quality",       "5%",    "center"),
     ("Fail",     "Fail Reasons",  "15%",   "left"),
@@ -1369,8 +1391,18 @@ def main() -> None:
                 _pticker = _preview["ticker"]
                 _pprice = _float(_pinfo, "currentPrice") or _float(_pinfo, "regularMarketPrice")
                 _ppe = _float(_pinfo, "trailingPE")
-                _proe_raw = _float(_pinfo, "returnOnEquity")
-                _proe = _proe_raw * 100.0 if _proe_raw is not None else None
+                _p_op_income = _float(_pinfo, "operatingIncome")
+                _p_tax_rate = _float(_pinfo, "effectiveTaxRate")
+                _p_total_assets = _float(_pinfo, "totalAssets")
+                _p_curr_liab = _float(_pinfo, "currentLiabilities")
+                _p_cash = _float(_pinfo, "cash")
+                if (_p_op_income is not None and _p_tax_rate is not None and
+                        _p_total_assets is not None and _p_curr_liab is not None and _p_cash is not None):
+                    _p_nopat = _p_op_income * (1.0 - _p_tax_rate)
+                    _p_inv_cap = _p_total_assets - _p_curr_liab - _p_cash
+                    _proic = (_p_nopat / _p_inv_cap * 100.0) if _p_inv_cap > 0 else None
+                else:
+                    _proic = None
                 _pfcf = _float(_pinfo, "freeCashflow")
                 _pmktcap = _float(_pinfo, "marketCap")
                 _pfcfy = (
@@ -1388,7 +1420,7 @@ def main() -> None:
                     f"<b style='font-size:0.9rem;color:#5a3a28'>{_pticker}</b>"
                     f"<span style='font-size:0.72rem;color:#666;margin-left:6px'>{_pname}</span><br>"
                     f"<b>Price:</b> {fmt_price(_pprice)} &nbsp; <b>P/E:</b> {fmt_mult(_ppe)}<br>"
-                    f"<b>ROE:</b> {fmt_pct(_proe)} &nbsp; <b>FCFy:</b> {fmt_pct(_pfcfy)}<br>"
+                    f"<b>ROIC:</b> {fmt_pct(_proic)} &nbsp; <b>FCFy:</b> {fmt_pct(_pfcfy)}<br>"
                     f"<b>RevGr:</b> {fmt_pct(_prev_gr, plus=True)} &nbsp; <b>D/E:</b> {fmt_mult(_pde)}"
                     f"</div>",
                     unsafe_allow_html=True,
@@ -1482,14 +1514,14 @@ def main() -> None:
             st.markdown("""
 | Check | Threshold | Exceptions | Source |
 |---|---|---|---|
-| ROE%\\* | ≥ 15 % | Skipped for banks (JPM) | `returnOnEquity` proxy for ROIC |
+| ROIC% | ≥ 15 % | Skipped for banks (JPM, PGR, CB, BLK) — shown as ROIC N/A | `NOPAT / Invested Capital` |
 | FCF Yield | ≥ 3.5 % | — | `freeCashflow / marketCap` |
 | Revenue Growth | ≥ 0 % | — | `revenueGrowth` |
 | Debt / Equity | ≤ 0.5× | Banks ≤ 1.5×; EPD ≤ 2.5× | `debtToEquity ÷ 100` |
 
-**BUY = Signal (DREAM or FAIR) AND Quality PASS AND no Red Flags active.**
+ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effectiveTaxRate) and Invested Capital = totalAssets − currentLiabilities − cash.
 
-\\* yfinance does not expose ROIC directly. ROE (`returnOnEquity`) is used as a proxy.
+**BUY = Signal (DREAM or FAIR) AND Quality PASS AND no Red Flags active.**
 """)
 
         with st.expander("Valuation Key", expanded=False):
@@ -1625,7 +1657,7 @@ def main() -> None:
 | EMR | 20 | Automation-focused industrial compounder, growing software mix |
 
 **BUY = Signal (DREAM or FAIR) AND Quality PASS AND no Red Flags active.**
-Financial companies (PGR, CB, BLK): ROE gate skipped; D/E threshold ≤ 1.5×.
+Financial companies (PGR, CB, BLK): ROIC gate skipped (ROIC N/A); D/E threshold ≤ 1.5×.
 Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
 """)
 
