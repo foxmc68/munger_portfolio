@@ -470,6 +470,44 @@ def fetch_info(ticker: str) -> dict:
 
 
 @st.cache_data(show_spinner=False)
+def fetch_financials(ticker: str) -> dict:
+    """
+    Fetch income statement and balance sheet fields needed for ROIC.
+    yfinance no longer includes these in .info — they require separate calls.
+    """
+    result: dict = {}
+    try:
+        t = yf.Ticker(ticker)
+        inc = t.income_stmt
+        if inc is not None and not inc.empty:
+            if "Operating Income" in inc.index:
+                v = inc.loc["Operating Income"].iloc[0]
+                if v is not None and not (isinstance(v, float) and v != v):
+                    result["operatingIncome"] = float(v)
+            if "Tax Rate For Calcs" in inc.index:
+                v = inc.loc["Tax Rate For Calcs"].iloc[0]
+                if v is not None and not (isinstance(v, float) and v != v):
+                    result["taxRate"] = float(v)
+        bs = t.balance_sheet
+        if bs is not None and not bs.empty:
+            if "Total Assets" in bs.index:
+                v = bs.loc["Total Assets"].iloc[0]
+                if v is not None and not (isinstance(v, float) and v != v):
+                    result["totalAssets"] = float(v)
+            if "Current Liabilities" in bs.index:
+                v = bs.loc["Current Liabilities"].iloc[0]
+                if v is not None and not (isinstance(v, float) and v != v):
+                    result["currentLiabilities"] = float(v)
+            if "Cash And Cash Equivalents" in bs.index:
+                v = bs.loc["Cash And Cash Equivalents"].iloc[0]
+                if v is not None and not (isinstance(v, float) and v != v):
+                    result["cash"] = float(v)
+    except Exception:
+        pass
+    return result
+
+
+@st.cache_data(show_spinner=False)
 def fetch_news(ticker: str) -> list[dict]:
     """
     Fetch up to 5 recent news items for a ticker.
@@ -574,11 +612,12 @@ def compute_row(
 
     # ── Quality metrics ──────────────────────────────────────────────────────
 
-    op_income = _float(info, "operatingIncome")
-    tax_rate = _float(info, "effectiveTaxRate")
-    total_assets = _float(info, "totalAssets")
-    current_liabilities = _float(info, "currentLiabilities")
-    cash = _float(info, "cash")
+    fins = fetch_financials(ticker)
+    op_income = fins.get("operatingIncome")
+    tax_rate = fins.get("taxRate")
+    total_assets = fins.get("totalAssets")
+    current_liabilities = fins.get("currentLiabilities")
+    cash = fins.get("cash")
     if (op_income is not None and tax_rate is not None and
             total_assets is not None and current_liabilities is not None and cash is not None):
         nopat = op_income * (1.0 - tax_rate)
@@ -1339,9 +1378,11 @@ def main() -> None:
                         _ticker_input = st.session_state.get("add_ticker_input", "").strip().upper()
                         if _ticker_input:
                             _preview_info = fetch_info(_ticker_input)
+                            _preview_fins = fetch_financials(_ticker_input)
                             st.session_state.add_stock_preview = {
                                 "ticker": _ticker_input,
                                 "info": _preview_info,
+                                "fins": _preview_fins,
                             }
                         else:
                             st.session_state.add_stock_preview = None
@@ -1388,14 +1429,15 @@ def main() -> None:
             _preview = st.session_state.add_stock_preview
             if _preview:
                 _pinfo = _preview["info"]
+                _pfins = _preview.get("fins", {})
                 _pticker = _preview["ticker"]
                 _pprice = _float(_pinfo, "currentPrice") or _float(_pinfo, "regularMarketPrice")
                 _ppe = _float(_pinfo, "trailingPE")
-                _p_op_income = _float(_pinfo, "operatingIncome")
-                _p_tax_rate = _float(_pinfo, "effectiveTaxRate")
-                _p_total_assets = _float(_pinfo, "totalAssets")
-                _p_curr_liab = _float(_pinfo, "currentLiabilities")
-                _p_cash = _float(_pinfo, "cash")
+                _p_op_income = _pfins.get("operatingIncome")
+                _p_tax_rate = _pfins.get("taxRate")
+                _p_total_assets = _pfins.get("totalAssets")
+                _p_curr_liab = _pfins.get("currentLiabilities")
+                _p_cash = _pfins.get("cash")
                 if (_p_op_income is not None and _p_tax_rate is not None and
                         _p_total_assets is not None and _p_curr_liab is not None and _p_cash is not None):
                     _p_nopat = _p_op_income * (1.0 - _p_tax_rate)
