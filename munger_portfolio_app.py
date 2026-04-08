@@ -171,6 +171,119 @@ RETIRED_STOCKS: list[dict] = [
 
 ALL_TICKERS_RETIRED: list[str] = [s["ticker"] for s in RETIRED_STOCKS]
 
+# ── Wait List ─────────────────────────────────────────────────────────────────
+# Stocks not yet in either portfolio — waiting for specific price/PE entry targets.
+# entry_pe_target: the P/E (or FCF multiple for CSU.TO) at which we'd buy.
+# entry_low / entry_high: the price range we're targeting.
+# add_more_at: secondary add price if position opened and keeps dropping.
+# currency_symbol: display prefix for prices ($ / C$ / ¥).
+
+WAIT_LIST: list[dict] = [
+    {
+        "ticker": "GOOGL",
+        "metric": "P/E",
+        "entry_pe_target": 16,
+        "entry_low": 135.0,
+        "entry_high": 140.0,
+        "add_more_at": 120.0,
+        "currency_symbol": "$",
+        "note": "Search / YouTube / Cloud at 16× trailing P/E only. Regulatory and AI disruption risk to search revenue demands valuation discipline.",
+    },
+    {
+        "ticker": "ASML",
+        "metric": "P/E",
+        "entry_pe_target": 24,
+        "entry_low": 580.0,
+        "entry_high": 610.0,
+        "add_more_at": 500.0,
+        "currency_symbol": "$",
+        "note": "Sole supplier of EUV lithography — unmatched global moat. 24× is our ceiling; chip cycle uncertainty demands patience.",
+    },
+    {
+        "ticker": "V",
+        "metric": "P/E",
+        "entry_pe_target": 25,
+        "entry_low": 295.0,
+        "entry_high": 310.0,
+        "add_more_at": 265.0,
+        "currency_symbol": "$",
+        "note": "Already own V in Portfolio A Tier 1 — sizing up existing position only. Need 25× trailing P/E entry; current premium too high to add.",
+    },
+    {
+        "ticker": "NVO",
+        "metric": "P/E",
+        "entry_pe_target": 16,
+        "entry_low": 52.0,
+        "entry_high": 55.0,
+        "add_more_at": 46.0,
+        "currency_symbol": "$",
+        "note": "Ozempic/Wegovy secular opportunity. Lilly competition and patent cliff risk demand 16× discipline — no premium for biotech uncertainty.",
+    },
+    {
+        "ticker": "EQNR",
+        "metric": "P/E",
+        "entry_pe_target": 8,
+        "entry_low": 21.0,
+        "entry_high": 22.0,
+        "add_more_at": 18.0,
+        "currency_symbol": "$",
+        "note": "Norwegian integrated oil + offshore wind at 8×. Geopolitically safer than US majors; strong dividend shields downside in commodity cycles.",
+    },
+    {
+        "ticker": "AXP",
+        "metric": "P/E",
+        "entry_pe_target": 17,
+        "entry_low": 235.0,
+        "entry_high": 245.0,
+        "add_more_at": 210.0,
+        "currency_symbol": "$",
+        "note": "Premium credit card network with superior spend data moat. Already own in Portfolio A Tier 2 — sizing up at 17× only. Currently priced for perfection.",
+    },
+    {
+        "ticker": "COST",
+        "metric": "P/E",
+        "entry_pe_target": 43,
+        "entry_low": 800.0,
+        "entry_high": 830.0,
+        "add_more_at": 700.0,
+        "currency_symbol": "$",
+        "note": "World's best retailer. Membership moat compounds indefinitely. 43× is our absolute ceiling — waiting for a recession scare to compress the multiple.",
+    },
+    {
+        "ticker": "FICO",
+        "metric": "P/E",
+        "entry_pe_target": 42,
+        "entry_low": 1400.0,
+        "entry_high": 1500.0,
+        "add_more_at": 1200.0,
+        "currency_symbol": "$",
+        "note": "Credit scoring monopoly with near-zero competitive risk. 42× still demanding even for a toll booth; waiting for a recession-lite multiple compression.",
+    },
+    {
+        "ticker": "CSU.TO",
+        "metric": "FCF",
+        "entry_pe_target": 46,
+        "entry_low": 4000.0,
+        "entry_high": 4200.0,
+        "add_more_at": 3500.0,
+        "currency_symbol": "C$",
+        "note": "Constellation Software — greatest serial acquirer of vertical market software. Valued on FCF multiple (46×). Management quality extraordinary; patience required.",
+    },
+    {
+        "ticker": "6861.T",
+        "display_ticker": "6861.T (Keyence)",
+        "metric": "P/E",
+        "entry_pe_target": 34,
+        "entry_low": 52000.0,
+        "entry_high": 54000.0,
+        "add_more_at": 47000.0,
+        "currency_symbol": "¥",
+        "note": "Keyence — Japanese sensor/automation monopoly. 50%+ net margins, ~15% growth, zero debt. Wait for macro-driven Japan selloff to compress to 34×.",
+    },
+]
+
+ALL_TICKERS_WAITLIST: list[str] = [s["ticker"] for s in WAIT_LIST]
+
 # ── Macro Signals configuration ───────────────────────────────────────────────
 # Each signal has live-fetch or static-manual data. Direction "above" means
 # exceeding the threshold is bad; "below" means falling below is bad.
@@ -723,6 +836,49 @@ def compute_retired_row(stock: dict) -> dict:
     }
 
 
+def compute_waitlist_row(stock: dict) -> dict:
+    ticker = stock["ticker"]
+    info = fetch_info(ticker)
+    price: Optional[float] = (
+        _float(info, "currentPrice") or _float(info, "regularMarketPrice")
+    )
+    pe: Optional[float] = _float(info, "trailingPE")
+
+    entry_high = stock["entry_high"]
+
+    # % gap: (current − entry_high) / entry_high × 100
+    # Negative = price already at or below entry range top (in range)
+    if price is not None and entry_high > 0:
+        gap_pct: Optional[float] = (price - entry_high) / entry_high * 100.0
+    else:
+        gap_pct = None
+
+    if gap_pct is None:
+        status = "N/A"
+    elif gap_pct <= 0:
+        status = "ENTER"
+    elif gap_pct <= 10.0:
+        status = "CLOSE"
+    else:
+        status = "WAIT"
+
+    return {
+        "ticker": ticker,
+        "display_ticker": stock.get("display_ticker", ticker),
+        "metric": stock["metric"],
+        "entry_pe_target": stock["entry_pe_target"],
+        "entry_low": stock["entry_low"],
+        "entry_high": entry_high,
+        "add_more_at": stock["add_more_at"],
+        "currency_symbol": stock["currency_symbol"],
+        "note": stock["note"],
+        "price": price,
+        "pe": pe,
+        "gap_pct": gap_pct,
+        "status": status,
+    }
+
+
 # ── Formatting helpers ────────────────────────────────────────────────────────
 
 def compute_macro_status(value: float, danger: float, crisis: float, direction: str) -> str:
@@ -1052,12 +1208,15 @@ def main() -> None:
         ".stTabs [data-baseweb='tab']:nth-child(3){background-color:#8e8eaa !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(3):hover{background-color:#7a7a98 !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(3)[aria-selected='true']{background-color:#5a5a7f !important;color:#ffffff !important;border-bottom:3px solid #5a5a7f !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(4){background-color:#b88070 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(4):hover{background-color:#a87060 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(4)[aria-selected='true']{background-color:#a07060 !important;color:#ffffff !important;border-bottom:3px solid #a07060 !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(5){background-color:#6e9b9b !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(5):hover{background-color:#5d8888 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(5)[aria-selected='true']{background-color:#4d7878 !important;color:#ffffff !important;border-bottom:3px solid #4d7878 !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4){background-color:#8a9a6e !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4):hover{background-color:#7a8a5e !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4)[aria-selected='true']{background-color:#6a7a4e !important;color:#ffffff !important;border-bottom:3px solid #6a7a4e !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(5){background-color:#b88070 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(5):hover{background-color:#a87060 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(5)[aria-selected='true']{background-color:#a07060 !important;color:#ffffff !important;border-bottom:3px solid #a07060 !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(6){background-color:#6e9b9b !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(6):hover{background-color:#5d8888 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(6)[aria-selected='true']{background-color:#4d7878 !important;color:#ffffff !important;border-bottom:3px solid #4d7878 !important}"
         ".stTabs [data-baseweb='tab-highlight']{display:none}"
         ".block-container{padding-top:0.75rem !important;padding-bottom:1rem !important}"
         "h1{margin-bottom:0.25rem !important;margin-top:0 !important}"
@@ -1121,6 +1280,10 @@ def main() -> None:
         st.session_state.raw_rows_retired = None
     if "last_fetched_retired" not in st.session_state:
         st.session_state.last_fetched_retired = None
+    if "raw_rows_waitlist" not in st.session_state:
+        st.session_state.raw_rows_waitlist = None
+    if "last_fetched_waitlist" not in st.session_state:
+        st.session_state.last_fetched_waitlist = None
     if "macro_last_fetched" not in st.session_state:
         st.session_state.macro_last_fetched = None
     if "macro_cpi_rate" not in st.session_state:
@@ -1472,7 +1635,7 @@ def main() -> None:
     st.title("Munger Toll Bridge Portfolio")
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    tab_a, tab_b, tab_r, tab_m, tab_n = st.tabs(["Portfolio A", "Portfolio B", "Retired", "Macro Signals", "News"])
+    tab_a, tab_b, tab_r, tab_w, tab_m, tab_n = st.tabs(["Portfolio A", "Portfolio B", "Retired", "Wait List", "Macro Signals", "News"])
 
     # ══════════════════════════════════════════════════════════════════════════
     # PORTFOLIO A
@@ -1801,6 +1964,214 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             "Data: Yahoo Finance via yfinance.  Not financial advice."
         )
 
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # WAIT LIST
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_w:
+        st.markdown(
+            "<div style='background:#6a7a4e;color:#fff;padding:10px 16px;border-radius:6px;"
+            "margin-bottom:12px'>"
+            "<strong>Wait List</strong> — Quality businesses not yet in Portfolio A or B. "
+            "Each has a specific entry price target based on a Munger-style fair multiple. "
+            "Status: <b>ENTER</b> = price at or below entry range · "
+            "<b>CLOSE</b> = within 10% of range · <b>WAIT</b> = more than 10% above range."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        col_refresh_w, col_ts_w = st.columns([1, 4])
+        with col_refresh_w:
+            if st.button("Refresh Data", key="refresh_w", type="primary", use_container_width=True):
+                fetch_info.clear()
+                st.session_state.raw_rows_waitlist = None
+
+        if st.session_state.raw_rows_waitlist is None:
+            progress_w = st.progress(0, text="Fetching market data…")
+            raw_rows_waitlist: list[dict] = []
+            for i, stock in enumerate(WAIT_LIST):
+                raw_rows_waitlist.append(compute_waitlist_row(stock))
+                progress_w.progress((i + 1) / len(WAIT_LIST), text=f"Fetching {stock['ticker']}…")
+            progress_w.empty()
+            st.session_state.raw_rows_waitlist = raw_rows_waitlist
+            st.session_state.last_fetched_waitlist = datetime.now()
+
+        raw_rows_waitlist = st.session_state.raw_rows_waitlist
+
+        fetched_str_w = (
+            st.session_state.last_fetched_waitlist.strftime("%Y-%m-%d  %H:%M:%S")
+            if st.session_state.last_fetched_waitlist else "—"
+        )
+        with col_ts_w:
+            st.caption(
+                f"Last fetched: **{fetched_str_w}**  ·  "
+                f"Data: Yahoo Finance (yfinance)"
+            )
+
+        # ── Summary metrics ───────────────────────────────────────────────────
+        _wl_enter = sum(1 for r in raw_rows_waitlist if r["status"] == "ENTER")
+        _wl_close = sum(1 for r in raw_rows_waitlist if r["status"] == "CLOSE")
+        _wl_wait  = sum(1 for r in raw_rows_waitlist if r["status"] == "WAIT")
+        _wmc1, _wmc2, _wmc3, _wmc4 = st.columns(4)
+        _wmc1.metric("ENTER (in range)", _wl_enter, delta_color="off")
+        _wmc2.metric("CLOSE (within 10%)", _wl_close, delta_color="off")
+        _wmc3.metric("WAIT (>10% above)", _wl_wait, delta_color="off")
+        _wmc4.metric("Total Watching", len(WAIT_LIST), delta_color="off")
+
+        st.divider()
+
+        # ── Status color maps ─────────────────────────────────────────────────
+        _WL_STATUS_BG: dict[str, str] = {
+            "ENTER": "#5a8a5a",   # sage green
+            "CLOSE": "#b8860b",   # amber
+            "WAIT":  "#9b4a4a",   # muted red
+            "N/A":   "#777777",
+        }
+        _WL_STATUS_FG: dict[str, str] = {
+            "ENTER": "#e8f4e8",
+            "CLOSE": "#fff8e0",
+            "WAIT":  "#fce8e8",
+            "N/A":   "#dddddd",
+        }
+        _WL_ROW_BG: dict[str, str] = {
+            "ENTER": "#c8dfc8",   # light sage green
+            "CLOSE": "#f0e0a0",   # light amber
+            "WAIT":  "#e8c8c8",   # light muted red
+            "N/A":   "#d8d8d8",
+        }
+        _WL_ROW_FG: dict[str, str] = {
+            "ENTER": "#1a3a1a",
+            "CLOSE": "#3d2800",
+            "WAIT":  "#3d0f00",
+            "N/A":   "#555555",
+        }
+
+        # ── Table header ──────────────────────────────────────────────────────
+        _WL_COLS: list[tuple[str, str, str]] = [
+            # (header, width, align)
+            ("Ticker",          "11%",  "left"),
+            ("Price",           "7%",   "right"),
+            ("P/E",             "5%",   "right"),
+            ("Entry Range",     "12%",  "center"),
+            ("Entry P/E Tgt",   "8%",   "center"),
+            ("Add More At",     "9%",   "right"),
+            ("% Gap",           "7%",   "right"),
+            ("STATUS",          "7%",   "center"),
+            ("Note",            "34%",  "left"),
+        ]
+
+        _wl_header_cells = "".join(
+            f"<div style='flex:0 0 {w};text-align:{a};padding:0 5px;"
+            f"overflow:hidden;white-space:nowrap;text-overflow:ellipsis'>{h}</div>"
+            for h, w, a in _WL_COLS
+        )
+        st.markdown(
+            "<div style='display:flex;align-items:center;"
+            "background:#555;color:#fff;"
+            "font-size:0.71rem;font-weight:700;padding:4px 0;"
+            "font-family:monospace;border-radius:3px 3px 0 0'>"
+            + _wl_header_cells + "</div>",
+            unsafe_allow_html=True,
+        )
+
+        # ── Table rows ────────────────────────────────────────────────────────
+        rows_html = ""
+        for r in raw_rows_waitlist:
+            _status = r["status"]
+            _bg = _WL_ROW_BG.get(_status, "#d8d8d8")
+            _fg = _WL_ROW_FG.get(_status, "#555555")
+            _sbg = _WL_STATUS_BG.get(_status, "#777777")
+            _sfg = _WL_STATUS_FG.get(_status, "#dddddd")
+
+            _sym = r["currency_symbol"]
+            _metric_lbl = r["metric"]
+
+            # Format price
+            if r["price"] is not None:
+                if _sym == "¥":
+                    _price_str = f"¥{r['price']:,.0f}"
+                elif _sym == "C$":
+                    _price_str = f"C${r['price']:,.2f}"
+                else:
+                    _price_str = f"${r['price']:,.2f}"
+            else:
+                _price_str = "—"
+
+            # Format P/E
+            _pe_str = f"{r['pe']:.1f}" if r["pe"] is not None else "—"
+
+            # Format entry range
+            if _sym == "¥":
+                _range_str = f"¥{r['entry_low']:,.0f}–{r['entry_high']:,.0f}"
+            elif _sym == "C$":
+                _range_str = f"C${r['entry_low']:,.0f}–{r['entry_high']:,.0f}"
+            else:
+                _range_str = f"${r['entry_low']:,.0f}–{r['entry_high']:,.0f}"
+
+            # Format entry target
+            _tgt_str = f"{_metric_lbl} {r['entry_pe_target']}×"
+
+            # Format add-more-at
+            if _sym == "¥":
+                _add_str = f"¥{r['add_more_at']:,.0f}"
+            elif _sym == "C$":
+                _add_str = f"C${r['add_more_at']:,.0f}"
+            else:
+                _add_str = f"${r['add_more_at']:,.0f}"
+
+            # Format gap
+            if r["gap_pct"] is not None:
+                _gap_str = f"{r['gap_pct']:+.1f}%"
+            else:
+                _gap_str = "—"
+
+            # Status pill
+            _status_pill = (
+                f"<span style='background:{_sbg};color:{_sfg};"
+                f"padding:2px 6px;border-radius:10px;font-size:0.72rem;"
+                f"font-weight:700;white-space:nowrap'>{_status}</span>"
+            )
+
+            _cells_data = [
+                (r["display_ticker"], "11%", "left"),
+                (_price_str,          "7%",  "right"),
+                (_pe_str,             "5%",  "right"),
+                (_range_str,          "12%", "center"),
+                (_tgt_str,            "8%",  "center"),
+                (_add_str,            "9%",  "right"),
+                (_gap_str,            "7%",  "right"),
+                (_status_pill,        "7%",  "center"),
+                (r["note"],           "34%", "left"),
+            ]
+
+            cells_html = "".join(
+                f"<div style='flex:0 0 {w};text-align:{a};padding:0 5px;"
+                f"overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:{_fg}'>"
+                f"{val}</div>"
+                for val, w, a in _cells_data
+            )
+            rows_html += (
+                f"<div style='display:flex;align-items:center;background:{_bg};"
+                f"font-size:0.77rem;padding:4px 0;"
+                f"font-family:monospace;border-bottom:1px solid rgba(0,0,0,0.08)'>"
+                + cells_html + "</div>"
+            )
+
+        st.markdown(rows_html, unsafe_allow_html=True)
+
+        st.divider()
+        st.markdown(
+            "<div style='font-size:0.78rem;color:#555;margin-top:4px'>"
+            "<b>% Gap</b> = (current price − top of entry range) ÷ top of entry range × 100. "
+            "Negative = price already within or below entry range. "
+            "<b>Add More At</b> = secondary accumulation price if position opened and weakness continues."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        st.caption(
+            "Entry prices and P/E targets are pre-set conviction levels, not buy recommendations. "
+            "Data: Yahoo Finance via yfinance.  Not financial advice."
+        )
 
     # ══════════════════════════════════════════════════════════════════════════
     # MACRO SIGNALS
