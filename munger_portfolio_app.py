@@ -1222,7 +1222,7 @@ def main() -> None:
     st.set_page_config(
         page_title="Munger Toll Bridge Portfolio",
         layout="wide",
-        initial_sidebar_state="expanded",
+        initial_sidebar_state="collapsed",
     )
 
     # ── Light-theme CSS overrides ─────────────────────────────────────────────
@@ -1296,6 +1296,14 @@ def main() -> None:
         "background-color:#4a6a58 !important}"
         "[data-testid='element-container']:has(+[data-testid='stExpander']){"
         "margin-bottom:-10px !important}"
+        ".st-key-ov_pills_a .stButton>button{"
+        "font-size:12px;padding:3px 10px;border-radius:20px;height:auto;min-height:0;"
+        "line-height:1.5;font-weight:600;background-color:#6e9b82;color:#fff;border:none}"
+        ".st-key-ov_pills_a .stButton>button:hover{background-color:#5a8a6e}"
+        ".st-key-ov_pill_b .stButton>button{"
+        "font-size:12px;padding:3px 10px;border-radius:20px;height:auto;min-height:0;"
+        "line-height:1.5;font-weight:600;background-color:#6e8fa0;color:#fff;border:none}"
+        ".st-key-ov_pill_b .stButton>button:hover{background-color:#5a7a8c}"
         "</style>",
         unsafe_allow_html=True,
     )
@@ -1341,6 +1349,10 @@ def main() -> None:
         st.session_state.raw_rows_custom_b = None
     if "add_stock_preview" not in st.session_state:
         st.session_state.add_stock_preview = None
+    if "mos_pct" not in st.session_state:
+        st.session_state.mos_pct = DEFAULT_MOS_PCT
+    if "mos_pct_b" not in st.session_state:
+        st.session_state.mos_pct_b = DEFAULT_MOS_PCT
 
     # Ensure custom tickers have red-flag entries
     for _ct in st.session_state.custom_tickers:
@@ -1359,314 +1371,7 @@ def main() -> None:
         if _pk not in st.session_state:
             st.session_state[_pk] = False
 
-    # ── Sidebar ───────────────────────────────────────────────────────────────
-    with st.sidebar:
-        st.markdown(
-            "<p style='font-size:1.1rem;font-weight:700;margin:0 0 4px 0;color:#333'>Controls</p>",
-            unsafe_allow_html=True,
-        )
-        st.divider()
-        mos_pct = st.slider(
-            "Dream Margin of Safety %",
-            min_value=10, max_value=50, value=DEFAULT_MOS_PCT, step=5,
-            help="Dream threshold = Fair multiple × (1 − MoS%)  —  applies to both portfolios",
-        )
-
-        # ── Portfolio A sidebar ───────────────────────────────────────────────
-        st.markdown(
-            "<div style='background:#5a7f6a;color:#fff;padding:4px 10px;border-radius:4px;"
-            "font-weight:700;font-size:18px;margin:8px 0 4px 0;text-align:center'>── Portfolio A ──</div>",
-            unsafe_allow_html=True,
-        )
-
-        # -- Fair Multiple Overrides: row of 3 pill buttons -------------------
-        st.markdown(
-            "<p style='font-size:0.82rem;font-weight:700;color:#333;margin:4px 0 2px 0'>"
-            "Fair Multiple Overrides</p>",
-            unsafe_allow_html=True,
-        )
-        _pc1, _pc2, _pc3 = st.columns(3)
-        with _pc1:
-            if st.button("Tier 1", key="btn_a_fair_t1", use_container_width=True):
-                st.session_state.accordion_overrides_a = None if st.session_state.accordion_overrides_a == "Tier 1" else "Tier 1"
-        with _pc2:
-            if st.button("Tier 2", key="btn_a_fair_t2", use_container_width=True):
-                st.session_state.accordion_overrides_a = None if st.session_state.accordion_overrides_a == "Tier 2" else "Tier 2"
-        with _pc3:
-            if st.button("Tier 3", key="btn_a_fair_t3", use_container_width=True):
-                st.session_state.accordion_overrides_a = None if st.session_state.accordion_overrides_a == "Tier 3" else "Tier 3"
-
-        for _tier_name in ["Tier 1", "Tier 2", "Tier 3"]:
-            if st.session_state.accordion_overrides_a == _tier_name:
-                _td = PORTFOLIO[_tier_name]
-                with st.container():
-                    st.markdown(
-                        f"<p style='font-size:0.75rem;font-weight:700;color:#5a7f6a;"
-                        f"margin:4px 0 2px 0'>{_tier_name}</p>",
-                        unsafe_allow_html=True,
-                    )
-                    for _tk in _td["tickers"]:
-                        _default_val = float(FAIR_PB.get(_tk, _td["fair_pe"]))
-                        _label = f"{_tk}  ({'P/B' if _tk in USES_PB else 'P/E'})"
-                        st.number_input(
-                            _label,
-                            min_value=0.1, max_value=200.0,
-                            value=_default_val, step=0.5,
-                            key=f"ov_{_tk}",
-                        )
-
-        # Build fair_overrides from session state (works whether panel is open or not)
-        fair_overrides: dict[str, Optional[float]] = {}
-        for _tier_name, _td in PORTFOLIO.items():
-            for _tk in _td["tickers"]:
-                _default_val = float(FAIR_PB.get(_tk, _td["fair_pe"]))
-                _val = st.session_state.get(f"ov_{_tk}", _default_val)
-                fair_overrides[_tk] = _val if _val != _default_val else None
-
-        # -- Red Flags: row of 3 pill buttons ---------------------------------
-        st.markdown(
-            "<p style='font-size:0.82rem;font-weight:700;color:#333;margin:6px 0 2px 0'>"
-            "Red Flags</p>",
-            unsafe_allow_html=True,
-        )
-        with st.container(key="rf_a"):
-            _rc1, _rc2, _rc3 = st.columns(3)
-            with _rc1:
-                if st.button("Tier 1", key="btn_a_rf_t1", use_container_width=True):
-                    st.session_state.accordion_redflags_a = None if st.session_state.accordion_redflags_a == "Tier 1" else "Tier 1"
-            with _rc2:
-                if st.button("Tier 2", key="btn_a_rf_t2", use_container_width=True):
-                    st.session_state.accordion_redflags_a = None if st.session_state.accordion_redflags_a == "Tier 2" else "Tier 2"
-            with _rc3:
-                if st.button("Tier 3", key="btn_a_rf_t3", use_container_width=True):
-                    st.session_state.accordion_redflags_a = None if st.session_state.accordion_redflags_a == "Tier 3" else "Tier 3"
-
-        flags_changed = False
-        for _tier_name in ["Tier 1", "Tier 2", "Tier 3"]:
-            if st.session_state.accordion_redflags_a == _tier_name:
-                _td = PORTFOLIO[_tier_name]
-                with st.container():
-                    st.markdown(
-                        f"<p style='font-size:0.75rem;font-weight:700;color:#5a7f6a;"
-                        f"margin:4px 0 2px 0'>{_tier_name}</p>",
-                        unsafe_allow_html=True,
-                    )
-                    for _tk in _td["tickers"]:
-                        st.markdown(f"**{_tk}**")
-                        for _fl in FLAG_NAMES:
-                            _cur = st.session_state.red_flags.get(_tk, {}).get(_fl, False)
-                            _new = st.checkbox(_fl, value=_cur, key=f"rf_{_tk}_{_fl}")
-                            if _new != _cur:
-                                st.session_state.red_flags[_tk][_fl] = _new
-                                flags_changed = True
-
-        if flags_changed:
-            save_red_flags(st.session_state.red_flags)
-            st.session_state.raw_rows = None
-            st.session_state.raw_rows_custom_a = None
-            st.rerun()
-
-        # ── Portfolio B sidebar ───────────────────────────────────────────────
-        st.markdown(
-            "<div style='background:#6e8fa0;color:#fff;padding:4px 10px;border-radius:4px;"
-            "font-weight:700;font-size:18px;margin:10px 0 4px 0;text-align:center'>── Portfolio B ──</div>",
-            unsafe_allow_html=True,
-        )
-
-        # -- Fair P/E Overrides: single pill button ---------------------------
-        st.markdown(
-            "<p style='font-size:0.82rem;font-weight:700;color:#333;margin:4px 0 2px 0'>"
-            "Fair P/E Overrides</p>",
-            unsafe_allow_html=True,
-        )
-        if st.button("Overrides", key="btn_b_ov", use_container_width=False):
-            st.session_state.pill_b_ov = not st.session_state.pill_b_ov
-
-        if st.session_state.pill_b_ov:
-            with st.container():
-                for _tk, _default_pe in PORTFOLIO_B_TICKERS.items():
-                    st.number_input(
-                        f"{_tk}  (P/E)",
-                        min_value=0.1, max_value=200.0,
-                        value=float(_default_pe), step=0.5,
-                        key=f"ov_b_{_tk}",
-                    )
-
-        fair_overrides_b: dict[str, Optional[float]] = {}
-        for _tk, _default_pe in PORTFOLIO_B_TICKERS.items():
-            _val = st.session_state.get(f"ov_b_{_tk}", float(_default_pe))
-            fair_overrides_b[_tk] = _val if _val != _default_pe else None
-
-        # -- Red Flags: Defensives | Growth/Infra pill buttons ----------------
-        _B_DEFENSIVES = ["PG", "KO", "CHD", "CL", "ABBV", "JNJ"]
-        _B_GROWTH = [
-            "NEE", "PGR", "PLD", "TXN", "XOM", "BLK", "BIP",
-            "CB", "AVGO", "FCX", "ITW", "EOG", "EMR", "KMI",
-        ]
-
-        st.markdown(
-            "<p style='font-size:0.82rem;font-weight:700;color:#333;margin:6px 0 2px 0'>"
-            "Red Flags</p>",
-            unsafe_allow_html=True,
-        )
-        with st.container(key="rf_b"):
-            _bc1, _bc2 = st.columns(2)
-            with _bc1:
-                if st.button("Defensives", key="btn_b_rf_def", use_container_width=True):
-                    st.session_state.accordion_redflags_b = None if st.session_state.accordion_redflags_b == "Defensives" else "Defensives"
-            with _bc2:
-                if st.button("Growth/Infra", key="btn_b_rf_growth", use_container_width=True):
-                    st.session_state.accordion_redflags_b = None if st.session_state.accordion_redflags_b == "Growth/Infra" else "Growth/Infra"
-
-        flags_b_changed = False
-        _b_rf_panels = [
-            ("Defensives", _B_DEFENSIVES),
-            ("Growth/Infra", _B_GROWTH),
-        ]
-        for _label, _tickers in _b_rf_panels:
-            if st.session_state.accordion_redflags_b == _label:
-                with st.container():
-                    st.markdown(
-                        f"<p style='font-size:0.75rem;font-weight:700;color:#5a7f6a;"
-                        f"margin:4px 0 2px 0'>{_label}</p>",
-                        unsafe_allow_html=True,
-                    )
-                    for _tk in _tickers:
-                        st.markdown(f"**{_tk}**")
-                        for _fl in FLAG_NAMES:
-                            _cur = st.session_state.red_flags_b.get(_tk, {}).get(_fl, False)
-                            _new = st.checkbox(_fl, value=_cur, key=f"rf_b_{_tk}_{_fl}")
-                            if _new != _cur:
-                                st.session_state.red_flags_b[_tk][_fl] = _new
-                                flags_b_changed = True
-
-        if flags_b_changed:
-            save_red_flags_b(st.session_state.red_flags_b)
-            st.session_state.raw_rows_b = None
-            st.session_state.raw_rows_custom_b = None
-            st.rerun()
-
-        # ── Add a Stock sidebar ───────────────────────────────────────────────
-        st.markdown(
-            "<div style='background:#a07060;color:#fff;padding:4px 10px;border-radius:4px;"
-            "font-weight:700;font-size:18px;margin:10px 0 4px 0;text-align:center'>"
-            "── Add a Stock ──</div>",
-            unsafe_allow_html=True,
-        )
-        with st.container(key="btn_add_stock"):
-            if st.button("+ Add Stock", key="btn_add_stock_toggle", use_container_width=False):
-                st.session_state.pill_add_stock = not st.session_state.pill_add_stock
-
-        if st.session_state.pill_add_stock:
-            st.text_input("Ticker Symbol", key="add_ticker_input", placeholder="e.g. NVDA")
-            st.selectbox(
-                "Add to Portfolio",
-                options=["Portfolio A", "Portfolio B"],
-                key="add_portfolio_select",
-            )
-            st.number_input(
-                "Fair P/E (or Fair P/B)",
-                min_value=0.1, max_value=200.0,
-                value=20.0, step=0.5,
-                key="add_fair_pe_input",
-            )
-
-            _add_col1, _add_col2 = st.columns(2)
-            with _add_col1:
-                with st.container(key="btn_fetch_preview"):
-                    if st.button("Fetch & Preview", key="btn_fetch_preview_btn", use_container_width=True):
-                        _ticker_input = st.session_state.get("add_ticker_input", "").strip().upper()
-                        if _ticker_input:
-                            _preview_info = fetch_info(_ticker_input)
-                            _preview_fins = fetch_financials(_ticker_input)
-                            st.session_state.add_stock_preview = {
-                                "ticker": _ticker_input,
-                                "info": _preview_info,
-                                "fins": _preview_fins,
-                            }
-                        else:
-                            st.session_state.add_stock_preview = None
-
-            with _add_col2:
-                with st.container(key="btn_add_to_portfolio"):
-                    if st.button("Add to Portfolio", key="btn_add_to_port_btn", use_container_width=True):
-                        _ticker_input = st.session_state.get("add_ticker_input", "").strip().upper()
-                        _portfolio_sel = st.session_state.get("add_portfolio_select", "Portfolio A")
-                        _fair_pe_val = float(st.session_state.get("add_fair_pe_input", 20.0))
-                        _port_key = "A" if _portfolio_sel == "Portfolio A" else "B"
-                        _all_existing = (
-                            set(ALL_TICKERS) | set(ALL_TICKERS_B)
-                            | {_ct["ticker"] for _ct in st.session_state.custom_tickers}
-                        )
-                        if not _ticker_input:
-                            st.warning("Enter a ticker symbol.")
-                        elif _ticker_input in _all_existing:
-                            st.warning(f"{_ticker_input} already in portfolios.")
-                        else:
-                            _new_entry = {
-                                "ticker": _ticker_input,
-                                "portfolio": _port_key,
-                                "fair_pe": _fair_pe_val,
-                            }
-                            st.session_state.custom_tickers.append(_new_entry)
-                            save_custom_tickers(st.session_state.custom_tickers)
-                            if _port_key == "A":
-                                st.session_state.red_flags[_ticker_input] = {
-                                    f: False for f in FLAG_NAMES
-                                }
-                                save_red_flags(st.session_state.red_flags)
-                                st.session_state.raw_rows_custom_a = None
-                            else:
-                                st.session_state.red_flags_b[_ticker_input] = {
-                                    f: False for f in FLAG_NAMES
-                                }
-                                save_red_flags_b(st.session_state.red_flags_b)
-                                st.session_state.raw_rows_custom_b = None
-                            st.session_state.add_stock_preview = None
-                            st.rerun()
-
-            # Preview card
-            _preview = st.session_state.add_stock_preview
-            if _preview:
-                _pinfo = _preview["info"]
-                _pfins = _preview.get("fins", {})
-                _pticker = _preview["ticker"]
-                _pprice = _float(_pinfo, "currentPrice") or _float(_pinfo, "regularMarketPrice")
-                _ppe = _float(_pinfo, "trailingPE")
-                _p_op_income = _pfins.get("operatingIncome")
-                _p_tax_rate = _pfins.get("taxRate")
-                _p_total_assets = _pfins.get("totalAssets")
-                _p_curr_liab = _pfins.get("currentLiabilities")
-                _p_cash = _pfins.get("cash")
-                if (_p_op_income is not None and _p_tax_rate is not None and
-                        _p_total_assets is not None and _p_curr_liab is not None and _p_cash is not None):
-                    _p_nopat = _p_op_income * (1.0 - _p_tax_rate)
-                    _p_inv_cap = _p_total_assets - _p_curr_liab - _p_cash
-                    _proic = (_p_nopat / _p_inv_cap * 100.0) if _p_inv_cap > 0 else None
-                else:
-                    _proic = None
-                _pfcf = _float(_pinfo, "freeCashflow")
-                _pmktcap = _float(_pinfo, "marketCap")
-                _pfcfy = (
-                    (_pfcf / _pmktcap * 100.0)
-                    if (_pfcf and _pmktcap and _pmktcap > 0) else None
-                )
-                _prev_raw = _float(_pinfo, "revenueGrowth")
-                _prev_gr = _prev_raw * 100.0 if _prev_raw is not None else None
-                _pde_raw = _float(_pinfo, "debtToEquity")
-                _pde = _pde_raw / 100.0 if _pde_raw is not None else None
-                _pname = _pinfo.get("shortName") or _pinfo.get("longName") or _pticker
-                st.markdown(
-                    f"<div style='background:#e8e4d8;border:1px solid #b0a888;border-radius:6px;"
-                    f"padding:8px 10px;margin-top:6px;font-size:0.8rem;color:#333'>"
-                    f"<b style='font-size:0.9rem;color:#5a3a28'>{_pticker}</b>"
-                    f"<span style='font-size:0.72rem;color:#666;margin-left:6px'>{_pname}</span><br>"
-                    f"<b>Price:</b> {fmt_price(_pprice)} &nbsp; <b>P/E:</b> {fmt_mult(_ppe)}<br>"
-                    f"<b>ROIC:</b> {fmt_pct(_proic)} &nbsp; <b>FCFy:</b> {fmt_pct(_pfcfy)}<br>"
-                    f"<b>RevGr:</b> {fmt_pct(_prev_gr, plus=True)} &nbsp; <b>D/E:</b> {fmt_mult(_pde)}"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
+    # ── Sidebar removed — controls moved inline into each tab ─────────────────
 
     # ── Header ────────────────────────────────────────────────────────────────
     st.title("Munger Toll Bridge Portfolio")
@@ -1685,6 +1390,75 @@ def main() -> None:
                 fetch_news.clear()
                 st.session_state.raw_rows = None
                 st.session_state.raw_rows_custom_a = None
+
+        # ── Dream MoS slider (inline, compact) ───────────────────────────────
+        _mos_c1_a, _mos_c2_a = st.columns([2, 3])
+        with _mos_c1_a:
+            def _sync_mos_to_b():
+                st.session_state.mos_pct_b = st.session_state.mos_pct
+            st.slider(
+                "Dream MoS %  ·  both portfolios",
+                min_value=10, max_value=50, step=5,
+                key="mos_pct",
+                on_change=_sync_mos_to_b,
+                help="Dream = Fair × (1 − MoS%).  Shared with Portfolio B tab.",
+            )
+        mos_pct = st.session_state.mos_pct
+
+        # ── Fair Multiple Override pills (Portfolio A) ────────────────────────
+        with st.container(key="ov_pills_a"):
+            _pl_a, _pc1_a, _pc2_a, _pc3_a, _pad_a = st.columns([2.5, 0.9, 0.9, 0.9, 3.8])
+            with _pl_a:
+                st.markdown(
+                    "<span style='font-size:0.82rem;font-weight:700;color:#333;"
+                    "line-height:2.4'>Fair Multiple Overrides:</span>",
+                    unsafe_allow_html=True,
+                )
+            with _pc1_a:
+                if st.button("Tier 1", key="btn_a_fair_t1", use_container_width=True):
+                    st.session_state.accordion_overrides_a = (
+                        None if st.session_state.accordion_overrides_a == "Tier 1" else "Tier 1"
+                    )
+            with _pc2_a:
+                if st.button("Tier 2", key="btn_a_fair_t2", use_container_width=True):
+                    st.session_state.accordion_overrides_a = (
+                        None if st.session_state.accordion_overrides_a == "Tier 2" else "Tier 2"
+                    )
+            with _pc3_a:
+                if st.button("Tier 3", key="btn_a_fair_t3", use_container_width=True):
+                    st.session_state.accordion_overrides_a = (
+                        None if st.session_state.accordion_overrides_a == "Tier 3" else "Tier 3"
+                    )
+
+        for _tier_name in ["Tier 1", "Tier 2", "Tier 3"]:
+            if st.session_state.accordion_overrides_a == _tier_name:
+                _td_ov = PORTFOLIO[_tier_name]
+                st.markdown(
+                    f"<p style='font-size:0.8rem;font-weight:700;color:#5a7f6a;"
+                    f"margin:4px 0 2px 0'>{_tier_name} — Fair Multiple Overrides</p>",
+                    unsafe_allow_html=True,
+                )
+                _ov_tickers_a = _td_ov["tickers"]
+                for _row_s in range(0, len(_ov_tickers_a), 4):
+                    _row_tks = _ov_tickers_a[_row_s:_row_s + 4]
+                    _ov_cols_a = st.columns(4)
+                    for _ci, _tk in enumerate(_row_tks):
+                        with _ov_cols_a[_ci]:
+                            _dv = float(FAIR_PB.get(_tk, _td_ov["fair_pe"]))
+                            st.number_input(
+                                f"{_tk} ({'P/B' if _tk in USES_PB else 'P/E'})",
+                                min_value=0.1, max_value=200.0,
+                                value=_dv, step=0.5,
+                                key=f"ov_{_tk}",
+                            )
+
+        # Compute fair_overrides from session state (persists whether panel is open)
+        fair_overrides: dict[str, Optional[float]] = {}
+        for _tier_name, _td in PORTFOLIO.items():
+            for _tk in _td["tickers"]:
+                _default_val = float(FAIR_PB.get(_tk, _td["fair_pe"]))
+                _val = st.session_state.get(f"ov_{_tk}", _default_val)
+                fair_overrides[_tk] = _val if _val != _default_val else None
 
         if st.session_state.raw_rows is None:
             progress = st.progress(0, text="Fetching market data…")
@@ -1793,6 +1567,58 @@ ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effecti
                 fetch_news.clear()
                 st.session_state.raw_rows_b = None
                 st.session_state.raw_rows_custom_b = None
+
+        # ── Dream MoS slider (inline, compact) ───────────────────────────────
+        _mos_c1_b, _mos_c2_b = st.columns([2, 3])
+        with _mos_c1_b:
+            def _sync_mos_to_a():
+                st.session_state.mos_pct = st.session_state.mos_pct_b
+            st.slider(
+                "Dream MoS %  ·  both portfolios",
+                min_value=10, max_value=50, step=5,
+                key="mos_pct_b",
+                on_change=_sync_mos_to_a,
+                help="Dream = Fair × (1 − MoS%).  Shared with Portfolio A tab.",
+            )
+        mos_pct = st.session_state.mos_pct_b
+
+        # ── Fair P/E Override pill (Portfolio B) ──────────────────────────────
+        with st.container(key="ov_pill_b"):
+            _pl_b, _pb_btn, _pad_b = st.columns([2.5, 1.2, 5.3])
+            with _pl_b:
+                st.markdown(
+                    "<span style='font-size:0.82rem;font-weight:700;color:#333;"
+                    "line-height:2.4'>Fair P/E Overrides:</span>",
+                    unsafe_allow_html=True,
+                )
+            with _pb_btn:
+                if st.button("Overrides", key="btn_b_ov", use_container_width=True):
+                    st.session_state.pill_b_ov = not st.session_state.pill_b_ov
+
+        if st.session_state.pill_b_ov:
+            st.markdown(
+                "<p style='font-size:0.8rem;font-weight:700;color:#6e8fa0;"
+                "margin:4px 0 2px 0'>Portfolio B — Fair P/E Overrides</p>",
+                unsafe_allow_html=True,
+            )
+            _b_ov_items = list(PORTFOLIO_B_TICKERS.items())
+            for _row_s_b in range(0, len(_b_ov_items), 4):
+                _row_b = _b_ov_items[_row_s_b:_row_s_b + 4]
+                _ov_cols_b = st.columns(4)
+                for _ci_b, (_tk_b, _dp_b) in enumerate(_row_b):
+                    with _ov_cols_b[_ci_b]:
+                        st.number_input(
+                            f"{_tk_b} (P/E)",
+                            min_value=0.1, max_value=200.0,
+                            value=float(_dp_b), step=0.5,
+                            key=f"ov_b_{_tk_b}",
+                        )
+
+        # Compute fair_overrides_b from session state (persists whether panel is open)
+        fair_overrides_b: dict[str, Optional[float]] = {}
+        for _tk_b, _default_pe in PORTFOLIO_B_TICKERS.items():
+            _val_b = st.session_state.get(f"ov_b_{_tk_b}", float(_default_pe))
+            fair_overrides_b[_tk_b] = _val_b if _val_b != _default_pe else None
 
         if st.session_state.raw_rows_b is None:
             progress_b = st.progress(0, text="Fetching market data…")
