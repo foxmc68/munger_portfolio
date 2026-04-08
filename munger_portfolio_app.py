@@ -1271,12 +1271,18 @@ def main() -> None:
         "[data-testid='stSidebar'] .stButton>button:hover{background-color:#5a7f6a;color:#fff}"
         "[data-testid='stSidebar'] .stButton>button:focus{box-shadow:none;outline:none}"
         ".st-key-rf_a .stButton>button{"
-        "background-color:#9b6e6e !important;color:#fff !important}"
+        "font-size:12px;padding:3px 10px;border-radius:20px;height:auto;min-height:0;"
+        "line-height:1.5;font-weight:600;background-color:#9b6e6e !important;color:#fff !important;border:none}"
         ".st-key-rf_a .stButton>button:hover{"
         "background-color:#7f5a5a !important}"
-        ".st-key-rf_b .stButton>button,.st-key-btn_b_ov .stButton>button{"
+        ".st-key-rf_b .stButton>button{"
+        "font-size:12px;padding:3px 10px;border-radius:20px;height:auto;min-height:0;"
+        "line-height:1.5;font-weight:600;background-color:#9b6e6e !important;color:#fff !important;border:none}"
+        ".st-key-rf_b .stButton>button:hover{"
+        "background-color:#7f5a5a !important}"
+        ".st-key-btn_b_ov .stButton>button{"
         "background-color:#6e8fa0 !important;color:#fff !important}"
-        ".st-key-rf_b .stButton>button:hover,.st-key-btn_b_ov .stButton>button:hover{"
+        ".st-key-btn_b_ov .stButton>button:hover{"
         "background-color:#5a7a8c !important}"
         ".st-key-refresh_b button{background-color:#6e8fa0 !important;border-color:#6e8fa0 !important;color:#fff !important}"
         ".st-key-refresh_b button:hover{background-color:#5a7a8c !important;border-color:#5a7a8c !important}"
@@ -1460,6 +1466,57 @@ def main() -> None:
                 _val = st.session_state.get(f"ov_{_tk}", _default_val)
                 fair_overrides[_tk] = _val if _val != _default_val else None
 
+        # ── Red Flags pills (Portfolio A) ─────────────────────────────────────
+        with st.container(key="rf_a"):
+            _rfl_a, _rfc1_a, _rfc2_a, _rfc3_a, _rpad_a = st.columns([2.5, 0.9, 0.9, 0.9, 3.8])
+            with _rfl_a:
+                st.markdown(
+                    "<span style='font-size:0.82rem;font-weight:700;color:#7a4a4a;"
+                    "line-height:2.4'>Red Flags:</span>",
+                    unsafe_allow_html=True,
+                )
+            with _rfc1_a:
+                if st.button("Tier 1", key="btn_a_rf_t1", use_container_width=True):
+                    st.session_state.accordion_redflags_a = (
+                        None if st.session_state.accordion_redflags_a == "Tier 1" else "Tier 1"
+                    )
+            with _rfc2_a:
+                if st.button("Tier 2", key="btn_a_rf_t2", use_container_width=True):
+                    st.session_state.accordion_redflags_a = (
+                        None if st.session_state.accordion_redflags_a == "Tier 2" else "Tier 2"
+                    )
+            with _rfc3_a:
+                if st.button("Tier 3", key="btn_a_rf_t3", use_container_width=True):
+                    st.session_state.accordion_redflags_a = (
+                        None if st.session_state.accordion_redflags_a == "Tier 3" else "Tier 3"
+                    )
+
+        _flags_a_changed = False
+        for _tier_name in ["Tier 1", "Tier 2", "Tier 3"]:
+            if st.session_state.accordion_redflags_a == _tier_name:
+                _td_rf = PORTFOLIO[_tier_name]
+                st.markdown(
+                    f"<p style='font-size:0.8rem;font-weight:700;color:#9b6e6e;"
+                    f"margin:4px 0 2px 0'>{_tier_name} — Red Flags</p>",
+                    unsafe_allow_html=True,
+                )
+                for _tk in _td_rf["tickers"]:
+                    st.markdown(f"**{_tk}**")
+                    _rf_cols = st.columns(len(FLAG_NAMES))
+                    for _fi, _fl in enumerate(FLAG_NAMES):
+                        with _rf_cols[_fi]:
+                            _cur = st.session_state.red_flags.get(_tk, {}).get(_fl, False)
+                            _new = st.checkbox(_fl, value=_cur, key=f"rf_{_tk}_{_fl}")
+                            if _new != _cur:
+                                st.session_state.red_flags[_tk][_fl] = _new
+                                _flags_a_changed = True
+
+        if _flags_a_changed:
+            save_red_flags(st.session_state.red_flags)
+            st.session_state.raw_rows = None
+            st.session_state.raw_rows_custom_a = None
+            st.rerun()
+
         if st.session_state.raw_rows is None:
             progress = st.progress(0, text="Fetching market data…")
             raw_rows: list[dict] = []
@@ -1619,6 +1676,57 @@ ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effecti
         for _tk_b, _default_pe in PORTFOLIO_B_TICKERS.items():
             _val_b = st.session_state.get(f"ov_b_{_tk_b}", float(_default_pe))
             fair_overrides_b[_tk_b] = _val_b if _val_b != _default_pe else None
+
+        # ── Red Flags pills (Portfolio B) ─────────────────────────────────────
+        _B_DEFENSIVES = ["PG", "KO", "CHD", "CL", "ABBV", "JNJ"]
+        _B_GROWTH = [
+            "NEE", "PGR", "PLD", "TXN", "XOM", "BLK", "BIP",
+            "CB", "AVGO", "FCX", "ITW", "EOG", "EMR", "KMI",
+        ]
+
+        with st.container(key="rf_b"):
+            _rfl_b, _rfc1_b, _rfc2_b, _rpad_b = st.columns([2.5, 1.2, 1.2, 4.1])
+            with _rfl_b:
+                st.markdown(
+                    "<span style='font-size:0.82rem;font-weight:700;color:#7a4a4a;"
+                    "line-height:2.4'>Red Flags:</span>",
+                    unsafe_allow_html=True,
+                )
+            with _rfc1_b:
+                if st.button("Defensives", key="btn_b_rf_def", use_container_width=True):
+                    st.session_state.accordion_redflags_b = (
+                        None if st.session_state.accordion_redflags_b == "Defensives" else "Defensives"
+                    )
+            with _rfc2_b:
+                if st.button("Growth/Infra", key="btn_b_rf_growth", use_container_width=True):
+                    st.session_state.accordion_redflags_b = (
+                        None if st.session_state.accordion_redflags_b == "Growth/Infra" else "Growth/Infra"
+                    )
+
+        _flags_b_changed = False
+        for _label_b, _tickers_b in [("Defensives", _B_DEFENSIVES), ("Growth/Infra", _B_GROWTH)]:
+            if st.session_state.accordion_redflags_b == _label_b:
+                st.markdown(
+                    f"<p style='font-size:0.8rem;font-weight:700;color:#9b6e6e;"
+                    f"margin:4px 0 2px 0'>{_label_b} — Red Flags</p>",
+                    unsafe_allow_html=True,
+                )
+                for _tk_rf in _tickers_b:
+                    st.markdown(f"**{_tk_rf}**")
+                    _rf_cols_b = st.columns(len(FLAG_NAMES))
+                    for _fi_b, _fl_b in enumerate(FLAG_NAMES):
+                        with _rf_cols_b[_fi_b]:
+                            _cur_b = st.session_state.red_flags_b.get(_tk_rf, {}).get(_fl_b, False)
+                            _new_b = st.checkbox(_fl_b, value=_cur_b, key=f"rf_b_{_tk_rf}_{_fl_b}")
+                            if _new_b != _cur_b:
+                                st.session_state.red_flags_b[_tk_rf][_fl_b] = _new_b
+                                _flags_b_changed = True
+
+        if _flags_b_changed:
+            save_red_flags_b(st.session_state.red_flags_b)
+            st.session_state.raw_rows_b = None
+            st.session_state.raw_rows_custom_b = None
+            st.rerun()
 
         if st.session_state.raw_rows_b is None:
             progress_b = st.progress(0, text="Fetching market data…")
@@ -2076,6 +2184,97 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             "Entry prices and P/E targets are pre-set conviction levels, not buy recommendations. "
             "Data: Yahoo Finance via yfinance.  Not financial advice."
         )
+
+        # ── Add Stock to Custom Watchlist ─────────────────────────────────────
+        with st.expander("Add Stock to Custom Watchlist", expanded=False):
+            st.markdown(
+                "<p style='font-size:0.82rem;color:#555;margin:0 0 8px 0'>"
+                "Add a ticker to the Portfolio A or B custom watchlist with your own fair multiple.</p>",
+                unsafe_allow_html=True,
+            )
+            _add_c1, _add_c2, _add_c3 = st.columns([2, 2, 2])
+            with _add_c1:
+                st.text_input("Ticker Symbol", key="add_ticker_input", placeholder="e.g. NVDA")
+            with _add_c2:
+                st.selectbox(
+                    "Add to Portfolio",
+                    options=["Portfolio A", "Portfolio B"],
+                    key="add_portfolio_select",
+                )
+            with _add_c3:
+                st.number_input(
+                    "Fair P/E (or Fair P/B)",
+                    min_value=0.1, max_value=200.0,
+                    value=20.0, step=0.5,
+                    key="add_fair_pe_input",
+                )
+
+            _btn_col1, _btn_col2, _btn_col3 = st.columns([1.5, 1.5, 5])
+            with _btn_col1:
+                with st.container(key="btn_fetch_preview"):
+                    if st.button("Fetch & Preview", key="btn_fetch_preview_btn", use_container_width=True):
+                        _ticker_input = st.session_state.get("add_ticker_input", "").strip().upper()
+                        if _ticker_input:
+                            _preview_info = fetch_info(_ticker_input)
+                            _preview_fins = fetch_financials(_ticker_input)
+                            st.session_state.add_stock_preview = {
+                                "ticker": _ticker_input,
+                                "info": _preview_info,
+                                "fins": _preview_fins,
+                            }
+                        else:
+                            st.session_state.add_stock_preview = None
+
+            with _btn_col2:
+                with st.container(key="btn_add_to_portfolio"):
+                    if st.button("Add to Portfolio", key="btn_add_to_port_btn", use_container_width=True):
+                        _ticker_input = st.session_state.get("add_ticker_input", "").strip().upper()
+                        _portfolio_sel = st.session_state.get("add_portfolio_select", "Portfolio A")
+                        _fair_pe_val = float(st.session_state.get("add_fair_pe_input", 20.0))
+                        _port_key = "A" if _portfolio_sel == "Portfolio A" else "B"
+                        _all_existing = (
+                            set(ALL_TICKERS) | set(ALL_TICKERS_B)
+                            | {_ct["ticker"] for _ct in st.session_state.custom_tickers}
+                        )
+                        if not _ticker_input:
+                            st.warning("Enter a ticker symbol.")
+                        elif _ticker_input in _all_existing:
+                            st.warning(f"{_ticker_input} already in portfolios.")
+                        else:
+                            _new_entry = {
+                                "ticker": _ticker_input,
+                                "portfolio": _port_key,
+                                "fair_pe": _fair_pe_val,
+                            }
+                            st.session_state.custom_tickers.append(_new_entry)
+                            save_custom_tickers(st.session_state.custom_tickers)
+                            if _port_key == "A":
+                                st.session_state.red_flags[_ticker_input] = {
+                                    f: False for f in FLAG_NAMES
+                                }
+                                save_red_flags(st.session_state.red_flags)
+                                st.session_state.raw_rows_custom_a = None
+                            else:
+                                st.session_state.red_flags_b[_ticker_input] = {
+                                    f: False for f in FLAG_NAMES
+                                }
+                                save_red_flags_b(st.session_state.red_flags_b)
+                                st.session_state.raw_rows_custom_b = None
+                            st.session_state.add_stock_preview = None
+                            st.rerun()
+
+            _preview = st.session_state.add_stock_preview
+            if _preview:
+                _pinfo = _preview["info"]
+                _pticker = _preview["ticker"]
+                _pprice = _float(_pinfo, "currentPrice") or _float(_pinfo, "regularMarketPrice")
+                _ppe = _float(_pinfo, "trailingPE")
+                _pname = _pinfo.get("shortName", _pticker)
+                st.markdown(
+                    f"**{_pticker}** — {_pname}  ·  "
+                    f"Price: {'${:,.2f}'.format(_pprice) if _pprice else '—'}  ·  "
+                    f"Trailing P/E: {'{:.1f}'.format(_ppe) if _ppe else '—'}"
+                )
 
     # ══════════════════════════════════════════════════════════════════════════
     # MACRO SIGNALS
