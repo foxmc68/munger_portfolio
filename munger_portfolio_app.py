@@ -2204,7 +2204,12 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             "</div>",
             unsafe_allow_html=True,
         )
-        st.markdown(_wl_header_html + _wl_rows_html(_rows_add), unsafe_allow_html=True)
+        st.markdown(
+            "<div style='overflow-x:auto;width:100%'>"
+            + _wl_header_html + _wl_rows_html(_rows_add)
+            + "</div>",
+            unsafe_allow_html=True,
+        )
 
         st.markdown("<div style='margin-top:18px'></div>", unsafe_allow_html=True)
 
@@ -2217,7 +2222,12 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             "</div>",
             unsafe_allow_html=True,
         )
-        st.markdown(_wl_header_html + _wl_rows_html(_rows_new), unsafe_allow_html=True)
+        st.markdown(
+            "<div style='overflow-x:auto;width:100%'>"
+            + _wl_header_html + _wl_rows_html(_rows_new)
+            + "</div>",
+            unsafe_allow_html=True,
+        )
 
         st.divider()
         st.markdown(
