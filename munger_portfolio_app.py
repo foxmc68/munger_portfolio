@@ -2177,9 +2177,14 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
                 ]
 
                 cells_html = "".join(
-                    f"<div style='flex:0 0 {w};text-align:{a};padding:0 5px;"
-                    f"overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:{_fg}'>"
-                    f"{val}</div>"
+                    (
+                        f"<div style='flex:0 0 {w};text-align:{a};padding:0 5px;"
+                        f"white-space:normal;word-wrap:break-word;color:{_fg}'>"
+                        if w == "34%"
+                        else
+                        f"<div style='flex:0 0 {w};text-align:{a};padding:0 5px;"
+                        f"overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:{_fg}'>"
+                    ) + f"{val}</div>"
                     for val, w, a in _cells_data
                 )
                 html += (
