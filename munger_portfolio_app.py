@@ -60,7 +60,6 @@ ALL_TICKERS: list[str] = [t for td in PORTFOLIO.values() for t in td["tickers"]]
 #   PGR  18 – superior underwriting discipline, best-in-class insurer
 #   PG   24 – wide-moat consumer staples, durable pricing power
 #   KMI  16 – midstream infrastructure, stable contracted cash flows
-#   KMB  20 – global consumer staples, strong dividend history
 #   KO   24 – iconic brand moat, Munger/Buffett cornerstone holding
 #   PLD  28 – premier industrial REIT, logistics demand tailwind
 #   TXN  22 – analog semiconductor leader, high-margin capital-light model
@@ -83,7 +82,6 @@ PORTFOLIO_B_TICKERS: dict[str, float] = {
     "PGR":  18.0,
     "PG":   24.0,
     "KMI":  16.0,
-    "KMB":  20.0,
     "KO":   24.0,
     "PLD":  28.0,
     "TXN":  22.0,
@@ -166,6 +164,12 @@ RETIRED_STOCKS: list[dict] = [
         "from_portfolio": "B",
         "date_retired": "2026-04-04",
         "removal_reason": "Serial execution underperformer, pricing pressure, ROIC 8% mediocre for medical devices",
+    },
+    {
+        "ticker": "KMB",
+        "from_portfolio": "B",
+        "date_retired": "2026-04-08",
+        "removal_reason": "Debt/equity of 4.65 far exceeds 0.5 threshold — 30 years of debt-funded buybacks and dividends. Acquired Kenvue (J&J consumer spinoff including talc liability) for $48B with borrowed money. Private label competition in diapers and paper products limiting growth. Business going nowhere.",
     },
 ]
 
@@ -286,6 +290,26 @@ WAIT_LIST_NEW: list[dict] = [
         "add_more_at": 47000.0,
         "currency_symbol": "¥",
         "note": "Keyence — Japanese sensor/automation monopoly. 50%+ net margins, ~15% growth, zero debt. Wait for macro-driven Japan selloff to compress to 34×.",
+    },
+    {
+        "ticker": "WTKWY",
+        "metric": "P/E",
+        "entry_pe_target": 30,
+        "entry_low": 60.0,
+        "entry_high": 65.0,
+        "add_more_at": 55.0,
+        "currency_symbol": "$",
+        "note": "Professional information services monopoly — tax, legal, compliance, health. Structural analog to FICO. Subscription model with near-zero churn. US ADR available.",
+    },
+    {
+        "ticker": "CLPBY",
+        "metric": "P/E",
+        "entry_pe_target": 28,
+        "entry_low": 12.0,
+        "entry_high": 14.0,
+        "add_more_at": 10.0,
+        "currency_symbol": "$",
+        "note": "Danish medical device compounder. Ostomy and continence care — deeply personal, high switching cost, recurring consumable revenue. Slower compounder suited to income allocation. US ADR available.",
     },
 ]
 
@@ -1471,7 +1495,7 @@ def main() -> None:
             fair_overrides_b[_tk] = _val if _val != _default_pe else None
 
         # -- Red Flags: Defensives | Growth/Infra pill buttons ----------------
-        _B_DEFENSIVES = ["PG", "KMB", "KO", "CHD", "CL", "ABBV", "JNJ"]
+        _B_DEFENSIVES = ["PG", "KO", "CHD", "CL", "ABBV", "JNJ"]
         _B_GROWTH = [
             "NEE", "PGR", "PLD", "TXN", "XOM", "BLK", "BIP",
             "CB", "AVGO", "FCX", "ITW", "EOG", "EMR", "KMI",
@@ -1853,7 +1877,6 @@ ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effecti
 | PGR | 18 | Superior underwriting discipline, best-in-class combined ratio |
 | PG | 24 | Wide-moat consumer staples, durable global pricing power |
 | KMI | 16 | Midstream infrastructure, stable fee-based contracted cash flows |
-| KMB | 20 | Global consumer staples, consistent dividend compounder |
 | KO | 24 | Iconic brand moat, Munger/Buffett cornerstone holding |
 | PLD | 28 | Premier industrial REIT, secular logistics demand tailwind |
 | TXN | 22 | Analog semiconductor leader, high-margin capital-light model |
