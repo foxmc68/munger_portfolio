@@ -172,13 +172,17 @@ RETIRED_STOCKS: list[dict] = [
 ALL_TICKERS_RETIRED: list[str] = [s["ticker"] for s in RETIRED_STOCKS]
 
 # ── Wait List ─────────────────────────────────────────────────────────────────
-# Stocks not yet in either portfolio — waiting for specific price/PE entry targets.
+# Two sections:
+#   WAIT_LIST_ADD  — existing holdings in Portfolio A or B waiting for a lower
+#                    price to size up the position.
+#   WAIT_LIST_NEW  — quality businesses not yet in either portfolio.
+#
 # entry_pe_target: the P/E (or FCF multiple for CSU.TO) at which we'd buy.
 # entry_low / entry_high: the price range we're targeting.
 # add_more_at: secondary add price if position opened and keeps dropping.
 # currency_symbol: display prefix for prices ($ / C$ / ¥).
 
-WAIT_LIST: list[dict] = [
+WAIT_LIST_ADD: list[dict] = [
     {
         "ticker": "GOOGL",
         "metric": "P/E",
@@ -188,6 +192,16 @@ WAIT_LIST: list[dict] = [
         "add_more_at": 120.0,
         "currency_symbol": "$",
         "note": "Search / YouTube / Cloud at 16× trailing P/E only. Regulatory and AI disruption risk to search revenue demands valuation discipline.",
+    },
+    {
+        "ticker": "V",
+        "metric": "P/E",
+        "entry_pe_target": 25,
+        "entry_low": 295.0,
+        "entry_high": 310.0,
+        "add_more_at": 265.0,
+        "currency_symbol": "$",
+        "note": "Already own V in Portfolio A Tier 1 — sizing up existing position only. Need 25× trailing P/E entry; current premium too high to add.",
     },
     {
         "ticker": "ASML",
@@ -200,15 +214,18 @@ WAIT_LIST: list[dict] = [
         "note": "Sole supplier of EUV lithography — unmatched global moat. 24× is our ceiling; chip cycle uncertainty demands patience.",
     },
     {
-        "ticker": "V",
+        "ticker": "COST",
         "metric": "P/E",
-        "entry_pe_target": 25,
-        "entry_low": 295.0,
-        "entry_high": 310.0,
-        "add_more_at": 265.0,
+        "entry_pe_target": 43,
+        "entry_low": 800.0,
+        "entry_high": 830.0,
+        "add_more_at": 700.0,
         "currency_symbol": "$",
-        "note": "Already own V in Portfolio A Tier 1 — sizing up existing position only. Need 25× trailing P/E entry; current premium too high to add.",
+        "note": "World's best retailer. Membership moat compounds indefinitely. 43× is our absolute ceiling — waiting for a recession scare to compress the multiple.",
     },
+]
+
+WAIT_LIST_NEW: list[dict] = [
     {
         "ticker": "NVO",
         "metric": "P/E",
@@ -237,17 +254,7 @@ WAIT_LIST: list[dict] = [
         "entry_high": 245.0,
         "add_more_at": 210.0,
         "currency_symbol": "$",
-        "note": "Premium credit card network with superior spend data moat. Already own in Portfolio A Tier 2 — sizing up at 17× only. Currently priced for perfection.",
-    },
-    {
-        "ticker": "COST",
-        "metric": "P/E",
-        "entry_pe_target": 43,
-        "entry_low": 800.0,
-        "entry_high": 830.0,
-        "add_more_at": 700.0,
-        "currency_symbol": "$",
-        "note": "World's best retailer. Membership moat compounds indefinitely. 43× is our absolute ceiling — waiting for a recession scare to compress the multiple.",
+        "note": "Premium credit card network with superior spend data moat. 17× trailing P/E is our entry ceiling; currently priced for perfection.",
     },
     {
         "ticker": "FICO",
@@ -281,6 +288,9 @@ WAIT_LIST: list[dict] = [
         "note": "Keyence — Japanese sensor/automation monopoly. 50%+ net margins, ~15% growth, zero debt. Wait for macro-driven Japan selloff to compress to 34×.",
     },
 ]
+
+# Combined list — used for fetching and ticker registration
+WAIT_LIST: list[dict] = WAIT_LIST_ADD + WAIT_LIST_NEW
 
 ALL_TICKERS_WAITLIST: list[str] = [s["ticker"] for s in WAIT_LIST]
 
@@ -1972,8 +1982,7 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
         st.markdown(
             "<div style='background:#6a7a4e;color:#fff;padding:10px 16px;border-radius:6px;"
             "margin-bottom:12px'>"
-            "<strong>Wait List</strong> — Quality businesses not yet in Portfolio A or B. "
-            "Each has a specific entry price target based on a Munger-style fair multiple. "
+            "<strong>Wait List</strong> — Entry price targets for both existing holdings and new positions. "
             "Status: <b>ENTER</b> = price at or below entry range · "
             "<b>CLOSE</b> = within 10% of range · <b>WAIT</b> = more than 10% above range."
             "</div>",
@@ -2008,7 +2017,7 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
                 f"Data: Yahoo Finance (yfinance)"
             )
 
-        # ── Summary metrics ───────────────────────────────────────────────────
+        # ── Combined summary metrics (both sections) ──────────────────────────
         _wl_enter = sum(1 for r in raw_rows_waitlist if r["status"] == "ENTER")
         _wl_close = sum(1 for r in raw_rows_waitlist if r["status"] == "CLOSE")
         _wl_wait  = sum(1 for r in raw_rows_waitlist if r["status"] == "WAIT")
@@ -2046,7 +2055,7 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             "N/A":   "#555555",
         }
 
-        # ── Table header ──────────────────────────────────────────────────────
+        # ── Column definitions ────────────────────────────────────────────────
         _WL_COLS: list[tuple[str, str, str]] = [
             # (header, width, align)
             ("Ticker",          "11%",  "left"),
@@ -2060,104 +2069,132 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             ("Note",            "34%",  "left"),
         ]
 
-        _wl_header_cells = "".join(
-            f"<div style='flex:0 0 {w};text-align:{a};padding:0 5px;"
-            f"overflow:hidden;white-space:nowrap;text-overflow:ellipsis'>{h}</div>"
-            for h, w, a in _WL_COLS
-        )
-        st.markdown(
+        _wl_header_html = (
             "<div style='display:flex;align-items:center;"
             "background:#555;color:#fff;"
             "font-size:0.71rem;font-weight:700;padding:4px 0;"
             "font-family:monospace;border-radius:3px 3px 0 0'>"
-            + _wl_header_cells + "</div>",
-            unsafe_allow_html=True,
+            + "".join(
+                f"<div style='flex:0 0 {w};text-align:{a};padding:0 5px;"
+                f"overflow:hidden;white-space:nowrap;text-overflow:ellipsis'>{h}</div>"
+                for h, w, a in _WL_COLS
+            )
+            + "</div>"
         )
 
-        # ── Table rows ────────────────────────────────────────────────────────
-        rows_html = ""
-        for r in raw_rows_waitlist:
-            _status = r["status"]
-            _bg = _WL_ROW_BG.get(_status, "#d8d8d8")
-            _fg = _WL_ROW_FG.get(_status, "#555555")
-            _sbg = _WL_STATUS_BG.get(_status, "#777777")
-            _sfg = _WL_STATUS_FG.get(_status, "#dddddd")
+        def _wl_rows_html(rows: list[dict]) -> str:
+            """Render a list of waitlist row dicts as HTML table rows."""
+            html = ""
+            for r in rows:
+                _status = r["status"]
+                _bg = _WL_ROW_BG.get(_status, "#d8d8d8")
+                _fg = _WL_ROW_FG.get(_status, "#555555")
+                _sbg = _WL_STATUS_BG.get(_status, "#777777")
+                _sfg = _WL_STATUS_FG.get(_status, "#dddddd")
 
-            _sym = r["currency_symbol"]
-            _metric_lbl = r["metric"]
+                _sym = r["currency_symbol"]
+                _metric_lbl = r["metric"]
 
-            # Format price
-            if r["price"] is not None:
-                if _sym == "¥":
-                    _price_str = f"¥{r['price']:,.0f}"
-                elif _sym == "C$":
-                    _price_str = f"C${r['price']:,.2f}"
+                # Format price
+                if r["price"] is not None:
+                    if _sym == "¥":
+                        _price_str = f"¥{r['price']:,.0f}"
+                    elif _sym == "C$":
+                        _price_str = f"C${r['price']:,.2f}"
+                    else:
+                        _price_str = f"${r['price']:,.2f}"
                 else:
-                    _price_str = f"${r['price']:,.2f}"
-            else:
-                _price_str = "—"
+                    _price_str = "—"
 
-            # Format P/E
-            _pe_str = f"{r['pe']:.1f}" if r["pe"] is not None else "—"
+                # Format P/E
+                _pe_str = f"{r['pe']:.1f}" if r["pe"] is not None else "—"
 
-            # Format entry range
-            if _sym == "¥":
-                _range_str = f"¥{r['entry_low']:,.0f}–{r['entry_high']:,.0f}"
-            elif _sym == "C$":
-                _range_str = f"C${r['entry_low']:,.0f}–{r['entry_high']:,.0f}"
-            else:
-                _range_str = f"${r['entry_low']:,.0f}–{r['entry_high']:,.0f}"
+                # Format entry range
+                if _sym == "¥":
+                    _range_str = f"¥{r['entry_low']:,.0f}–{r['entry_high']:,.0f}"
+                elif _sym == "C$":
+                    _range_str = f"C${r['entry_low']:,.0f}–{r['entry_high']:,.0f}"
+                else:
+                    _range_str = f"${r['entry_low']:,.0f}–{r['entry_high']:,.0f}"
 
-            # Format entry target
-            _tgt_str = f"{_metric_lbl} {r['entry_pe_target']}×"
+                # Format entry target
+                _tgt_str = f"{_metric_lbl} {r['entry_pe_target']}×"
 
-            # Format add-more-at
-            if _sym == "¥":
-                _add_str = f"¥{r['add_more_at']:,.0f}"
-            elif _sym == "C$":
-                _add_str = f"C${r['add_more_at']:,.0f}"
-            else:
-                _add_str = f"${r['add_more_at']:,.0f}"
+                # Format add-more-at
+                if _sym == "¥":
+                    _add_str = f"¥{r['add_more_at']:,.0f}"
+                elif _sym == "C$":
+                    _add_str = f"C${r['add_more_at']:,.0f}"
+                else:
+                    _add_str = f"${r['add_more_at']:,.0f}"
 
-            # Format gap
-            if r["gap_pct"] is not None:
-                _gap_str = f"{r['gap_pct']:+.1f}%"
-            else:
-                _gap_str = "—"
+                # Format gap
+                if r["gap_pct"] is not None:
+                    _gap_str = f"{r['gap_pct']:+.1f}%"
+                else:
+                    _gap_str = "—"
 
-            # Status pill
-            _status_pill = (
-                f"<span style='background:{_sbg};color:{_sfg};"
-                f"padding:2px 6px;border-radius:10px;font-size:0.72rem;"
-                f"font-weight:700;white-space:nowrap'>{_status}</span>"
-            )
+                # Status pill
+                _status_pill = (
+                    f"<span style='background:{_sbg};color:{_sfg};"
+                    f"padding:2px 6px;border-radius:10px;font-size:0.72rem;"
+                    f"font-weight:700;white-space:nowrap'>{_status}</span>"
+                )
 
-            _cells_data = [
-                (r["display_ticker"], "11%", "left"),
-                (_price_str,          "7%",  "right"),
-                (_pe_str,             "5%",  "right"),
-                (_range_str,          "12%", "center"),
-                (_tgt_str,            "8%",  "center"),
-                (_add_str,            "9%",  "right"),
-                (_gap_str,            "7%",  "right"),
-                (_status_pill,        "7%",  "center"),
-                (r["note"],           "34%", "left"),
-            ]
+                _cells_data = [
+                    (r["display_ticker"], "11%", "left"),
+                    (_price_str,          "7%",  "right"),
+                    (_pe_str,             "5%",  "right"),
+                    (_range_str,          "12%", "center"),
+                    (_tgt_str,            "8%",  "center"),
+                    (_add_str,            "9%",  "right"),
+                    (_gap_str,            "7%",  "right"),
+                    (_status_pill,        "7%",  "center"),
+                    (r["note"],           "34%", "left"),
+                ]
 
-            cells_html = "".join(
-                f"<div style='flex:0 0 {w};text-align:{a};padding:0 5px;"
-                f"overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:{_fg}'>"
-                f"{val}</div>"
-                for val, w, a in _cells_data
-            )
-            rows_html += (
-                f"<div style='display:flex;align-items:center;background:{_bg};"
-                f"font-size:0.77rem;padding:4px 0;"
-                f"font-family:monospace;border-bottom:1px solid rgba(0,0,0,0.08)'>"
-                + cells_html + "</div>"
-            )
+                cells_html = "".join(
+                    f"<div style='flex:0 0 {w};text-align:{a};padding:0 5px;"
+                    f"overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:{_fg}'>"
+                    f"{val}</div>"
+                    for val, w, a in _cells_data
+                )
+                html += (
+                    f"<div style='display:flex;align-items:center;background:{_bg};"
+                    f"font-size:0.77rem;padding:4px 0;"
+                    f"font-family:monospace;border-bottom:1px solid rgba(0,0,0,0.08)'>"
+                    + cells_html + "</div>"
+                )
+            return html
 
-        st.markdown(rows_html, unsafe_allow_html=True)
+        # ── Build per-section row sets from the combined fetched list ─────────
+        _add_tickers = {s["ticker"] for s in WAIT_LIST_ADD}
+        _rows_add = [r for r in raw_rows_waitlist if r["ticker"] in _add_tickers]
+        _rows_new = [r for r in raw_rows_waitlist if r["ticker"] not in _add_tickers]
+
+        # ── Section 1: Add to Position ────────────────────────────────────────
+        st.markdown(
+            "<div style='background:#4a6080;color:#fff;padding:8px 14px;border-radius:5px;"
+            "margin-top:6px;margin-bottom:6px'>"
+            "<strong>Add to Position</strong> — Stocks already held in Portfolio A or B. "
+            "Waiting for a lower price to size up existing positions at better valuations."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(_wl_header_html + _wl_rows_html(_rows_add), unsafe_allow_html=True)
+
+        st.markdown("<div style='margin-top:18px'></div>", unsafe_allow_html=True)
+
+        # ── Section 2: New Positions ──────────────────────────────────────────
+        st.markdown(
+            "<div style='background:#6a5a30;color:#fff;padding:8px 14px;border-radius:5px;"
+            "margin-bottom:6px'>"
+            "<strong>New Positions</strong> — Quality businesses not yet in either portfolio. "
+            "Each has a Munger-style fair multiple entry target; waiting for price to come to us."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(_wl_header_html + _wl_rows_html(_rows_new), unsafe_allow_html=True)
 
         st.divider()
         st.markdown(
