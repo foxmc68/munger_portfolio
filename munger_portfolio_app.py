@@ -2909,17 +2909,15 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
         if "deployment_portfolio_size" not in st.session_state:
             st.session_state["deployment_portfolio_size"] = 3_000_000
 
-        col_ps, col_ps_spacer = st.columns([2, 5])
-        with col_ps:
-            portfolio_size = st.number_input(
-                "Portfolio Size ($)",
-                min_value=10_000,
-                max_value=100_000_000,
-                step=50_000,
-                value=st.session_state["deployment_portfolio_size"],
-                key="deployment_portfolio_size",
-                format="%d",
-            )
+        portfolio_size = st.number_input(
+            "Portfolio Size ($)",
+            min_value=10_000,
+            max_value=100_000_000,
+            step=50_000,
+            value=st.session_state["deployment_portfolio_size"],
+            key="deployment_portfolio_size",
+            format="%d",
+        )
 
         def _fmt_dollars(amount: float) -> str:
             return f"${amount:,.0f}"
@@ -2995,17 +2993,17 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
                 alloc_amt = portfolio_size * alloc / 100
                 rows_html += (
                     f"<tr style='background:{bg}'>"
-                    f"<td style='padding:5px 12px;color:#1a1a1a;font-weight:700;font-size:0.88rem'>{ticker}</td>"
-                    f"<td style='padding:5px 12px;color:{accent};font-weight:700;font-size:0.88rem;text-align:right'>{alloc}%</td>"
-                    f"<td style='padding:5px 12px;color:#333;font-size:0.88rem;text-align:right'>{_fmt_dollars(alloc_amt)}</td>"
+                    f"<td style='padding:2px 8px;color:#1a1a1a;font-weight:700;font-size:12px'>{ticker}</td>"
+                    f"<td style='padding:2px 8px;color:{accent};font-weight:700;font-size:12px;text-align:right'>{alloc}%</td>"
+                    f"<td style='padding:2px 8px;color:#333;font-size:12px;text-align:right'>{_fmt_dollars(alloc_amt)}</td>"
                     f"</tr>"
                 )
             st.markdown(
                 f"<table style='width:100%;border-collapse:collapse;border-radius:5px;overflow:hidden;border:1px solid #e0e0e0'>"
                 f"<thead><tr style='background:#ececec'>"
-                f"<th style='padding:5px 12px;color:#555;font-size:0.75rem;font-weight:700;text-align:left'>Ticker</th>"
-                f"<th style='padding:5px 12px;color:#555;font-size:0.75rem;font-weight:700;text-align:right'>Alloc %</th>"
-                f"<th style='padding:5px 12px;color:#555;font-size:0.75rem;font-weight:700;text-align:right'>Amount</th>"
+                f"<th style='padding:2px 8px;color:#555;font-size:11px;font-weight:700;text-align:left'>Ticker</th>"
+                f"<th style='padding:2px 8px;color:#555;font-size:11px;font-weight:700;text-align:right'>Alloc %</th>"
+                f"<th style='padding:2px 8px;color:#555;font-size:11px;font-weight:700;text-align:right'>Amount</th>"
                 f"</tr></thead><tbody>{rows_html}</tbody></table>",
                 unsafe_allow_html=True,
             )
@@ -3021,70 +3019,72 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
 
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # ── Tranche 0 ─────────────────────────────────────────────────────────
-        _render_tranche_card(
-            tranche_num=0,
-            tranche_title="Deploy Now",
-            market_condition="Current market — thesis-consistent names at fair-to-good prices",
-            sgov_remaining_pct=75,
-            deploy_pct=25,
-            stocks=[
-                ("BRK-B", 4), ("MSFT", 3), ("CME", 3), ("CVX", 3),
-                ("COP", 2), ("EPD", 2), ("BAM", 3), ("CNI", 2),
-                ("FNV", 2), ("PM", 2), ("MCO", 2), ("RMS.PA", 2),
-            ],
-            note="Deploy now into these 12 names. Retain 75% in SGOV as dry powder.",
-            accent="#7caa7c",
-            accent_dark="#4d7a4d",
-        )
+        # ── Tranches 0 & 1 (top row) ──────────────────────────────────────────
+        _col_t0, _col_t1 = st.columns(2)
+        with _col_t0:
+            _render_tranche_card(
+                tranche_num=0,
+                tranche_title="Deploy Now",
+                market_condition="Current market — thesis-consistent names at fair-to-good prices",
+                sgov_remaining_pct=75,
+                deploy_pct=25,
+                stocks=[
+                    ("BRK-B", 4), ("MSFT", 3), ("CME", 3), ("CVX", 3),
+                    ("COP", 2), ("EPD", 2), ("BAM", 3), ("CNI", 2),
+                    ("FNV", 2), ("PM", 2), ("MCO", 2), ("RMS.PA", 2),
+                ],
+                note="Deploy now into these 12 names. Retain 75% in SGOV as dry powder.",
+                accent="#7caa7c",
+                accent_dark="#4d7a4d",
+            )
+        with _col_t1:
+            _render_tranche_card(
+                tranche_num=1,
+                tranche_title="S&P -10%",
+                market_condition="S&P 500 down 10%, VIX 25–30",
+                sgov_remaining_pct=55,
+                deploy_pct=20,
+                stocks=[
+                    ("GOOGL", 2), ("ASML", 2), ("MSFT add", 2), ("SPGI add", 2),
+                    ("V", 2), ("NVO", 2), ("AXP", 2),
+                ],
+                note="Focus on wait-list names that have reached entry targets.",
+                accent="#c8a040",
+                accent_dark="#8a6a20",
+            )
 
-        # ── Tranche 1 ─────────────────────────────────────────────────────────
-        _render_tranche_card(
-            tranche_num=1,
-            tranche_title="S&P -10%",
-            market_condition="S&P 500 down 10%, VIX 25–30",
-            sgov_remaining_pct=55,
-            deploy_pct=20,
-            stocks=[
-                ("GOOGL", 2), ("ASML", 2), ("MSFT add", 2), ("SPGI add", 2),
-                ("V", 2), ("NVO", 2), ("AXP", 2),
-            ],
-            note="Focus on wait-list names that have reached entry targets.",
-            accent="#c8a040",
-            accent_dark="#8a6a20",
-        )
-
-        # ── Tranche 2 ─────────────────────────────────────────────────────────
-        _render_tranche_card(
-            tranche_num=2,
-            tranche_title="S&P -20%",
-            market_condition="S&P 500 down 20%, VIX 35–40, bond market stress",
-            sgov_remaining_pct=30,
-            deploy_pct=25,
-            stocks=[
-                ("COST", 3), ("FICO", 2), ("Keyence", 3), ("V add", 2),
-                ("EQNR", 3), ("BRK-B add", 2), ("CME add", 2),
-            ],
-            note="High-quality names genuinely on sale. This is the Munger buying environment.",
-            accent="#c87858",
-            accent_dark="#8a4830",
-        )
-
-        # ── Tranche 3 ─────────────────────────────────────────────────────────
-        _render_tranche_card(
-            tranche_num=3,
-            tranche_title="S&P -35%",
-            market_condition="S&P 500 down 35%+, VIX 45+, crisis conditions",
-            sgov_remaining_pct=10,
-            deploy_pct=20,
-            stocks=[
-                ("COST full", 4), ("FICO add", 2), ("CSU.TO", 3), ("ASML add", 2),
-                ("Size up best names", 3), ("Keyence add", 2),
-            ],
-            note="Maximum deployment event. Remaining 10% SGOV is permanent reserve only.",
-            accent="#c84040",
-            accent_dark="#8a1818",
-        )
+        # ── Tranches 2 & 3 (bottom row) ───────────────────────────────────────
+        _col_t2, _col_t3 = st.columns(2)
+        with _col_t2:
+            _render_tranche_card(
+                tranche_num=2,
+                tranche_title="S&P -20%",
+                market_condition="S&P 500 down 20%, VIX 35–40, bond market stress",
+                sgov_remaining_pct=30,
+                deploy_pct=25,
+                stocks=[
+                    ("COST", 3), ("FICO", 2), ("Keyence", 3), ("V add", 2),
+                    ("EQNR", 3), ("BRK-B add", 2), ("CME add", 2),
+                ],
+                note="High-quality names genuinely on sale. This is the Munger buying environment.",
+                accent="#c87858",
+                accent_dark="#8a4830",
+            )
+        with _col_t3:
+            _render_tranche_card(
+                tranche_num=3,
+                tranche_title="S&P -35%",
+                market_condition="S&P 500 down 35%+, VIX 45+, crisis conditions",
+                sgov_remaining_pct=10,
+                deploy_pct=20,
+                stocks=[
+                    ("COST full", 4), ("FICO add", 2), ("CSU.TO", 3), ("ASML add", 2),
+                    ("Size up best names", 3), ("Keyence add", 2),
+                ],
+                note="Maximum deployment event. Remaining 10% SGOV is permanent reserve only.",
+                accent="#c84040",
+                accent_dark="#8a1818",
+            )
 
         # ── Permanent reserve note ─────────────────────────────────────────────
         st.markdown(
