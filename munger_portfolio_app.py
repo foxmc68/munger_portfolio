@@ -1248,9 +1248,12 @@ def main() -> None:
         ".stTabs [data-baseweb='tab']:nth-child(5){background-color:#b88070 !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(5):hover{background-color:#a87060 !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(5)[aria-selected='true']{background-color:#a07060 !important;color:#ffffff !important;border-bottom:3px solid #a07060 !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(6){background-color:#6e9b9b !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(6):hover{background-color:#5d8888 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(6)[aria-selected='true']{background-color:#4d7878 !important;color:#ffffff !important;border-bottom:3px solid #4d7878 !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(6){background-color:#7a7a8a !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(6):hover{background-color:#6a6a7a !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(6)[aria-selected='true']{background-color:#5a5a6a !important;color:#ffffff !important;border-bottom:3px solid #5a5a6a !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(7){background-color:#6e9b9b !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(7):hover{background-color:#5d8888 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(7)[aria-selected='true']{background-color:#4d7878 !important;color:#ffffff !important;border-bottom:3px solid #4d7878 !important}"
         ".stTabs [data-baseweb='tab-highlight']{display:none}"
         ".block-container{padding-top:0.75rem !important;padding-bottom:1rem !important}"
         "h1{margin-bottom:0.25rem !important;margin-top:0 !important}"
@@ -1669,7 +1672,7 @@ def main() -> None:
     st.title("Munger Toll Bridge Portfolio")
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    tab_a, tab_b, tab_r, tab_w, tab_m, tab_n = st.tabs(["Portfolio A", "Portfolio B", "Retired", "Wait List", "Macro Signals", "News"])
+    tab_a, tab_b, tab_r, tab_w, tab_m, tab_d, tab_n = st.tabs(["Portfolio A", "Portfolio B", "Retired", "Wait List", "Macro Signals", "Deployment", "News"])
 
     # ══════════════════════════════════════════════════════════════════════════
     # PORTFOLIO A
@@ -2659,6 +2662,211 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             "Static data: update quarterly from CBO/OMB, MSFT earnings, Berkshire 13-F.  "
             "Not financial advice."
         )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # DEPLOYMENT
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_d:
+        st.markdown(
+            "<div style='font-size:1.05rem;font-weight:700;color:#3a3a4a;margin-bottom:12px'>"
+            "SGOV Deployment Schedule — Four-Tranche Framework</div>",
+            unsafe_allow_html=True,
+        )
+
+        # ── Portfolio size input ───────────────────────────────────────────────
+        if "deployment_portfolio_size" not in st.session_state:
+            st.session_state["deployment_portfolio_size"] = 3_000_000
+
+        col_ps, col_ps_spacer = st.columns([2, 5])
+        with col_ps:
+            portfolio_size = st.number_input(
+                "Portfolio Size ($)",
+                min_value=10_000,
+                max_value=100_000_000,
+                step=50_000,
+                value=st.session_state["deployment_portfolio_size"],
+                key="deployment_portfolio_size",
+                format="%d",
+            )
+
+        def _fmt_dollars(amount: float) -> str:
+            return f"${amount:,.0f}"
+
+        def _render_tranche_card(
+            tranche_num: int,
+            tranche_title: str,
+            market_condition: str,
+            sgov_remaining_pct: int,
+            deploy_pct: int,
+            stocks: list[tuple[str, int]],  # (ticker, alloc_pct)
+            note: str,
+            accent: str,
+            accent_dark: str,
+        ) -> None:
+            deploy_amt = portfolio_size * deploy_pct / 100
+            sgov_amt   = portfolio_size * sgov_remaining_pct / 100
+
+            # Card wrapper
+            st.markdown(
+                f"<div style='border-left:5px solid {accent};background:#2c2c3a;border-radius:8px;"
+                f"padding:16px 20px 14px 18px;margin-bottom:18px'>",
+                unsafe_allow_html=True,
+            )
+
+            # Header row
+            st.markdown(
+                f"<div style='display:flex;align-items:baseline;gap:14px;margin-bottom:6px'>"
+                f"<span style='font-size:1.1rem;font-weight:800;color:{accent}'>Tranche {tranche_num}</span>"
+                f"<span style='font-size:1.0rem;font-weight:700;color:#e0e0e8'>{tranche_title}</span>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+
+            # Condition badge
+            st.markdown(
+                f"<div style='display:inline-block;background:{accent_dark};color:#fff;"
+                f"font-size:0.78rem;font-weight:600;padding:2px 10px;border-radius:12px;margin-bottom:10px'>"
+                f"Market trigger: {market_condition}</div>",
+                unsafe_allow_html=True,
+            )
+
+            # Metrics row
+            col_d, col_s = st.columns(2)
+            with col_d:
+                st.markdown(
+                    f"<div style='background:#1e1e2a;border-radius:6px;padding:8px 12px;text-align:center'>"
+                    f"<div style='color:#aaa;font-size:0.72rem;font-weight:600;letter-spacing:0.05em'>DEPLOY</div>"
+                    f"<div style='color:{accent};font-size:1.35rem;font-weight:800'>{deploy_pct}%</div>"
+                    f"<div style='color:#ccc;font-size:0.88rem;font-weight:600'>{_fmt_dollars(deploy_amt)}</div>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+            with col_s:
+                st.markdown(
+                    f"<div style='background:#1e1e2a;border-radius:6px;padding:8px 12px;text-align:center'>"
+                    f"<div style='color:#aaa;font-size:0.72rem;font-weight:600;letter-spacing:0.05em'>SGOV REMAINING</div>"
+                    f"<div style='color:#b0c4b0;font-size:1.35rem;font-weight:800'>{sgov_remaining_pct}%</div>"
+                    f"<div style='color:#ccc;font-size:0.88rem;font-weight:600'>{_fmt_dollars(sgov_amt)}</div>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+
+            # Stocks table
+            st.markdown(
+                "<div style='margin:12px 0 4px 0;color:#aaa;font-size:0.72rem;"
+                "font-weight:700;letter-spacing:0.07em'>STOCKS — PRIORITY ORDER</div>",
+                unsafe_allow_html=True,
+            )
+            rows_html = ""
+            for i, (ticker, alloc) in enumerate(stocks):
+                bg = "#252530" if i % 2 == 0 else "#1e1e2a"
+                alloc_amt = portfolio_size * alloc / 100
+                rows_html += (
+                    f"<tr style='background:{bg}'>"
+                    f"<td style='padding:4px 10px;color:#ddd;font-weight:700;font-size:0.82rem'>{ticker}</td>"
+                    f"<td style='padding:4px 10px;color:{accent};font-weight:700;font-size:0.82rem;text-align:right'>{alloc}%</td>"
+                    f"<td style='padding:4px 10px;color:#ccc;font-size:0.82rem;text-align:right'>{_fmt_dollars(alloc_amt)}</td>"
+                    f"</tr>"
+                )
+            st.markdown(
+                f"<table style='width:100%;border-collapse:collapse;border-radius:5px;overflow:hidden'>"
+                f"<thead><tr style='background:#1a1a26'>"
+                f"<th style='padding:4px 10px;color:#888;font-size:0.71rem;font-weight:700;text-align:left'>Ticker</th>"
+                f"<th style='padding:4px 10px;color:#888;font-size:0.71rem;font-weight:700;text-align:right'>Alloc %</th>"
+                f"<th style='padding:4px 10px;color:#888;font-size:0.71rem;font-weight:700;text-align:right'>Amount</th>"
+                f"</tr></thead><tbody>{rows_html}</tbody></table>",
+                unsafe_allow_html=True,
+            )
+
+            # Note
+            st.markdown(
+                f"<div style='margin-top:10px;background:#1a1a26;border-radius:5px;padding:8px 12px;"
+                f"color:#c8c8d8;font-size:0.81rem;line-height:1.5'>"
+                f"<span style='color:{accent};font-weight:700'>Note: </span>{note}</div>",
+                unsafe_allow_html=True,
+            )
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # ── Tranche 0 ─────────────────────────────────────────────────────────
+        _render_tranche_card(
+            tranche_num=0,
+            tranche_title="Deploy Now",
+            market_condition="Current market — thesis-consistent names at fair-to-good prices",
+            sgov_remaining_pct=75,
+            deploy_pct=25,
+            stocks=[
+                ("BRK-B", 4), ("MSFT", 3), ("CME", 3), ("CVX", 3),
+                ("COP", 2), ("EPD", 2), ("BAM", 3), ("CNI", 2),
+                ("FNV", 2), ("PM", 2), ("MCO", 2), ("RMS.PA", 2),
+            ],
+            note="Deploy now into these 12 names. Retain 75% in SGOV as dry powder.",
+            accent="#7caa7c",
+            accent_dark="#4d7a4d",
+        )
+
+        # ── Tranche 1 ─────────────────────────────────────────────────────────
+        _render_tranche_card(
+            tranche_num=1,
+            tranche_title="S&P -10%",
+            market_condition="S&P 500 down 10%, VIX 25–30",
+            sgov_remaining_pct=55,
+            deploy_pct=20,
+            stocks=[
+                ("GOOGL", 2), ("ASML", 2), ("MSFT add", 2), ("SPGI add", 2),
+                ("V", 2), ("NVO", 2), ("AXP", 2),
+            ],
+            note="Focus on wait-list names that have reached entry targets.",
+            accent="#c8a040",
+            accent_dark="#8a6a20",
+        )
+
+        # ── Tranche 2 ─────────────────────────────────────────────────────────
+        _render_tranche_card(
+            tranche_num=2,
+            tranche_title="S&P -20%",
+            market_condition="S&P 500 down 20%, VIX 35–40, bond market stress",
+            sgov_remaining_pct=30,
+            deploy_pct=25,
+            stocks=[
+                ("COST", 3), ("FICO", 2), ("Keyence", 3), ("V add", 2),
+                ("EQNR", 3), ("BRK-B add", 2), ("CME add", 2),
+            ],
+            note="High-quality names genuinely on sale. This is the Munger buying environment.",
+            accent="#c87858",
+            accent_dark="#8a4830",
+        )
+
+        # ── Tranche 3 ─────────────────────────────────────────────────────────
+        _render_tranche_card(
+            tranche_num=3,
+            tranche_title="S&P -35%",
+            market_condition="S&P 500 down 35%+, VIX 45+, crisis conditions",
+            sgov_remaining_pct=10,
+            deploy_pct=20,
+            stocks=[
+                ("COST full", 4), ("FICO add", 2), ("CSU.TO", 3), ("ASML add", 2),
+                ("Size up best names", 3), ("Keyence add", 2),
+            ],
+            note="Maximum deployment event. Remaining 10% SGOV is permanent reserve only.",
+            accent="#c84040",
+            accent_dark="#8a1818",
+        )
+
+        # ── Permanent reserve note ─────────────────────────────────────────────
+        st.markdown(
+            f"<div style='border:2px solid #8a1818;background:#1a0e0e;border-radius:8px;"
+            f"padding:14px 18px;margin-top:4px'>"
+            f"<div style='color:#c84040;font-weight:800;font-size:0.9rem;margin-bottom:4px'>"
+            f"PERMANENT RESERVE — {_fmt_dollars(portfolio_size * 0.10)} (10% of portfolio)</div>"
+            f"<div style='color:#d8c0c0;font-size:0.85rem;line-height:1.55'>"
+            f"Keep minimum 10% in SGOV regardless. This is 6-month living expenses buffer plus emergency "
+            f"opportunity reserve. Do NOT deploy.</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+        st.caption("Not financial advice. Allocation percentages are guidelines, not mandates.")
 
     # ══════════════════════════════════════════════════════════════════════════
     # NEWS
