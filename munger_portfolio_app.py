@@ -24,6 +24,7 @@ import yfinance as yf
 RED_FLAGS_FILE    = os.path.join(os.path.dirname(os.path.abspath(__file__)), "red_flags.json")
 RED_FLAGS_FILE_B  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "red_flags_b.json")
 CUSTOM_TICKERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "custom_tickers.json")
+WAIT_LIST_CUSTOM_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wait_list_custom.json")
 
 FLAG_NAMES = [
     "Accounting Issues",
@@ -599,6 +600,23 @@ def load_custom_tickers() -> list:
 def save_custom_tickers(custom: list) -> None:
     with open(CUSTOM_TICKERS_FILE, "w") as fh:
         json.dump(custom, fh, indent=2)
+
+
+def load_wait_list_custom() -> list:
+    """Load custom wait list entries from JSON."""
+    if os.path.exists(WAIT_LIST_CUSTOM_FILE):
+        try:
+            with open(WAIT_LIST_CUSTOM_FILE) as fh:
+                data = json.load(fh)
+            return data if isinstance(data, list) else []
+        except Exception:
+            pass
+    return []
+
+
+def save_wait_list_custom(entries: list) -> None:
+    with open(WAIT_LIST_CUSTOM_FILE, "w") as fh:
+        json.dump(entries, fh, indent=2)
 
 
 # ── yfinance data layer ───────────────────────────────────────────────────────
@@ -1355,6 +1373,14 @@ def main() -> None:
         st.session_state.raw_rows_custom_b = None
     if "add_stock_preview" not in st.session_state:
         st.session_state.add_stock_preview = None
+    if "add_stock_preview_a" not in st.session_state:
+        st.session_state.add_stock_preview_a = None
+    if "add_stock_preview_b" not in st.session_state:
+        st.session_state.add_stock_preview_b = None
+    if "custom_waitlist" not in st.session_state:
+        st.session_state.custom_waitlist = load_wait_list_custom()
+    if "add_wl_preview" not in st.session_state:
+        st.session_state.add_wl_preview = None
     if "mos_pct" not in st.session_state:
         st.session_state.mos_pct = DEFAULT_MOS_PCT
     if "mos_pct_b" not in st.session_state:
@@ -1573,6 +1599,62 @@ def main() -> None:
             _ca_sig_series = pd.Series(_ca_signals)
             _ca_styled = _style_df(_ca_disp, _ca_sig_series)
             st.dataframe(_ca_styled, use_container_width=True, hide_index=True)
+
+        # ── Add a Stock to Portfolio A ────────────────────────────────────────
+        with st.expander("+ Add a Stock to Portfolio A", expanded=False):
+            _a1, _a2 = st.columns([2, 2])
+            with _a1:
+                st.text_input("Ticker Symbol", key="add_a_ticker", placeholder="e.g. NVDA")
+            with _a2:
+                st.number_input("Fair P/E", min_value=0.1, max_value=200.0, value=20.0, step=0.5, key="add_a_fair_pe")
+            _ab1, _ab2, _ab3 = st.columns([1.5, 1.5, 5])
+            with _ab1:
+                if st.button("Fetch & Preview", key="btn_a_fetch", use_container_width=True):
+                    _atk = st.session_state.get("add_a_ticker", "").strip().upper()
+                    if _atk:
+                        _ainfo = fetch_info(_atk)
+                        _afins = fetch_financials(_atk)
+                        st.session_state.add_stock_preview_a = {"ticker": _atk, "info": _ainfo, "fins": _afins}
+                    else:
+                        st.session_state.add_stock_preview_a = None
+            with _ab2:
+                if st.button("Add to Portfolio A", key="btn_a_add", use_container_width=True):
+                    _atk = st.session_state.get("add_a_ticker", "").strip().upper()
+                    _afpe = float(st.session_state.get("add_a_fair_pe", 20.0))
+                    _all_ex = set(ALL_TICKERS) | set(ALL_TICKERS_B) | {_ct["ticker"] for _ct in st.session_state.custom_tickers}
+                    if not _atk:
+                        st.warning("Enter a ticker symbol.")
+                    elif _atk in _all_ex:
+                        st.warning(f"{_atk} already in portfolios.")
+                    else:
+                        _new = {"ticker": _atk, "portfolio": "A", "fair_pe": _afpe}
+                        st.session_state.custom_tickers.append(_new)
+                        save_custom_tickers(st.session_state.custom_tickers)
+                        st.session_state.red_flags[_atk] = {f: False for f in FLAG_NAMES}
+                        save_red_flags(st.session_state.red_flags)
+                        st.session_state.raw_rows_custom_a = None
+                        st.session_state.add_stock_preview_a = None
+                        st.rerun()
+            _prev_a = st.session_state.add_stock_preview_a
+            if _prev_a:
+                _pai = _prev_a["info"]
+                _paf = _prev_a["fins"]
+                _pa_price = _float(_pai, "currentPrice") or _float(_pai, "regularMarketPrice")
+                _pa_fcfy_raw = (_float(_pai, "freeCashflow") or 0) / (_float(_pai, "marketCap") or 1) * 100 if _float(_pai, "marketCap") else None
+                _pa_de_raw = _float(_pai, "debtToEquity")
+                _pa_de = _pa_de_raw / 100.0 if _pa_de_raw is not None else None
+                _pa_op = _paf.get("operatingIncome"); _pa_tax = _paf.get("taxRate"); _pa_ta = _paf.get("totalAssets"); _pa_cl = _paf.get("currentLiabilities"); _pa_cash = _paf.get("cash")
+                if all(x is not None for x in [_pa_op, _pa_tax, _pa_ta, _pa_cl, _pa_cash]) and (_pa_ta - _pa_cl - _pa_cash) > 0:
+                    _pa_roic = _pa_op * (1 - _pa_tax) / (_pa_ta - _pa_cl - _pa_cash) * 100
+                else:
+                    _pa_roic = None
+                st.markdown(
+                    f"**{_prev_a['ticker']}** — "
+                    f"Price: {'${:,.2f}'.format(_pa_price) if _pa_price else '—'}  ·  "
+                    f"ROIC: {'{:.1f}%'.format(_pa_roic) if _pa_roic else '—'}  ·  "
+                    f"FCFy: {'{:.1f}%'.format(_pa_fcfy_raw) if _pa_fcfy_raw else '—'}  ·  "
+                    f"D/E: {'{:.2f}×'.format(_pa_de) if _pa_de is not None else '—'}"
+                )
 
         st.divider()
         csv_bytes = df_display[["Tier"] + DISPLAY_COLS].to_csv(index=False).encode()
@@ -1797,6 +1879,62 @@ ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effecti
             _cb_styled = _style_df(_cb_disp, _cb_sig_series)
             st.dataframe(_cb_styled, use_container_width=True, hide_index=True)
 
+        # ── Add a Stock to Portfolio B ────────────────────────────────────────
+        with st.expander("+ Add a Stock to Portfolio B", expanded=False):
+            _b1, _b2 = st.columns([2, 2])
+            with _b1:
+                st.text_input("Ticker Symbol", key="add_b_ticker", placeholder="e.g. NVDA")
+            with _b2:
+                st.number_input("Fair P/E", min_value=0.1, max_value=200.0, value=20.0, step=0.5, key="add_b_fair_pe")
+            _bb1, _bb2, _bb3 = st.columns([1.5, 1.5, 5])
+            with _bb1:
+                if st.button("Fetch & Preview", key="btn_b_fetch", use_container_width=True):
+                    _btk = st.session_state.get("add_b_ticker", "").strip().upper()
+                    if _btk:
+                        _binfo = fetch_info(_btk)
+                        _bfins = fetch_financials(_btk)
+                        st.session_state.add_stock_preview_b = {"ticker": _btk, "info": _binfo, "fins": _bfins}
+                    else:
+                        st.session_state.add_stock_preview_b = None
+            with _bb2:
+                if st.button("Add to Portfolio B", key="btn_b_add", use_container_width=True):
+                    _btk = st.session_state.get("add_b_ticker", "").strip().upper()
+                    _bfpe = float(st.session_state.get("add_b_fair_pe", 20.0))
+                    _all_ex_b = set(ALL_TICKERS) | set(ALL_TICKERS_B) | {_ct["ticker"] for _ct in st.session_state.custom_tickers}
+                    if not _btk:
+                        st.warning("Enter a ticker symbol.")
+                    elif _btk in _all_ex_b:
+                        st.warning(f"{_btk} already in portfolios.")
+                    else:
+                        _new_b = {"ticker": _btk, "portfolio": "B", "fair_pe": _bfpe}
+                        st.session_state.custom_tickers.append(_new_b)
+                        save_custom_tickers(st.session_state.custom_tickers)
+                        st.session_state.red_flags_b[_btk] = {f: False for f in FLAG_NAMES}
+                        save_red_flags_b(st.session_state.red_flags_b)
+                        st.session_state.raw_rows_custom_b = None
+                        st.session_state.add_stock_preview_b = None
+                        st.rerun()
+            _prev_b = st.session_state.add_stock_preview_b
+            if _prev_b:
+                _pbi = _prev_b["info"]
+                _pbf = _prev_b["fins"]
+                _pb_price = _float(_pbi, "currentPrice") or _float(_pbi, "regularMarketPrice")
+                _pb_fcfy_raw = (_float(_pbi, "freeCashflow") or 0) / (_float(_pbi, "marketCap") or 1) * 100 if _float(_pbi, "marketCap") else None
+                _pb_de_raw = _float(_pbi, "debtToEquity")
+                _pb_de = _pb_de_raw / 100.0 if _pb_de_raw is not None else None
+                _pb_op = _pbf.get("operatingIncome"); _pb_tax = _pbf.get("taxRate"); _pb_ta = _pbf.get("totalAssets"); _pb_cl = _pbf.get("currentLiabilities"); _pb_cash = _pbf.get("cash")
+                if all(x is not None for x in [_pb_op, _pb_tax, _pb_ta, _pb_cl, _pb_cash]) and (_pb_ta - _pb_cl - _pb_cash) > 0:
+                    _pb_roic = _pb_op * (1 - _pb_tax) / (_pb_ta - _pb_cl - _pb_cash) * 100
+                else:
+                    _pb_roic = None
+                st.markdown(
+                    f"**{_prev_b['ticker']}** — "
+                    f"Price: {'${:,.2f}'.format(_pb_price) if _pb_price else '—'}  ·  "
+                    f"ROIC: {'{:.1f}%'.format(_pb_roic) if _pb_roic else '—'}  ·  "
+                    f"FCFy: {'{:.1f}%'.format(_pb_fcfy_raw) if _pb_fcfy_raw else '—'}  ·  "
+                    f"D/E: {'{:.2f}×'.format(_pb_de) if _pb_de is not None else '—'}"
+                )
+
         st.divider()
         csv_bytes_b = df_display_b[DISPLAY_COLS].to_csv(index=False).encode()
         st.download_button(
@@ -1956,11 +2094,12 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
                 st.session_state.raw_rows_waitlist = None
 
         if st.session_state.raw_rows_waitlist is None:
+            _all_wl_stocks = WAIT_LIST + st.session_state.custom_waitlist
             progress_w = st.progress(0, text="Fetching market data…")
             raw_rows_waitlist: list[dict] = []
-            for i, stock in enumerate(WAIT_LIST):
+            for i, stock in enumerate(_all_wl_stocks):
                 raw_rows_waitlist.append(compute_waitlist_row(stock))
-                progress_w.progress((i + 1) / len(WAIT_LIST), text=f"Fetching {stock['ticker']}…")
+                progress_w.progress((i + 1) / len(_all_wl_stocks), text=f"Fetching {stock['ticker']}…")
             progress_w.empty()
             st.session_state.raw_rows_waitlist = raw_rows_waitlist
             st.session_state.last_fetched_waitlist = datetime.now()
@@ -2275,6 +2414,46 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
                     f"Price: {'${:,.2f}'.format(_pprice) if _pprice else '—'}  ·  "
                     f"Trailing P/E: {'{:.1f}'.format(_ppe) if _ppe else '—'}"
                 )
+
+        # ── Add to Wait List ─────────────────────────────────────────────────
+        with st.expander("+ Add to Wait List", expanded=False):
+            _wl1, _wl2 = st.columns([2, 2])
+            with _wl1:
+                st.text_input("Ticker Symbol", key="add_wl_ticker", placeholder="e.g. AAPL")
+            with _wl2:
+                st.number_input("Fair P/E Target", min_value=0.1, max_value=500.0, value=20.0, step=0.5, key="add_wl_fair_pe")
+            _wlp1, _wlp2, _wlp3 = st.columns([2, 2, 2])
+            with _wlp1:
+                st.number_input("Entry Price Low", min_value=0.01, max_value=1_000_000.0, value=100.0, step=1.0, key="add_wl_low")
+            with _wlp2:
+                st.number_input("Entry Price High", min_value=0.01, max_value=1_000_000.0, value=110.0, step=1.0, key="add_wl_high")
+            with _wlp3:
+                st.number_input("Add More At", min_value=0.01, max_value=1_000_000.0, value=90.0, step=1.0, key="add_wl_add_more")
+            st.text_area("Note", key="add_wl_note", placeholder="Thesis / why waiting…", height=68)
+            _wlb1, _wlb2 = st.columns([2, 6])
+            with _wlb1:
+                if st.button("Add to Wait List", key="btn_wl_add", use_container_width=True, type="primary"):
+                    _wltk = st.session_state.get("add_wl_ticker", "").strip().upper()
+                    _wl_existing = {s["ticker"] for s in WAIT_LIST} | {s["ticker"] for s in st.session_state.custom_waitlist}
+                    if not _wltk:
+                        st.warning("Enter a ticker symbol.")
+                    elif _wltk in _wl_existing:
+                        st.warning(f"{_wltk} is already on the Wait List.")
+                    else:
+                        _wl_entry = {
+                            "ticker": _wltk,
+                            "metric": "P/E",
+                            "entry_pe_target": float(st.session_state.get("add_wl_fair_pe", 20.0)),
+                            "entry_low": float(st.session_state.get("add_wl_low", 100.0)),
+                            "entry_high": float(st.session_state.get("add_wl_high", 110.0)),
+                            "add_more_at": float(st.session_state.get("add_wl_add_more", 90.0)),
+                            "currency_symbol": "$",
+                            "note": st.session_state.get("add_wl_note", ""),
+                        }
+                        st.session_state.custom_waitlist.append(_wl_entry)
+                        save_wait_list_custom(st.session_state.custom_waitlist)
+                        st.session_state.raw_rows_waitlist = None
+                        st.rerun()
 
     # ══════════════════════════════════════════════════════════════════════════
     # MACRO SIGNALS
@@ -2731,10 +2910,10 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             deploy_amt = portfolio_size * deploy_pct / 100
             sgov_amt   = portfolio_size * sgov_remaining_pct / 100
 
-            # Card wrapper
+            # Card wrapper — white background, colored left border
             st.markdown(
-                f"<div style='border-left:5px solid {accent};background:#2c2c3a;border-radius:8px;"
-                f"padding:16px 20px 14px 18px;margin-bottom:18px'>",
+                f"<div style='border-left:5px solid {accent};background:#ffffff;border-radius:8px;"
+                f"padding:16px 20px 14px 18px;margin-bottom:18px;box-shadow:0 1px 4px rgba(0,0,0,0.10)'>",
                 unsafe_allow_html=True,
             )
 
@@ -2742,7 +2921,7 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             st.markdown(
                 f"<div style='display:flex;align-items:baseline;gap:14px;margin-bottom:6px'>"
                 f"<span style='font-size:1.1rem;font-weight:800;color:{accent}'>Tranche {tranche_num}</span>"
-                f"<span style='font-size:1.0rem;font-weight:700;color:#e0e0e8'>{tranche_title}</span>"
+                f"<span style='font-size:1.0rem;font-weight:700;color:#2a2a2a'>{tranche_title}</span>"
                 f"</div>",
                 unsafe_allow_html=True,
             )
@@ -2759,54 +2938,55 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             col_d, col_s = st.columns(2)
             with col_d:
                 st.markdown(
-                    f"<div style='background:#1e1e2a;border-radius:6px;padding:8px 12px;text-align:center'>"
-                    f"<div style='color:#aaa;font-size:0.72rem;font-weight:600;letter-spacing:0.05em'>DEPLOY</div>"
-                    f"<div style='color:{accent};font-size:1.35rem;font-weight:800'>{deploy_pct}%</div>"
-                    f"<div style='color:#ccc;font-size:0.88rem;font-weight:600'>{_fmt_dollars(deploy_amt)}</div>"
+                    f"<div style='background:#f0f0f0;border-radius:6px;padding:10px 12px;text-align:center'>"
+                    f"<div style='color:#555;font-size:0.75rem;font-weight:700;letter-spacing:0.05em'>DEPLOY</div>"
+                    f"<div style='color:{accent};font-size:1.45rem;font-weight:800'>{deploy_pct}%</div>"
+                    f"<div style='color:#333;font-size:0.92rem;font-weight:600'>{_fmt_dollars(deploy_amt)}</div>"
                     f"</div>",
                     unsafe_allow_html=True,
                 )
             with col_s:
                 st.markdown(
-                    f"<div style='background:#1e1e2a;border-radius:6px;padding:8px 12px;text-align:center'>"
-                    f"<div style='color:#aaa;font-size:0.72rem;font-weight:600;letter-spacing:0.05em'>SGOV REMAINING</div>"
-                    f"<div style='color:#b0c4b0;font-size:1.35rem;font-weight:800'>{sgov_remaining_pct}%</div>"
-                    f"<div style='color:#ccc;font-size:0.88rem;font-weight:600'>{_fmt_dollars(sgov_amt)}</div>"
+                    f"<div style='background:#f0f0f0;border-radius:6px;padding:10px 12px;text-align:center'>"
+                    f"<div style='color:#555;font-size:0.75rem;font-weight:700;letter-spacing:0.05em'>SGOV REMAINING</div>"
+                    f"<div style='color:#5a8a5a;font-size:1.45rem;font-weight:800'>{sgov_remaining_pct}%</div>"
+                    f"<div style='color:#333;font-size:0.92rem;font-weight:600'>{_fmt_dollars(sgov_amt)}</div>"
                     f"</div>",
                     unsafe_allow_html=True,
                 )
 
             # Stocks table
             st.markdown(
-                "<div style='margin:12px 0 4px 0;color:#aaa;font-size:0.72rem;"
+                "<div style='margin:14px 0 5px 0;color:#444;font-size:0.75rem;"
                 "font-weight:700;letter-spacing:0.07em'>STOCKS — PRIORITY ORDER</div>",
                 unsafe_allow_html=True,
             )
             rows_html = ""
             for i, (ticker, alloc) in enumerate(stocks):
-                bg = "#252530" if i % 2 == 0 else "#1e1e2a"
+                bg = "#f7f7f7" if i % 2 == 0 else "#ffffff"
                 alloc_amt = portfolio_size * alloc / 100
                 rows_html += (
                     f"<tr style='background:{bg}'>"
-                    f"<td style='padding:4px 10px;color:#ddd;font-weight:700;font-size:0.82rem'>{ticker}</td>"
-                    f"<td style='padding:4px 10px;color:{accent};font-weight:700;font-size:0.82rem;text-align:right'>{alloc}%</td>"
-                    f"<td style='padding:4px 10px;color:#ccc;font-size:0.82rem;text-align:right'>{_fmt_dollars(alloc_amt)}</td>"
+                    f"<td style='padding:5px 12px;color:#1a1a1a;font-weight:700;font-size:0.88rem'>{ticker}</td>"
+                    f"<td style='padding:5px 12px;color:{accent};font-weight:700;font-size:0.88rem;text-align:right'>{alloc}%</td>"
+                    f"<td style='padding:5px 12px;color:#333;font-size:0.88rem;text-align:right'>{_fmt_dollars(alloc_amt)}</td>"
                     f"</tr>"
                 )
             st.markdown(
-                f"<table style='width:100%;border-collapse:collapse;border-radius:5px;overflow:hidden'>"
-                f"<thead><tr style='background:#1a1a26'>"
-                f"<th style='padding:4px 10px;color:#888;font-size:0.71rem;font-weight:700;text-align:left'>Ticker</th>"
-                f"<th style='padding:4px 10px;color:#888;font-size:0.71rem;font-weight:700;text-align:right'>Alloc %</th>"
-                f"<th style='padding:4px 10px;color:#888;font-size:0.71rem;font-weight:700;text-align:right'>Amount</th>"
+                f"<table style='width:100%;border-collapse:collapse;border-radius:5px;overflow:hidden;border:1px solid #e0e0e0'>"
+                f"<thead><tr style='background:#ececec'>"
+                f"<th style='padding:5px 12px;color:#555;font-size:0.75rem;font-weight:700;text-align:left'>Ticker</th>"
+                f"<th style='padding:5px 12px;color:#555;font-size:0.75rem;font-weight:700;text-align:right'>Alloc %</th>"
+                f"<th style='padding:5px 12px;color:#555;font-size:0.75rem;font-weight:700;text-align:right'>Amount</th>"
                 f"</tr></thead><tbody>{rows_html}</tbody></table>",
                 unsafe_allow_html=True,
             )
 
             # Note
             st.markdown(
-                f"<div style='margin-top:10px;background:#1a1a26;border-radius:5px;padding:8px 12px;"
-                f"color:#c8c8d8;font-size:0.81rem;line-height:1.5'>"
+                f"<div style='margin-top:12px;background:#f8f8f8;border-left:3px solid {accent};"
+                f"border-radius:4px;padding:8px 12px;"
+                f"color:#333;font-size:0.84rem;line-height:1.55'>"
                 f"<span style='color:{accent};font-weight:700'>Note: </span>{note}</div>",
                 unsafe_allow_html=True,
             )
@@ -2880,11 +3060,11 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
 
         # ── Permanent reserve note ─────────────────────────────────────────────
         st.markdown(
-            f"<div style='border:2px solid #8a1818;background:#1a0e0e;border-radius:8px;"
-            f"padding:14px 18px;margin-top:4px'>"
-            f"<div style='color:#c84040;font-weight:800;font-size:0.9rem;margin-bottom:4px'>"
+            f"<div style='border-left:5px solid #c84040;background:#ffffff;border-radius:8px;"
+            f"padding:14px 18px;margin-top:4px;box-shadow:0 1px 4px rgba(0,0,0,0.10)'>"
+            f"<div style='color:#c84040;font-weight:800;font-size:0.95rem;margin-bottom:4px'>"
             f"PERMANENT RESERVE — {_fmt_dollars(portfolio_size * 0.10)} (10% of portfolio)</div>"
-            f"<div style='color:#d8c0c0;font-size:0.85rem;line-height:1.55'>"
+            f"<div style='color:#444;font-size:0.87rem;line-height:1.55'>"
             f"Keep minimum 10% in SGOV regardless. This is 6-month living expenses buffer plus emergency "
             f"opportunity reserve. Do NOT deploy.</div>"
             f"</div>",
