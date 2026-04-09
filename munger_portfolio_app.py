@@ -589,7 +589,8 @@ STOCK_CATEGORY: dict[str, str] = {
     "MSFT": "asset_light", "GOOGL": "asset_light", "FICO": "asset_light",
     "VRSN": "asset_light", "ADP": "asset_light", "RMBS": "asset_light",
     # Toll Bridge Financials
-    "MCO": "toll_financial", "SPGI": "toll_financial", "CME": "toll_financial", "AXP": "toll_financial",
+    "MCO": "toll_financial", "CME": "toll_financial", "AXP": "toll_financial",
+    "SPGI": "bank",  # IHS Markit acquisition ($44B goodwill) inflates IC → standard ROIC formula misleading
     # Banks
     "JPM": "bank", "BAM": "bank", "BLK": "bank",
     # Insurance
@@ -599,6 +600,7 @@ STOCK_CATEGORY: dict[str, str] = {
     # Consumer Staples
     "PG": "consumer_staples", "KO": "consumer_staples", "KMB": "consumer_staples",
     "PM": "consumer_staples", "CL": "consumer_staples", "CHD": "consumer_staples",
+    "COST": "consumer_staples",
     # Energy Majors
     "CVX": "energy", "COP": "energy", "XOM": "energy", "EOG": "energy", "EQNR": "energy",
     # MLPs
