@@ -176,6 +176,82 @@ RETIRED_STOCKS: list[dict] = [
 
 ALL_TICKERS_RETIRED: list[str] = [s["ticker"] for s in RETIRED_STOCKS]
 
+# ── Company name lookup (Ticker → "Name (Sector)") ────────────────────────────
+COMPANY_NAMES: dict[str, str] = {
+    # Portfolio A
+    "V":      "Visa (Payment Networks)",
+    "MCO":    "Moody's (Rating Agencies)",
+    "SPGI":   "S&P Global (Rating Agencies)",
+    "MSFT":   "Microsoft (Cloud/AI)",
+    "GOOGL":  "Alphabet (Search/Cloud)",
+    "COST":   "Costco (Retail)",
+    "RMS.PA": "Hermès (Luxury Goods)",
+    "ASML":   "ASML (Semiconductor Equipment)",
+    "RMBS":   "Rambus (Semiconductor IP)",
+    "ADP":    "ADP (Payroll/HR)",
+    "FICO":   "Fair Isaac (Credit Scoring)",
+    "AXP":    "American Express (Premium Cards)",
+    "BRK-B":  "Berkshire Hathaway (Conglomerate)",
+    "CME":    "CME Group (Futures Exchange)",
+    "DHR":    "Danaher (Life Sciences)",
+    "IDXX":   "IDEXX Labs (Veterinary Diagnostics)",
+    "VRSN":   "VeriSign (Domain Registry)",
+    "CNI":    "CN Rail (Canadian Railway)",
+    "BAM":    "Brookfield AM (Real Assets)",
+    "WM":     "Waste Management (Essential Infrastructure)",
+    "AZO":    "AutoZone (Auto Parts)",
+    "JPM":    "JPMorgan Chase (Global Banking)",
+    "CVX":    "Chevron (Integrated Energy)",
+    "COP":    "ConocoPhillips (E&P Energy)",
+    "EPD":    "Enterprise Products (Midstream MLP)",
+    "ASR":    "Grupo Aeroportuario (Mexican Airports)",
+    "PM":     "Philip Morris (International Tobacco)",
+    # Portfolio B
+    "NEE":  "NextEra Energy (Renewable Utility)",
+    "PGR":  "Progressive (Auto Insurance)",
+    "PG":   "Procter & Gamble (Consumer Staples)",
+    "KMI":  "Kinder Morgan (Gas Infrastructure)",
+    "KO":   "Coca-Cola (Global Beverages)",
+    "PLD":  "Prologis (Industrial REIT)",
+    "TXN":  "Texas Instruments (Analog Semiconductors)",
+    "XOM":  "ExxonMobil (Integrated Energy)",
+    "BLK":  "BlackRock (Asset Management)",
+    "BIP":  "Brookfield Infrastructure (Global Infrastructure)",
+    "CHD":  "Church & Dwight (Consumer Brands)",
+    "CB":   "Chubb (Global P&C Insurance)",
+    "ABBV": "AbbVie (Biopharma)",
+    "AVGO": "Broadcom (AI Chips/Software)",
+    "CL":   "Colgate (Consumer Staples)",
+    "FCX":  "Freeport-McMoRan (Copper Mining)",
+    "JNJ":  "Johnson & Johnson (Healthcare)",
+    "ITW":  "Illinois Tool Works (Industrial)",
+    "EOG":  "EOG Resources (E&P Energy)",
+    "EMR":  "Emerson Electric (Industrial Automation)",
+    # Retired
+    "SCHW": "Charles Schwab (Brokerage)",
+    "WFC":  "Wells Fargo (US Banking)",
+    "ODFL": "Old Dominion (LTL Freight)",
+    "AMT":  "American Tower (Cell Tower REIT)",
+    "TROW": "T. Rowe Price (Active Asset Mgmt)",
+    "PAYX": "Paychex (Payroll/HR)",
+    "SYY":  "Sysco (Food Distribution)",
+    "HRL":  "Hormel (Packaged Foods)",
+    "PSX":  "Phillips 66 (Refining)",
+    "MDT":  "Medtronic (Medical Devices)",
+    "KMB":  "Kimberly-Clark (Consumer Paper)",
+}
+
+
+def _company_legend(tickers: list[str]) -> str:
+    """Return a compact legend string: TICKER = Name · TICKER = Name …"""
+    parts = []
+    for tk in tickers:
+        name = COMPANY_NAMES.get(tk.lstrip("★ ").strip(), "")
+        if name:
+            parts.append(f"**{tk.lstrip('★ ').strip()}** = {name}")
+    return "  ·  ".join(parts)
+
+
 # ── Wait List ─────────────────────────────────────────────────────────────────
 # Two sections:
 #   WAIT_LIST_ADD  — existing holdings in Portfolio A or B waiting for a lower
@@ -1231,7 +1307,19 @@ def render_table(df_display: pd.DataFrame, df_raw: pd.DataFrame, tier_name: str,
 
     signal_series = pd.Series(signals)
     styled = _style_df(tier_disp, signal_series)
-    st.dataframe(styled, use_container_width=True, hide_index=True)
+    st.dataframe(
+        styled,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Ticker": st.column_config.TextColumn(
+                "Ticker",
+                help="Company names: see legend below",
+            )
+        },
+    )
+    _tier_tickers = tier_disp["Ticker"].tolist()
+    st.caption(_company_legend(_tier_tickers))
 
 
 # ── Streamlit app ─────────────────────────────────────────────────────────────
@@ -1863,7 +1951,18 @@ ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effecti
 
         _b_signal_series = pd.Series(signals_b)
         _b_styled = _style_df(tier_disp_b, _b_signal_series)
-        st.dataframe(_b_styled, use_container_width=True, hide_index=True)
+        st.dataframe(
+            _b_styled,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Ticker": st.column_config.TextColumn(
+                    "Ticker",
+                    help="Company names: see legend below",
+                )
+            },
+        )
+        st.caption(_company_legend(tier_disp_b["Ticker"].tolist()))
 
         # ── Add a Stock to Portfolio B ────────────────────────────────────────
         st.markdown("""<style>
@@ -2074,7 +2173,18 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
                 return ["background-color:#d4e0e6;color:#1a2a3a"] * len(row)
             return [""] * len(row)
         _retired_styled = df_retired.style.apply(_style_retired_row, axis=1)
-        st.dataframe(_retired_styled, use_container_width=True, hide_index=True)
+        st.dataframe(
+            _retired_styled,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Ticker": st.column_config.TextColumn(
+                    "Ticker",
+                    help="Company names: see legend below",
+                )
+            },
+        )
+        st.caption(_company_legend([s["ticker"] for s in RETIRED_STOCKS]))
 
         st.divider()
         csv_bytes_r = df_retired.to_csv(index=False).encode()
