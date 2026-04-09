@@ -243,13 +243,18 @@ COMPANY_NAMES: dict[str, str] = {
 
 
 def _company_legend(tickers: list[str]) -> str:
-    """Return a compact legend string: TICKER = Name · TICKER = Name …"""
+    """Return a styled HTML legend: TICKER = Name · TICKER = Name …"""
     parts = []
     for tk in tickers:
-        name = COMPANY_NAMES.get(tk.lstrip("★ ").strip(), "")
+        clean = tk.lstrip("★ ").strip()
+        name = COMPANY_NAMES.get(clean, "")
         if name:
-            parts.append(f"**{tk.lstrip('★ ').strip()}** = {name}")
-    return "  ·  ".join(parts)
+            parts.append(f"{clean} = {name}")
+    inner = " &nbsp;·&nbsp; ".join(parts)
+    return (
+        f'<p style="font-size:11px;color:#888;margin:0 0 4px 0;line-height:1.5">'
+        f"{inner}</p>"
+    )
 
 
 # ── Wait List ─────────────────────────────────────────────────────────────────
@@ -579,12 +584,55 @@ MACRO_SIGNALS_CONFIG: list[dict] = [
 USES_PB: set[str] = {"BRK-B"}
 FAIR_PB: dict[str, float] = {"BRK-B": 1.35}
 
-# Skip ROIC gate; use D/E ≤ 1.5 threshold
-# PM has negative book equity from buybacks, making ROIC unreliable — same exception as JPM
-BANKS: set[str] = {"JPM", "PGR", "CB", "BLK", "PM"}
+STOCK_CATEGORY: dict[str, str] = {
+    # Asset-Light Compounders
+    "MSFT": "asset_light", "GOOGL": "asset_light", "FICO": "asset_light",
+    "VRSN": "asset_light", "ADP": "asset_light", "RMBS": "asset_light",
+    # Toll Bridge Financials
+    "MCO": "toll_financial", "SPGI": "toll_financial", "CME": "toll_financial", "AXP": "toll_financial",
+    # Banks
+    "JPM": "bank", "BAM": "bank", "BLK": "bank",
+    # Insurance
+    "PGR": "insurance", "CB": "insurance", "BRK-B": "insurance",
+    # Railroads/Infrastructure
+    "CNI": "railroad", "NEE": "infrastructure", "PLD": "infrastructure", "BIP": "infrastructure",
+    # Consumer Staples
+    "PG": "consumer_staples", "KO": "consumer_staples", "KMB": "consumer_staples",
+    "PM": "consumer_staples", "CL": "consumer_staples", "CHD": "consumer_staples",
+    # Energy Majors
+    "CVX": "energy", "COP": "energy", "XOM": "energy", "EOG": "energy", "EQNR": "energy",
+    # MLPs
+    "EPD": "mlp", "KMI": "mlp",
+    # Royalties
+    "FNV": "royalty",
+    # Industrials/Healthcare
+    "DHR": "industrial", "IDXX": "industrial", "WM": "industrial", "ASML": "industrial",
+    "RMS.PA": "industrial", "ITW": "industrial", "EMR": "industrial", "TXN": "industrial",
+    "AVGO": "industrial", "ABBV": "industrial", "JNJ": "industrial",
+    # Airport Concessions
+    "ASR": "airport",
+    # Special
+    "AZO": "special_azo",
+}
 
-# Higher D/E tolerance ≤ 2.5
-MLPS: set[str] = {"EPD", "KMI", "BIP", "PLD"}
+CATEGORY_THRESHOLDS: dict[str, dict] = {
+    "asset_light":      {"roic": 25,   "fcf_yield": 2.0, "rev_growth": 8,  "de": 0.5},
+    "toll_financial":   {"roic": 15,   "fcf_yield": 2.0, "rev_growth": 5,  "de": 2.0},
+    "bank":             {"roic": None, "fcf_yield": 2.5, "rev_growth": 3,  "de": None},
+    "insurance":        {"roic": 12,   "fcf_yield": None,"rev_growth": 5,  "de": None},
+    "railroad":         {"roic": 10,   "fcf_yield": 2.5, "rev_growth": 3,  "de": 1.5},
+    "infrastructure":   {"roic": 8,    "fcf_yield": 2.5, "rev_growth": 3,  "de": 2.5},
+    "consumer_staples": {"roic": 12,   "fcf_yield": 3.0, "rev_growth": 2,  "de": 1.5},
+    "energy":           {"roic": 10,   "fcf_yield": 4.0, "rev_growth": 0,  "de": 0.5},
+    "mlp":              {"roic": None, "fcf_yield": 4.0, "rev_growth": 2,  "de": 3.5},
+    "royalty":          {"roic": 8,    "fcf_yield": 3.0, "rev_growth": 5,  "de": 0.3},
+    "industrial":       {"roic": 15,   "fcf_yield": 2.5, "rev_growth": 5,  "de": 1.0},
+    "airport":          {"roic": 8,    "fcf_yield": 2.5, "rev_growth": 3,  "de": 1.5},
+    "special_azo":      {"roic": 15,   "fcf_yield": 3.0, "rev_growth": 3,  "de": None},
+}
+
+# Fallback thresholds for tickers not in STOCK_CATEGORY
+_DEFAULT_CATEGORY_THRESHOLDS: dict = {"roic": 15, "fcf_yield": 3.5, "rev_growth": 0, "de": 0.5}
 
 DEFAULT_MOS_PCT = 30
 
@@ -608,12 +656,11 @@ for _rank, (_tk, _fair_pe) in enumerate(PORTFOLIO_B_TICKERS.items(), start=1):
     }
 
 
-def de_threshold(ticker: str) -> float:
-    if ticker in BANKS:
-        return 1.5
-    if ticker in MLPS:
-        return 2.5
-    return 0.5
+def _category_thresholds(ticker: str) -> dict:
+    cat = STOCK_CATEGORY.get(ticker)
+    if cat:
+        return CATEGORY_THRESHOLDS[cat]
+    return _DEFAULT_CATEGORY_THRESHOLDS
 
 
 # ── Red-flag persistence ──────────────────────────────────────────────────────
@@ -876,7 +923,6 @@ def compute_row(
 
     de_raw = _float(info, "debtToEquity")
     de_ratio: Optional[float] = de_raw / 100.0 if de_raw is not None else None
-    de_limit = de_threshold(ticker)
 
     gm_raw = _float(info, "grossMargins")
     gm_pct: Optional[float] = gm_raw * 100.0 if gm_raw is not None else None
@@ -884,29 +930,39 @@ def compute_row(
     insider_raw = _float(info, "heldPercentInsiders")
     insider_pct: Optional[float] = insider_raw * 100.0 if insider_raw is not None else None
 
-    # ── Quality gate ─────────────────────────────────────────────────────────
+    # ── Quality gate (category-specific thresholds) ───────────────────────────
     fails: list[str] = []
+    thresholds = _category_thresholds(ticker)
+    roic_thr = thresholds["roic"]
+    fcfy_thr = thresholds["fcf_yield"]
+    revgr_thr = thresholds["rev_growth"]
+    de_thr = thresholds["de"]
 
-    if ticker not in BANKS:
+    if roic_thr is not None:
         if roic is None:
             fails.append("ROIC N/A")
-        elif roic < 15.0:
-            fails.append(f"ROIC {roic:.1f}% < 15%")
+        elif roic < roic_thr:
+            fails.append(f"ROIC {roic:.1f}% < {roic_thr}%")
 
-    if fcfy is None:
-        fails.append("FCFy N/A")
-    elif fcfy < 3.5:
-        fails.append(f"FCFy {fcfy:.1f}% < 3.5%")
+    if fcfy_thr is not None:
+        if fcfy is None:
+            fails.append("FCFy N/A")
+        elif fcfy < fcfy_thr:
+            fails.append(f"FCFy {fcfy:.1f}% < {fcfy_thr}%")
 
-    if rev_growth is None:
-        fails.append("RevGr N/A")
-    elif rev_growth < 0.0:
-        fails.append(f"RevGr {rev_growth:.1f}% < 0%")
+    if revgr_thr is not None:
+        if rev_growth is None:
+            fails.append("RevGr N/A")
+        elif rev_growth < revgr_thr:
+            fails.append(f"RevGr {rev_growth:.1f}% < {revgr_thr}%")
 
-    if de_ratio is None:
-        fails.append("D/E N/A")
-    elif de_ratio > de_limit:
-        fails.append(f"D/E {de_ratio:.2f} > {de_limit}")
+    if de_thr is not None:
+        if de_ratio is None:
+            fails.append("D/E N/A")
+        elif de_ratio > de_thr:
+            fails.append(f"D/E {de_ratio:.2f} > {de_thr}")
+
+    de_limit = de_thr  # preserve for display column
 
     quality = "PASS" if not fails else "FAIL"
 
@@ -1307,19 +1363,15 @@ def render_table(df_display: pd.DataFrame, df_raw: pd.DataFrame, tier_name: str,
 
     signal_series = pd.Series(signals)
     styled = _style_df(tier_disp, signal_series)
+    st.markdown(_company_legend(tier_disp["Ticker"].tolist()), unsafe_allow_html=True)
     st.dataframe(
         styled,
         use_container_width=True,
         hide_index=True,
         column_config={
-            "Ticker": st.column_config.TextColumn(
-                "Ticker",
-                help="Company names: see legend below",
-            )
+            "Ticker": st.column_config.TextColumn("Ticker")
         },
     )
-    _tier_tickers = tier_disp["Ticker"].tolist()
-    st.caption(_company_legend(_tier_tickers))
 
 
 # ── Streamlit app ─────────────────────────────────────────────────────────────
@@ -1764,12 +1816,25 @@ def main() -> None:
 
         with st.expander("Quality Gate Rules", expanded=False):
             st.markdown("""
-| Check | Threshold | Exceptions | Source |
-|---|---|---|---|
-| ROIC% | ≥ 15 % | Skipped for banks (JPM, PGR, CB, BLK) — shown as ROIC N/A | `NOPAT / Invested Capital` |
-| FCF Yield | ≥ 3.5 % | — | `freeCashflow / marketCap` |
-| Revenue Growth | ≥ 0 % | — | `revenueGrowth` |
-| Debt / Equity | ≤ 0.5× | Banks ≤ 1.5×; EPD ≤ 2.5× | `debtToEquity ÷ 100` |
+Each stock is evaluated against thresholds specific to its business category.
+A threshold of **—** means that check is skipped for the category.
+
+| Category | ROIC% ≥ | FCF Yield% ≥ | Rev Growth% ≥ | D/E ≤ |
+|---|---|---|---|---|
+| asset_light | 25 | 2.0 | 8 | 0.5 |
+| toll_financial | 15 | 2.0 | 5 | 2.0 |
+| bank | — | 2.5 | 3 | — |
+| insurance | 12 | — | 5 | — |
+| railroad | 10 | 2.5 | 3 | 1.5 |
+| infrastructure | 8 | 2.5 | 3 | 2.5 |
+| consumer_staples | 12 | 3.0 | 2 | 1.5 |
+| energy | 10 | 4.0 | 0 | 0.5 |
+| mlp | — | 4.0 | 2 | 3.5 |
+| royalty | 8 | 3.0 | 5 | 0.3 |
+| industrial | 15 | 2.5 | 5 | 1.0 |
+| airport | 8 | 2.5 | 3 | 1.5 |
+| special_azo | 15 | 3.0 | 3 | — |
+| *(default)* | 15 | 3.5 | 0 | 0.5 |
 
 ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effectiveTaxRate) and Invested Capital = totalAssets − currentLiabilities − cash.
 
@@ -1951,18 +2016,15 @@ ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effecti
 
         _b_signal_series = pd.Series(signals_b)
         _b_styled = _style_df(tier_disp_b, _b_signal_series)
+        st.markdown(_company_legend(tier_disp_b["Ticker"].tolist()), unsafe_allow_html=True)
         st.dataframe(
             _b_styled,
             use_container_width=True,
             hide_index=True,
             column_config={
-                "Ticker": st.column_config.TextColumn(
-                    "Ticker",
-                    help="Company names: see legend below",
-                )
+                "Ticker": st.column_config.TextColumn("Ticker")
             },
         )
-        st.caption(_company_legend(tier_disp_b["Ticker"].tolist()))
 
         # ── Add a Stock to Portfolio B ────────────────────────────────────────
         st.markdown("""<style>
@@ -2087,8 +2149,7 @@ ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effecti
 | EMR | 20 | Automation-focused industrial compounder, growing software mix |
 
 **BUY = Signal (DREAM or FAIR) AND Quality PASS AND no Red Flags active.**
-Financial companies (PGR, CB, BLK): ROIC gate skipped (ROIC N/A); D/E threshold ≤ 1.5×.
-Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
+Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A for the full table).
 """)
 
         with st.expander("Valuation Key", expanded=False):
@@ -2173,18 +2234,15 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
                 return ["background-color:#d4e0e6;color:#1a2a3a"] * len(row)
             return [""] * len(row)
         _retired_styled = df_retired.style.apply(_style_retired_row, axis=1)
+        st.markdown(_company_legend([s["ticker"] for s in RETIRED_STOCKS]), unsafe_allow_html=True)
         st.dataframe(
             _retired_styled,
             use_container_width=True,
             hide_index=True,
             column_config={
-                "Ticker": st.column_config.TextColumn(
-                    "Ticker",
-                    help="Company names: see legend below",
-                )
+                "Ticker": st.column_config.TextColumn("Ticker")
             },
         )
-        st.caption(_company_legend([s["ticker"] for s in RETIRED_STOCKS]))
 
         st.divider()
         csv_bytes_r = df_retired.to_csv(index=False).encode()
