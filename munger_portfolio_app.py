@@ -2899,11 +2899,73 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
     # DEPLOYMENT
     # ══════════════════════════════════════════════════════════════════════════
     with tab_d:
-        st.markdown(
-            "<div style='font-size:1.05rem;font-weight:700;color:#3a3a4a;margin-bottom:12px'>"
-            "SGOV Deployment Schedule — Four-Tranche Framework</div>",
-            unsafe_allow_html=True,
-        )
+        # ── Suggested allocation defaults (Modification 1.0) ──────────────────
+        _DEPLOY_ALLOC: dict[str, tuple[int, str]] = {
+            # ticker → (alloc_pct, list_label)
+            # Portfolio A
+            "BRK-B":  (4, "Portfolio A"),
+            "MSFT":   (3, "Portfolio A"),
+            "CME":    (3, "Portfolio A"),
+            "CVX":    (3, "Portfolio A"),
+            "COP":    (2, "Portfolio A"),
+            "EPD":    (2, "Portfolio A"),
+            "BAM":    (3, "Portfolio A"),
+            "CNI":    (2, "Portfolio A"),
+            "FNV":    (2, "Portfolio A"),
+            "PM":     (2, "Portfolio A"),
+            "MCO":    (2, "Portfolio A"),
+            "RMS.PA": (2, "Portfolio A"),
+            "V":      (3, "Portfolio A"),
+            "SPGI":   (2, "Portfolio A"),
+            "DHR":    (2, "Portfolio A"),
+            "IDXX":   (2, "Portfolio A"),
+            "VRSN":   (2, "Portfolio A"),
+            "WM":     (2, "Portfolio A"),
+            "AZO":    (2, "Portfolio A"),
+            "JPM":    (2, "Portfolio A"),
+            "ASR":    (1, "Portfolio A"),
+            "ADP":    (2, "Portfolio A"),
+            "FICO":   (2, "Portfolio A"),
+            "AXP":    (2, "Portfolio A"),
+            "RMBS":   (1, "Portfolio A"),
+            # Portfolio B
+            "PGR":  (3, "Portfolio B"),
+            "CB":   (3, "Portfolio B"),
+            "PG":   (2, "Portfolio B"),
+            "KO":   (2, "Portfolio B"),
+            "TXN":  (2, "Portfolio B"),
+            "XOM":  (2, "Portfolio B"),
+            "BLK":  (2, "Portfolio B"),
+            "BIP":  (3, "Portfolio B"),
+            "CHD":  (1, "Portfolio B"),
+            "ABBV": (2, "Portfolio B"),
+            "AVGO": (2, "Portfolio B"),
+            "CL":   (1, "Portfolio B"),
+            "FCX":  (2, "Portfolio B"),
+            "JNJ":  (2, "Portfolio B"),
+            "ITW":  (2, "Portfolio B"),
+            "EOG":  (2, "Portfolio B"),
+            "EMR":  (1, "Portfolio B"),
+            "NEE":  (1, "Portfolio B"),
+            "KMI":  (1, "Portfolio B"),
+            "PLD":  (1, "Portfolio B"),
+            # Wait List
+            "GOOGL":   (4, "Wait List"),
+            "ASML":    (3, "Wait List"),
+            "COST":    (3, "Wait List"),
+            "NVO":     (2, "Wait List"),
+            "EQNR":    (2, "Wait List"),
+            "CSU.TO":  (2, "Wait List"),
+            "6861.T":  (2, "Wait List"),
+            "WTKWY":   (2, "Wait List"),
+            "CLPBY":   (1, "Wait List"),
+        }
+        # V and AXP and FICO appear in both Portfolio A and Wait List —
+        # prefer the Portfolio A entry (already set above); Wait List
+        # entries for those tickers are de-duplicated via the dict.
+
+        def _fmt_dollars(amount: float) -> str:
+            return f"${amount:,.0f}"
 
         # ── Portfolio size input ───────────────────────────────────────────────
         if "deployment_portfolio_size" not in st.session_state:
@@ -2919,187 +2981,350 @@ Infrastructure/MLP names (KMI, BIP, PLD): D/E threshold ≤ 2.5×.
             format="%d",
         )
 
-        def _fmt_dollars(amount: float) -> str:
-            return f"${amount:,.0f}"
+        # ── Gather live signals from session state ────────────────────────────
+        _deploy_rows: list[dict] = []
 
-        def _render_tranche_card(
-            tranche_num: int,
-            tranche_title: str,
-            market_condition: str,
-            sgov_remaining_pct: int,
-            deploy_pct: int,
-            stocks: list[tuple[str, int]],  # (ticker, alloc_pct)
-            note: str,
-            accent: str,
-            accent_dark: str,
-        ) -> None:
-            deploy_amt = portfolio_size * deploy_pct / 100
-            sgov_amt   = portfolio_size * sgov_remaining_pct / 100
+        # Portfolio A
+        _raw_a = st.session_state.get("raw_rows")
+        if _raw_a:
+            for _r in _raw_a:
+                if _r.get("Signal") in ("FAIR", "DREAM"):
+                    _tk = _r["Ticker"]
+                    _alloc_pct, _list_lbl = _DEPLOY_ALLOC.get(_tk, (1, "Portfolio A"))
+                    _deploy_rows.append({
+                        "Ticker":       _tk,
+                        "List":         "Portfolio A",
+                        "Signal":       _r["Signal"],
+                        "Price":        _r.get("Price"),
+                        "Fair Price":   _r.get("Fair Price"),
+                        "Dream Price":  _r.get("Dream Price"),
+                        "Discount%":    _r.get("Discount%"),
+                        "Alloc%":       _alloc_pct,
+                    })
 
-            # Card wrapper — white background, colored left border
+        # Portfolio B
+        _raw_b = st.session_state.get("raw_rows_b")
+        if _raw_b:
+            for _r in _raw_b:
+                if _r.get("Signal") in ("FAIR", "DREAM"):
+                    _tk = _r["Ticker"]
+                    _alloc_pct, _list_lbl = _DEPLOY_ALLOC.get(_tk, (1, "Portfolio B"))
+                    _deploy_rows.append({
+                        "Ticker":       _tk,
+                        "List":         "Portfolio B",
+                        "Signal":       _r["Signal"],
+                        "Price":        _r.get("Price"),
+                        "Fair Price":   _r.get("Fair Price"),
+                        "Dream Price":  _r.get("Dream Price"),
+                        "Discount%":    _r.get("Discount%"),
+                        "Alloc%":       _alloc_pct,
+                    })
+
+        # Wait List — ENTER status maps to FAIR signal
+        _raw_wl = st.session_state.get("raw_rows_waitlist")
+        if _raw_wl:
+            for _r in _raw_wl:
+                if _r.get("status") == "ENTER":
+                    _tk = _r["ticker"]
+                    _alloc_pct, _ = _DEPLOY_ALLOC.get(_tk, (1, "Wait List"))
+                    _price = _r.get("price")
+                    _entry_high = _r.get("entry_high")
+                    _entry_low  = _r.get("entry_low")
+                    _gap = _r.get("gap_pct")
+                    _disc = round(-_gap, 1) if _gap is not None else None
+                    _deploy_rows.append({
+                        "Ticker":      _r.get("display_ticker", _tk),
+                        "List":        "Wait List",
+                        "Signal":      "ENTER",
+                        "Price":       _price,
+                        "Fair Price":  _entry_high,
+                        "Dream Price": _entry_low,
+                        "Discount%":   _disc,
+                        "Alloc%":      _alloc_pct,
+                    })
+
+        # ── Summary metrics ───────────────────────────────────────────────────
+        _n_opps = len(_deploy_rows)
+        _total_suggested = sum(
+            portfolio_size * r["Alloc%"] / 100 for r in _deploy_rows
+        )
+        _sgov_remaining = portfolio_size - _total_suggested
+
+        _mc1, _mc2, _mc3 = st.columns(3)
+        _mc1.metric("FAIR + DREAM Opportunities", _n_opps)
+        _mc2.metric(
+            "Capital Suggested (if all deployed)",
+            _fmt_dollars(_total_suggested),
+        )
+        _mc3.metric(
+            "SGOV Remaining After Deployment",
+            _fmt_dollars(_sgov_remaining),
+        )
+
+        st.markdown("<div style='margin-top:6px'></div>", unsafe_allow_html=True)
+
+        # ── Primary table ─────────────────────────────────────────────────────
+        if not _deploy_rows:
+            _data_loaded = bool(_raw_a or _raw_b or _raw_wl)
+            if _data_loaded:
+                st.info(
+                    "No tickers at FAIR or DREAM signal right now. "
+                    "All positions are priced above fair value — hold SGOV.",
+                    icon="✅",
+                )
+            else:
+                st.info(
+                    "Load Portfolio A, Portfolio B, and/or Wait List tabs first "
+                    "to populate live signals.",
+                    icon="ℹ️",
+                )
+        else:
+            # Sort: DREAM first, then FAIR/ENTER; within each group by Alloc% desc
+            _signal_order = {"DREAM": 0, "FAIR": 1, "ENTER": 2}
+            _deploy_rows.sort(
+                key=lambda r: (_signal_order.get(r["Signal"], 9), -r["Alloc%"])
+            )
+
+            def _fmt_price(v) -> str:
+                if v is None:
+                    return "—"
+                return f"${v:,.2f}"
+
+            def _fmt_pct(v) -> str:
+                if v is None:
+                    return "—"
+                return f"{v:.1f}%"
+
+            # Build HTML table
+            _hdr = (
+                "<table style='width:100%;border-collapse:collapse;font-size:13px'>"
+                "<thead><tr style='background:#e8e8e8'>"
+                "<th style='padding:5px 10px;text-align:left;font-weight:700;color:#444'>Ticker</th>"
+                "<th style='padding:5px 10px;text-align:left;font-weight:700;color:#444'>List</th>"
+                "<th style='padding:5px 10px;text-align:center;font-weight:700;color:#444'>Signal</th>"
+                "<th style='padding:5px 10px;text-align:right;font-weight:700;color:#444'>Current Price</th>"
+                "<th style='padding:5px 10px;text-align:right;font-weight:700;color:#444'>Fair Price $</th>"
+                "<th style='padding:5px 10px;text-align:right;font-weight:700;color:#444'>Dream Price $</th>"
+                "<th style='padding:5px 10px;text-align:right;font-weight:700;color:#444'>Discount %</th>"
+                "<th style='padding:5px 10px;text-align:right;font-weight:700;color:#444'>Suggested Alloc %</th>"
+                "<th style='padding:5px 10px;text-align:right;font-weight:700;color:#444'>Suggested Amount ($)</th>"
+                "</tr></thead><tbody>"
+            )
+
+            _body = ""
+            for _i, _r in enumerate(_deploy_rows):
+                # Row background by signal
+                if _r["Signal"] == "DREAM":
+                    _row_bg = "#c8e6c0"   # sage green
+                    _sig_color = "#1a4a1a"
+                elif _r["Signal"] == "FAIR":
+                    _row_bg = "#fff0b3"   # amber
+                    _sig_color = "#5a3a00"
+                else:  # ENTER (wait list)
+                    _row_bg = "#fde8b0"   # slightly warmer amber for wait list
+                    _sig_color = "#5a3a00"
+
+                _alloc_amt = portfolio_size * _r["Alloc%"] / 100
+                _body += (
+                    f"<tr style='background:{_row_bg}'>"
+                    f"<td style='padding:5px 10px;font-weight:700;color:#1a1a1a'>{_r['Ticker']}</td>"
+                    f"<td style='padding:5px 10px;color:#333'>{_r['List']}</td>"
+                    f"<td style='padding:5px 10px;text-align:center'>"
+                    f"<span style='background:{_sig_color};color:#fff;font-size:11px;font-weight:700;"
+                    f"padding:2px 8px;border-radius:10px'>{_r['Signal']}</span></td>"
+                    f"<td style='padding:5px 10px;text-align:right;font-weight:600'>{_fmt_price(_r['Price'])}</td>"
+                    f"<td style='padding:5px 10px;text-align:right;color:#333'>{_fmt_price(_r['Fair Price'])}</td>"
+                    f"<td style='padding:5px 10px;text-align:right;color:#555'>{_fmt_price(_r['Dream Price'])}</td>"
+                    f"<td style='padding:5px 10px;text-align:right;color:#2a6a2a;font-weight:600'>{_fmt_pct(_r['Discount%'])}</td>"
+                    f"<td style='padding:5px 10px;text-align:right;font-weight:700'>{_r['Alloc%']}%</td>"
+                    f"<td style='padding:5px 10px;text-align:right;font-weight:700'>{_fmt_dollars(_alloc_amt)}</td>"
+                    f"</tr>"
+                )
+
             st.markdown(
-                f"<div style='border-left:5px solid {accent};background:#ffffff;border-radius:8px;"
-                f"padding:16px 20px 14px 18px;margin-bottom:18px;box-shadow:0 1px 4px rgba(0,0,0,0.10)'>",
+                _hdr + _body + "</tbody></table>",
                 unsafe_allow_html=True,
             )
 
-            # Header row
+        # ── Footnote ──────────────────────────────────────────────────────────
+        st.markdown(
+            "<div style='margin-top:12px;padding:10px 14px;background:#f7f4eb;"
+            "border-left:4px solid #b8940a;border-radius:5px;"
+            "color:#4a3800;font-size:0.85rem;line-height:1.6'>"
+            "Allocations are defaults from Modification 1.0. Adjust sizing as circumstances warrant — "
+            "Buffett deployed 40% into AXP during the salad oil scandal when conviction was highest."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        st.markdown("<div style='margin-top:24px'></div>", unsafe_allow_html=True)
+
+        # ── Tranche schedule (collapsed) ──────────────────────────────────────
+        with st.expander("Market Decline Framework — Original Tranche Schedule", expanded=False):
+
+            def _render_tranche_card(
+                tranche_num: int,
+                tranche_title: str,
+                market_condition: str,
+                sgov_remaining_pct: int,
+                deploy_pct: int,
+                stocks: list[tuple[str, int]],  # (ticker, alloc_pct)
+                note: str,
+                accent: str,
+                accent_dark: str,
+            ) -> None:
+                deploy_amt = portfolio_size * deploy_pct / 100
+                sgov_amt   = portfolio_size * sgov_remaining_pct / 100
+
+                st.markdown(
+                    f"<div style='border-left:5px solid {accent};background:#ffffff;border-radius:8px;"
+                    f"padding:16px 20px 14px 18px;margin-bottom:18px;box-shadow:0 1px 4px rgba(0,0,0,0.10)'>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f"<div style='display:flex;align-items:baseline;gap:14px;margin-bottom:6px'>"
+                    f"<span style='font-size:1.1rem;font-weight:800;color:{accent}'>Tranche {tranche_num}</span>"
+                    f"<span style='font-size:1.0rem;font-weight:700;color:#2a2a2a'>{tranche_title}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f"<div style='display:inline-block;background:{accent_dark};color:#fff;"
+                    f"font-size:0.78rem;font-weight:600;padding:2px 10px;border-radius:12px;margin-bottom:10px'>"
+                    f"Market trigger: {market_condition}</div>",
+                    unsafe_allow_html=True,
+                )
+                col_d, col_s = st.columns(2)
+                with col_d:
+                    st.markdown(
+                        f"<div style='background:#f0f0f0;border-radius:6px;padding:10px 12px;text-align:center'>"
+                        f"<div style='color:#555;font-size:0.75rem;font-weight:700;letter-spacing:0.05em'>DEPLOY</div>"
+                        f"<div style='color:{accent};font-size:1.45rem;font-weight:800'>{deploy_pct}%</div>"
+                        f"<div style='color:#333;font-size:0.92rem;font-weight:600'>{_fmt_dollars(deploy_amt)}</div>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                with col_s:
+                    st.markdown(
+                        f"<div style='background:#f0f0f0;border-radius:6px;padding:10px 12px;text-align:center'>"
+                        f"<div style='color:#555;font-size:0.75rem;font-weight:700;letter-spacing:0.05em'>SGOV REMAINING</div>"
+                        f"<div style='color:#5a8a5a;font-size:1.45rem;font-weight:800'>{sgov_remaining_pct}%</div>"
+                        f"<div style='color:#333;font-size:0.92rem;font-weight:600'>{_fmt_dollars(sgov_amt)}</div>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                st.markdown(
+                    "<div style='margin:14px 0 5px 0;color:#444;font-size:0.75rem;"
+                    "font-weight:700;letter-spacing:0.07em'>STOCKS — PRIORITY ORDER</div>",
+                    unsafe_allow_html=True,
+                )
+                rows_html = ""
+                for i, (ticker, alloc) in enumerate(stocks):
+                    bg = "#f7f7f7" if i % 2 == 0 else "#ffffff"
+                    alloc_amt = portfolio_size * alloc / 100
+                    rows_html += (
+                        f"<tr style='background:{bg}'>"
+                        f"<td style='padding:2px 8px;color:#1a1a1a;font-weight:700;font-size:12px'>{ticker}</td>"
+                        f"<td style='padding:2px 8px;color:{accent};font-weight:700;font-size:12px;text-align:right'>{alloc}%</td>"
+                        f"<td style='padding:2px 8px;color:#333;font-size:12px;text-align:right'>{_fmt_dollars(alloc_amt)}</td>"
+                        f"</tr>"
+                    )
+                st.markdown(
+                    f"<table style='width:100%;border-collapse:collapse;border-radius:5px;overflow:hidden;border:1px solid #e0e0e0'>"
+                    f"<thead><tr style='background:#ececec'>"
+                    f"<th style='padding:2px 8px;color:#555;font-size:11px;font-weight:700;text-align:left'>Ticker</th>"
+                    f"<th style='padding:2px 8px;color:#555;font-size:11px;font-weight:700;text-align:right'>Alloc %</th>"
+                    f"<th style='padding:2px 8px;color:#555;font-size:11px;font-weight:700;text-align:right'>Amount</th>"
+                    f"</tr></thead><tbody>{rows_html}</tbody></table>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    f"<div style='margin-top:12px;background:#f8f8f8;border-left:3px solid {accent};"
+                    f"border-radius:4px;padding:8px 12px;"
+                    f"color:#333;font-size:0.84rem;line-height:1.55'>"
+                    f"<span style='color:{accent};font-weight:700'>Note: </span>{note}</div>",
+                    unsafe_allow_html=True,
+                )
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            _col_t0, _col_t1 = st.columns(2)
+            with _col_t0:
+                _render_tranche_card(
+                    tranche_num=0,
+                    tranche_title="Deploy Now",
+                    market_condition="Current market — thesis-consistent names at fair-to-good prices",
+                    sgov_remaining_pct=75,
+                    deploy_pct=25,
+                    stocks=[
+                        ("BRK-B", 4), ("MSFT", 3), ("CME", 3), ("CVX", 3),
+                        ("COP", 2), ("EPD", 2), ("BAM", 3), ("CNI", 2),
+                        ("FNV", 2), ("PM", 2), ("MCO", 2), ("RMS.PA", 2),
+                    ],
+                    note="Deploy now into these 12 names. Retain 75% in SGOV as dry powder.",
+                    accent="#7caa7c",
+                    accent_dark="#4d7a4d",
+                )
+            with _col_t1:
+                _render_tranche_card(
+                    tranche_num=1,
+                    tranche_title="S&P -10%",
+                    market_condition="S&P 500 down 10%, VIX 25–30",
+                    sgov_remaining_pct=55,
+                    deploy_pct=20,
+                    stocks=[
+                        ("GOOGL", 2), ("ASML", 2), ("MSFT add", 2), ("SPGI add", 2),
+                        ("V", 2), ("NVO", 2), ("AXP", 2),
+                    ],
+                    note="Focus on wait-list names that have reached entry targets.",
+                    accent="#c8a040",
+                    accent_dark="#8a6a20",
+                )
+
+            _col_t2, _col_t3 = st.columns(2)
+            with _col_t2:
+                _render_tranche_card(
+                    tranche_num=2,
+                    tranche_title="S&P -20%",
+                    market_condition="S&P 500 down 20%, VIX 35–40, bond market stress",
+                    sgov_remaining_pct=30,
+                    deploy_pct=25,
+                    stocks=[
+                        ("COST", 3), ("FICO", 2), ("Keyence", 3), ("V add", 2),
+                        ("EQNR", 3), ("BRK-B add", 2), ("CME add", 2),
+                    ],
+                    note="High-quality names genuinely on sale. This is the Munger buying environment.",
+                    accent="#c87858",
+                    accent_dark="#8a4830",
+                )
+            with _col_t3:
+                _render_tranche_card(
+                    tranche_num=3,
+                    tranche_title="S&P -35%",
+                    market_condition="S&P 500 down 35%+, VIX 45+, crisis conditions",
+                    sgov_remaining_pct=10,
+                    deploy_pct=20,
+                    stocks=[
+                        ("COST full", 4), ("FICO add", 2), ("CSU.TO", 3), ("ASML add", 2),
+                        ("Size up best names", 3), ("Keyence add", 2),
+                    ],
+                    note="Maximum deployment event. Remaining 10% SGOV is permanent reserve only.",
+                    accent="#c84040",
+                    accent_dark="#8a1818",
+                )
+
             st.markdown(
-                f"<div style='display:flex;align-items:baseline;gap:14px;margin-bottom:6px'>"
-                f"<span style='font-size:1.1rem;font-weight:800;color:{accent}'>Tranche {tranche_num}</span>"
-                f"<span style='font-size:1.0rem;font-weight:700;color:#2a2a2a'>{tranche_title}</span>"
+                f"<div style='border-left:5px solid #c84040;background:#ffffff;border-radius:8px;"
+                f"padding:14px 18px;margin-top:4px;box-shadow:0 1px 4px rgba(0,0,0,0.10)'>"
+                f"<div style='color:#c84040;font-weight:800;font-size:0.95rem;margin-bottom:4px'>"
+                f"PERMANENT RESERVE — {_fmt_dollars(portfolio_size * 0.10)} (10% of portfolio)</div>"
+                f"<div style='color:#444;font-size:0.87rem;line-height:1.55'>"
+                f"Keep minimum 10% in SGOV regardless. This is 6-month living expenses buffer plus emergency "
+                f"opportunity reserve. Do NOT deploy.</div>"
                 f"</div>",
                 unsafe_allow_html=True,
             )
 
-            # Condition badge
-            st.markdown(
-                f"<div style='display:inline-block;background:{accent_dark};color:#fff;"
-                f"font-size:0.78rem;font-weight:600;padding:2px 10px;border-radius:12px;margin-bottom:10px'>"
-                f"Market trigger: {market_condition}</div>",
-                unsafe_allow_html=True,
-            )
-
-            # Metrics row
-            col_d, col_s = st.columns(2)
-            with col_d:
-                st.markdown(
-                    f"<div style='background:#f0f0f0;border-radius:6px;padding:10px 12px;text-align:center'>"
-                    f"<div style='color:#555;font-size:0.75rem;font-weight:700;letter-spacing:0.05em'>DEPLOY</div>"
-                    f"<div style='color:{accent};font-size:1.45rem;font-weight:800'>{deploy_pct}%</div>"
-                    f"<div style='color:#333;font-size:0.92rem;font-weight:600'>{_fmt_dollars(deploy_amt)}</div>"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
-            with col_s:
-                st.markdown(
-                    f"<div style='background:#f0f0f0;border-radius:6px;padding:10px 12px;text-align:center'>"
-                    f"<div style='color:#555;font-size:0.75rem;font-weight:700;letter-spacing:0.05em'>SGOV REMAINING</div>"
-                    f"<div style='color:#5a8a5a;font-size:1.45rem;font-weight:800'>{sgov_remaining_pct}%</div>"
-                    f"<div style='color:#333;font-size:0.92rem;font-weight:600'>{_fmt_dollars(sgov_amt)}</div>"
-                    f"</div>",
-                    unsafe_allow_html=True,
-                )
-
-            # Stocks table
-            st.markdown(
-                "<div style='margin:14px 0 5px 0;color:#444;font-size:0.75rem;"
-                "font-weight:700;letter-spacing:0.07em'>STOCKS — PRIORITY ORDER</div>",
-                unsafe_allow_html=True,
-            )
-            rows_html = ""
-            for i, (ticker, alloc) in enumerate(stocks):
-                bg = "#f7f7f7" if i % 2 == 0 else "#ffffff"
-                alloc_amt = portfolio_size * alloc / 100
-                rows_html += (
-                    f"<tr style='background:{bg}'>"
-                    f"<td style='padding:2px 8px;color:#1a1a1a;font-weight:700;font-size:12px'>{ticker}</td>"
-                    f"<td style='padding:2px 8px;color:{accent};font-weight:700;font-size:12px;text-align:right'>{alloc}%</td>"
-                    f"<td style='padding:2px 8px;color:#333;font-size:12px;text-align:right'>{_fmt_dollars(alloc_amt)}</td>"
-                    f"</tr>"
-                )
-            st.markdown(
-                f"<table style='width:100%;border-collapse:collapse;border-radius:5px;overflow:hidden;border:1px solid #e0e0e0'>"
-                f"<thead><tr style='background:#ececec'>"
-                f"<th style='padding:2px 8px;color:#555;font-size:11px;font-weight:700;text-align:left'>Ticker</th>"
-                f"<th style='padding:2px 8px;color:#555;font-size:11px;font-weight:700;text-align:right'>Alloc %</th>"
-                f"<th style='padding:2px 8px;color:#555;font-size:11px;font-weight:700;text-align:right'>Amount</th>"
-                f"</tr></thead><tbody>{rows_html}</tbody></table>",
-                unsafe_allow_html=True,
-            )
-
-            # Note
-            st.markdown(
-                f"<div style='margin-top:12px;background:#f8f8f8;border-left:3px solid {accent};"
-                f"border-radius:4px;padding:8px 12px;"
-                f"color:#333;font-size:0.84rem;line-height:1.55'>"
-                f"<span style='color:{accent};font-weight:700'>Note: </span>{note}</div>",
-                unsafe_allow_html=True,
-            )
-
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        # ── Tranches 0 & 1 (top row) ──────────────────────────────────────────
-        _col_t0, _col_t1 = st.columns(2)
-        with _col_t0:
-            _render_tranche_card(
-                tranche_num=0,
-                tranche_title="Deploy Now",
-                market_condition="Current market — thesis-consistent names at fair-to-good prices",
-                sgov_remaining_pct=75,
-                deploy_pct=25,
-                stocks=[
-                    ("BRK-B", 4), ("MSFT", 3), ("CME", 3), ("CVX", 3),
-                    ("COP", 2), ("EPD", 2), ("BAM", 3), ("CNI", 2),
-                    ("FNV", 2), ("PM", 2), ("MCO", 2), ("RMS.PA", 2),
-                ],
-                note="Deploy now into these 12 names. Retain 75% in SGOV as dry powder.",
-                accent="#7caa7c",
-                accent_dark="#4d7a4d",
-            )
-        with _col_t1:
-            _render_tranche_card(
-                tranche_num=1,
-                tranche_title="S&P -10%",
-                market_condition="S&P 500 down 10%, VIX 25–30",
-                sgov_remaining_pct=55,
-                deploy_pct=20,
-                stocks=[
-                    ("GOOGL", 2), ("ASML", 2), ("MSFT add", 2), ("SPGI add", 2),
-                    ("V", 2), ("NVO", 2), ("AXP", 2),
-                ],
-                note="Focus on wait-list names that have reached entry targets.",
-                accent="#c8a040",
-                accent_dark="#8a6a20",
-            )
-
-        # ── Tranches 2 & 3 (bottom row) ───────────────────────────────────────
-        _col_t2, _col_t3 = st.columns(2)
-        with _col_t2:
-            _render_tranche_card(
-                tranche_num=2,
-                tranche_title="S&P -20%",
-                market_condition="S&P 500 down 20%, VIX 35–40, bond market stress",
-                sgov_remaining_pct=30,
-                deploy_pct=25,
-                stocks=[
-                    ("COST", 3), ("FICO", 2), ("Keyence", 3), ("V add", 2),
-                    ("EQNR", 3), ("BRK-B add", 2), ("CME add", 2),
-                ],
-                note="High-quality names genuinely on sale. This is the Munger buying environment.",
-                accent="#c87858",
-                accent_dark="#8a4830",
-            )
-        with _col_t3:
-            _render_tranche_card(
-                tranche_num=3,
-                tranche_title="S&P -35%",
-                market_condition="S&P 500 down 35%+, VIX 45+, crisis conditions",
-                sgov_remaining_pct=10,
-                deploy_pct=20,
-                stocks=[
-                    ("COST full", 4), ("FICO add", 2), ("CSU.TO", 3), ("ASML add", 2),
-                    ("Size up best names", 3), ("Keyence add", 2),
-                ],
-                note="Maximum deployment event. Remaining 10% SGOV is permanent reserve only.",
-                accent="#c84040",
-                accent_dark="#8a1818",
-            )
-
-        # ── Permanent reserve note ─────────────────────────────────────────────
-        st.markdown(
-            f"<div style='border-left:5px solid #c84040;background:#ffffff;border-radius:8px;"
-            f"padding:14px 18px;margin-top:4px;box-shadow:0 1px 4px rgba(0,0,0,0.10)'>"
-            f"<div style='color:#c84040;font-weight:800;font-size:0.95rem;margin-bottom:4px'>"
-            f"PERMANENT RESERVE — {_fmt_dollars(portfolio_size * 0.10)} (10% of portfolio)</div>"
-            f"<div style='color:#444;font-size:0.87rem;line-height:1.55'>"
-            f"Keep minimum 10% in SGOV regardless. This is 6-month living expenses buffer plus emergency "
-            f"opportunity reserve. Do NOT deploy.</div>"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
-
-        st.caption("Not financial advice. Allocation percentages are guidelines, not mandates.")
+            st.caption("Not financial advice. Allocation percentages are guidelines, not mandates.")
 
     # ══════════════════════════════════════════════════════════════════════════
     # NEWS
