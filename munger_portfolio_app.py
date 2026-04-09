@@ -25,6 +25,7 @@ RED_FLAGS_FILE    = os.path.join(os.path.dirname(os.path.abspath(__file__)), "re
 RED_FLAGS_FILE_B  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "red_flags_b.json")
 CUSTOM_TICKERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "custom_tickers.json")
 WAIT_LIST_CUSTOM_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wait_list_custom.json")
+MANUAL_METRICS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manual_metrics.json")
 
 FLAG_NAMES = [
     "Accounting Issues",
@@ -706,6 +707,43 @@ def load_red_flags_b() -> dict:
 
 def save_red_flags_b(flags: dict) -> None:
     _save_flags(RED_FLAGS_FILE_B, flags)
+
+
+# ── Manual metrics persistence ────────────────────────────────────────────────
+
+_MANUAL_METRICS_DEFAULTS: dict[str, float] = {
+    "pgr_combined_ratio":        95.0,
+    "pgr_premium_growth":         0.0,
+    "cb_combined_ratio":         95.0,
+    "cb_premium_growth":          0.0,
+    "cni_operating_ratio":       60.0,
+    "jpm_roa":                    0.0,
+    "jpm_efficiency_ratio":       0.0,
+    "epd_dcf_coverage":           0.0,
+    "epd_distribution_growth":    0.0,
+    "cvx_dividend_coverage":      0.0,
+    "cop_dividend_coverage":      0.0,
+    "pm_dividend_coverage":       0.0,
+    "pm_iqos_volume_growth":      0.0,
+}
+
+
+def load_manual_metrics() -> dict:
+    if os.path.exists(MANUAL_METRICS_FILE):
+        try:
+            with open(MANUAL_METRICS_FILE) as fh:
+                data = json.load(fh)
+            return {k: data.get(k, v) for k, v in _MANUAL_METRICS_DEFAULTS.items()}
+        except Exception:
+            pass
+    return dict(_MANUAL_METRICS_DEFAULTS)
+
+
+def save_manual_metrics(metrics: dict, timestamp: str) -> None:
+    payload = dict(metrics)
+    payload["_last_updated"] = timestamp
+    with open(MANUAL_METRICS_FILE, "w") as fh:
+        json.dump(payload, fh, indent=2)
 
 
 # ── Custom tickers persistence ────────────────────────────────────────────────
@@ -1507,6 +1545,18 @@ def main() -> None:
         st.session_state.macro_brk_status = "NORMAL"
     if "macro_brk_note" not in st.session_state:
         st.session_state.macro_brk_note = "Cash ~$325B, no major acquisitions signaled (Q4 2024)"
+    if "manual_metrics" not in st.session_state:
+        _mm_loaded = load_manual_metrics()
+        st.session_state.manual_metrics = _mm_loaded
+        # Load last-updated timestamp if present
+        _mm_ts = None
+        if os.path.exists(MANUAL_METRICS_FILE):
+            try:
+                with open(MANUAL_METRICS_FILE) as _fh:
+                    _mm_ts = json.load(_fh).get("_last_updated")
+            except Exception:
+                pass
+        st.session_state.manual_metrics_last_updated = _mm_ts
     if "custom_tickers" not in st.session_state:
         st.session_state.custom_tickers = load_custom_tickers()
     if "raw_rows_custom_a" not in st.session_state:
@@ -3059,6 +3109,185 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                     unsafe_allow_html=True,
                 )
 
+        # ── Manual Metrics section ────────────────────────────────────────────
+        st.divider()
+        st.subheader("MANUAL METRICS — company-specific quality inputs (quarterly)")
+
+        _mm = st.session_state.manual_metrics
+
+        # ── INSURANCE ────────────────────────────────────────────────────────
+        st.markdown(
+            "<div style='font-size:0.8rem;font-weight:700;color:#666;letter-spacing:0.05em;"
+            "margin:8px 0 4px 0'>INSURANCE (PGR, CB)</div>",
+            unsafe_allow_html=True,
+        )
+        _ins1, _ins2, _ins3 = st.columns(3)
+        with _ins1:
+            _mm["pgr_combined_ratio"] = st.number_input(
+                "PGR Combined Ratio (target < 96%)",
+                min_value=50.0, max_value=150.0,
+                value=float(_mm["pgr_combined_ratio"]),
+                step=0.1, format="%.1f",
+                key="mm_pgr_combined_ratio",
+            )
+        with _ins2:
+            _mm["pgr_premium_growth"] = st.number_input(
+                "PGR Premium Growth % (target ≥ 5%)",
+                min_value=-50.0, max_value=100.0,
+                value=float(_mm["pgr_premium_growth"]),
+                step=0.1, format="%.1f",
+                key="mm_pgr_premium_growth",
+            )
+        with _ins3:
+            _mm["cb_combined_ratio"] = st.number_input(
+                "CB Combined Ratio (target < 96%)",
+                min_value=50.0, max_value=150.0,
+                value=float(_mm["cb_combined_ratio"]),
+                step=0.1, format="%.1f",
+                key="mm_cb_combined_ratio",
+            )
+        _ins4, _ins5, _ = st.columns(3)
+        with _ins4:
+            _mm["cb_premium_growth"] = st.number_input(
+                "CB Premium Growth % (target ≥ 5%)",
+                min_value=-50.0, max_value=100.0,
+                value=float(_mm["cb_premium_growth"]),
+                step=0.1, format="%.1f",
+                key="mm_cb_premium_growth",
+            )
+
+        # ── RAILROAD ─────────────────────────────────────────────────────────
+        st.markdown(
+            "<div style='font-size:0.8rem;font-weight:700;color:#666;letter-spacing:0.05em;"
+            "margin:12px 0 4px 0'>RAILROAD (CNI)</div>",
+            unsafe_allow_html=True,
+        )
+        _rr1, _rr2, _rr3 = st.columns(3)
+        with _rr1:
+            _mm["cni_operating_ratio"] = st.number_input(
+                "CNI Operating Ratio (target < 65%)",
+                min_value=40.0, max_value=100.0,
+                value=float(_mm["cni_operating_ratio"]),
+                step=0.1, format="%.1f",
+                key="mm_cni_operating_ratio",
+            )
+
+        # ── BANKS ────────────────────────────────────────────────────────────
+        st.markdown(
+            "<div style='font-size:0.8rem;font-weight:700;color:#666;letter-spacing:0.05em;"
+            "margin:12px 0 4px 0'>BANKS (JPM)</div>",
+            unsafe_allow_html=True,
+        )
+        _bk1, _bk2, _bk3 = st.columns(3)
+        with _bk1:
+            _mm["jpm_roa"] = st.number_input(
+                "JPM ROA % (target ≥ 1.0%)",
+                min_value=0.0, max_value=10.0,
+                value=float(_mm["jpm_roa"]),
+                step=0.01, format="%.2f",
+                key="mm_jpm_roa",
+            )
+        with _bk2:
+            _mm["jpm_efficiency_ratio"] = st.number_input(
+                "JPM Efficiency Ratio % (target < 60%)",
+                min_value=0.0, max_value=100.0,
+                value=float(_mm["jpm_efficiency_ratio"]),
+                step=0.1, format="%.1f",
+                key="mm_jpm_efficiency_ratio",
+            )
+
+        # ── MLPs ─────────────────────────────────────────────────────────────
+        st.markdown(
+            "<div style='font-size:0.8rem;font-weight:700;color:#666;letter-spacing:0.05em;"
+            "margin:12px 0 4px 0'>MLPs (EPD, KMI)</div>",
+            unsafe_allow_html=True,
+        )
+        _mlp1, _mlp2, _mlp3 = st.columns(3)
+        with _mlp1:
+            _mm["epd_dcf_coverage"] = st.number_input(
+                "EPD DCF Coverage (target ≥ 1.5x)",
+                min_value=0.0, max_value=10.0,
+                value=float(_mm["epd_dcf_coverage"]),
+                step=0.01, format="%.2f",
+                key="mm_epd_dcf_coverage",
+            )
+        with _mlp2:
+            _mm["epd_distribution_growth"] = st.number_input(
+                "EPD Distribution Growth % (target ≥ 3%)",
+                min_value=-20.0, max_value=50.0,
+                value=float(_mm["epd_distribution_growth"]),
+                step=0.1, format="%.1f",
+                key="mm_epd_distribution_growth",
+            )
+
+        # ── ENERGY ───────────────────────────────────────────────────────────
+        st.markdown(
+            "<div style='font-size:0.8rem;font-weight:700;color:#666;letter-spacing:0.05em;"
+            "margin:12px 0 4px 0'>ENERGY (CVX, COP)</div>",
+            unsafe_allow_html=True,
+        )
+        _en1, _en2, _en3 = st.columns(3)
+        with _en1:
+            _mm["cvx_dividend_coverage"] = st.number_input(
+                "CVX Dividend Coverage at $70 oil (target ≥ 2x)",
+                min_value=0.0, max_value=20.0,
+                value=float(_mm["cvx_dividend_coverage"]),
+                step=0.01, format="%.2f",
+                key="mm_cvx_dividend_coverage",
+            )
+        with _en2:
+            _mm["cop_dividend_coverage"] = st.number_input(
+                "COP Dividend Coverage at $70 oil (target ≥ 2x)",
+                min_value=0.0, max_value=20.0,
+                value=float(_mm["cop_dividend_coverage"]),
+                step=0.01, format="%.2f",
+                key="mm_cop_dividend_coverage",
+            )
+
+        # ── PHILIP MORRIS ────────────────────────────────────────────────────
+        st.markdown(
+            "<div style='font-size:0.8rem;font-weight:700;color:#666;letter-spacing:0.05em;"
+            "margin:12px 0 4px 0'>PHILIP MORRIS (PM)</div>",
+            unsafe_allow_html=True,
+        )
+        _pm1, _pm2, _pm3 = st.columns(3)
+        with _pm1:
+            _mm["pm_dividend_coverage"] = st.number_input(
+                "PM Dividend Coverage Ratio (target > 1.3x)",
+                min_value=0.0, max_value=10.0,
+                value=float(_mm["pm_dividend_coverage"]),
+                step=0.01, format="%.2f",
+                key="mm_pm_dividend_coverage",
+            )
+        with _pm2:
+            _mm["pm_iqos_volume_growth"] = st.number_input(
+                "PM iQOS Volume Growth % (target ≥ 10%)",
+                min_value=-50.0, max_value=200.0,
+                value=float(_mm["pm_iqos_volume_growth"]),
+                step=0.1, format="%.1f",
+                key="mm_pm_iqos_volume_growth",
+            )
+
+        # ── Save button + timestamp ───────────────────────────────────────────
+        st.markdown("<div style='margin-top:12px'></div>", unsafe_allow_html=True)
+        _mm_save_col, _mm_ts_col = st.columns([1, 3])
+        with _mm_save_col:
+            if st.button("Save Manual Metrics", key="save_manual_metrics", type="primary", use_container_width=True):
+                _now_ts = datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
+                save_manual_metrics(_mm, _now_ts)
+                st.session_state.manual_metrics = _mm
+                st.session_state.manual_metrics_last_updated = _now_ts
+                st.success("Saved.")
+        with _mm_ts_col:
+            _mm_ts_display = st.session_state.manual_metrics_last_updated or "never"
+            st.caption(f"Last updated: **{_mm_ts_display}**")
+
+        st.caption(
+            "Update these quarterly after earnings releases. "
+            "Sources: Morningstar, earnings transcripts, investor presentations."
+        )
+
+        st.divider()
         st.caption(
             "Live data: Yahoo Finance via yfinance.  "
             "Static data: update quarterly from CBO/OMB, MSFT earnings, Berkshire 13-F.  "
