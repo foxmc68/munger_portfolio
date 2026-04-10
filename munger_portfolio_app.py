@@ -640,7 +640,7 @@ CATEGORY_THRESHOLDS: dict[str, dict] = {
     "asset_light":      {"roic": 25,   "fcf_yield": 2.0, "rev_growth": 8,  "de": 0.5},
     "toll_financial":   {"roic": 15,   "fcf_yield": 2.0, "rev_growth": 5,  "de": 2.0},
     "bank":             {"roic": None, "fcf_yield": 2.5, "rev_growth": 3,  "de": None},
-    "insurance":        {"roic": 12,   "fcf_yield": None,"rev_growth": 5,  "de": None},
+    "insurance":        {"roic": None, "fcf_yield": None,"rev_growth": 5,  "de": None},
     "railroad":         {"roic": 10,   "fcf_yield": 2.5, "rev_growth": 3,  "de": 1.5},
     "infrastructure":   {"roic": 8,    "fcf_yield": 2.5, "rev_growth": 3,  "de": 2.5},
     "consumer_staples": {"roic": 12,   "fcf_yield": 3.0, "rev_growth": 2,  "de": 1.5},
@@ -1936,7 +1936,7 @@ A threshold of **—** means that check is skipped for the category.
 | asset_light | 25 | 2.0 | 8 | 0.5 |
 | toll_financial | 15 | 2.0 | 5 | 2.0 |
 | bank | — | 2.5 | 3 | — |
-| insurance | 12 | — | 5 | — |
+| insurance | — | — | 5 | — |
 | railroad | 10 | 2.5 | 3 | 1.5 |
 | infrastructure | 8 | 2.5 | 3 | 2.5 |
 | consumer_staples | 12 | 3.0 | 2 | 1.5 |
@@ -3347,6 +3347,11 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                 save_manual_metrics(_mm, _now_ts)
                 st.session_state.manual_metrics = _mm
                 st.session_state.manual_metrics_last_updated = _now_ts
+                # Invalidate cached rows so compute_row() re-runs with new manual metrics
+                st.session_state.raw_rows = None
+                st.session_state.raw_rows_b = None
+                st.session_state.raw_rows_custom_a = None
+                st.session_state.raw_rows_custom_b = None
                 st.success("Saved.")
         with _mm_ts_col:
             _mm_ts_display = st.session_state.manual_metrics_last_updated or "never"
