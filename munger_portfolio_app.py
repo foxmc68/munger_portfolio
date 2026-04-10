@@ -240,20 +240,32 @@ COMPANY_NAMES: dict[str, str] = {
     "PSX":  "Phillips 66 (Refining)",
     "MDT":  "Medtronic (Medical Devices)",
     "KMB":  "Kimberly-Clark (Consumer Paper)",
+    # Wait List / Deployment extras
+    "FNV":       "Franco-Nevada (Gold Royalty Streaming)",
+    "NVO":       "Novo Nordisk (GLP-1/Diabetes)",
+    "EQNR":      "Equinor (Norwegian Oil & Gas)",
+    "CSU.TO":    "Constellation Software (Vertical Market SaaS)",
+    "6861.T":    "Keyence (Japanese Sensors/Automation)",
+    "KEY-6861.T":"Keyence (Japanese Sensors/Automation)",
+    "WTKWY":     "Wolters Kluwer (Professional Information)",
+    "CLPBY":     "Coloplast (Medical Devices/Ostomy)",
 }
 
 
 def _company_legend(tickers: list[str]) -> str:
-    """Return a styled HTML legend: TICKER = Name · TICKER = Name …"""
+    """Return a styled HTML legend: <strong>TICKER</strong> = Name · …"""
     parts = []
     for tk in tickers:
         clean = tk.lstrip("★ ").strip()
         name = COMPANY_NAMES.get(clean, "")
         if name:
-            parts.append(f"{clean} = {name}")
+            parts.append(
+                f"<strong style='color:#000;font-weight:700'>{clean}</strong>"
+                f"<span style='color:#444444'> = {name}</span>"
+            )
     inner = " &nbsp;·&nbsp; ".join(parts)
     return (
-        f'<p style="font-size:11px;color:#888;margin:0 0 4px 0;line-height:1.5">'
+        f'<p style="font-size:12px;color:#444444;margin:4px 0 0 0;line-height:1.6">'
         f"{inner}</p>"
     )
 
@@ -1403,7 +1415,6 @@ def render_table(df_display: pd.DataFrame, df_raw: pd.DataFrame, tier_name: str,
 
     signal_series = pd.Series(signals)
     styled = _style_df(tier_disp, signal_series)
-    st.markdown(_company_legend(tier_disp["Ticker"].tolist()), unsafe_allow_html=True)
     st.dataframe(
         styled,
         use_container_width=True,
@@ -1412,6 +1423,7 @@ def render_table(df_display: pd.DataFrame, df_raw: pd.DataFrame, tier_name: str,
             "Ticker": st.column_config.TextColumn("Ticker")
         },
     )
+    st.markdown(_company_legend(tier_disp["Ticker"].tolist()), unsafe_allow_html=True)
 
 
 # ── Streamlit app ─────────────────────────────────────────────────────────────
@@ -2068,7 +2080,6 @@ ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effecti
 
         _b_signal_series = pd.Series(signals_b)
         _b_styled = _style_df(tier_disp_b, _b_signal_series)
-        st.markdown(_company_legend(tier_disp_b["Ticker"].tolist()), unsafe_allow_html=True)
         st.dataframe(
             _b_styled,
             use_container_width=True,
@@ -2077,6 +2088,7 @@ ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effecti
                 "Ticker": st.column_config.TextColumn("Ticker")
             },
         )
+        st.markdown(_company_legend(tier_disp_b["Ticker"].tolist()), unsafe_allow_html=True)
 
         # ── Add a Stock to Portfolio B ────────────────────────────────────────
         st.markdown("""<style>
@@ -2286,7 +2298,6 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                 return ["background-color:#d4e0e6;color:#1a2a3a"] * len(row)
             return [""] * len(row)
         _retired_styled = df_retired.style.apply(_style_retired_row, axis=1)
-        st.markdown(_company_legend([s["ticker"] for s in RETIRED_STOCKS]), unsafe_allow_html=True)
         st.dataframe(
             _retired_styled,
             use_container_width=True,
@@ -2295,6 +2306,7 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                 "Ticker": st.column_config.TextColumn("Ticker")
             },
         )
+        st.markdown(_company_legend([s["ticker"] for s in RETIRED_STOCKS]), unsafe_allow_html=True)
 
         st.divider()
         csv_bytes_r = df_retired.to_csv(index=False).encode()
@@ -2529,6 +2541,10 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             + "</div>",
             unsafe_allow_html=True,
         )
+        st.markdown(
+            _company_legend(["GOOGL", "V", "ASML", "COST"]),
+            unsafe_allow_html=True,
+        )
 
         st.markdown("<div style='margin-top:18px'></div>", unsafe_allow_html=True)
 
@@ -2594,6 +2610,10 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             "<div style='overflow-x:auto;width:100%'>"
             + _wl_header_html + _wl_rows_html(_rows_new)
             + "</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            _company_legend(["NVO", "EQNR", "AXP", "FICO", "CSU.TO", "KEY-6861.T", "WTKWY", "CLPBY"]),
             unsafe_allow_html=True,
         )
 
@@ -3720,6 +3740,15 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                 f"Keep minimum 10% in SGOV regardless. This is 6-month living expenses buffer plus emergency "
                 f"opportunity reserve. Do NOT deploy.</div>"
                 f"</div>",
+                unsafe_allow_html=True,
+            )
+
+            st.markdown(
+                _company_legend([
+                    "BRK-B", "MSFT", "CME", "CVX", "COP", "EPD", "BAM", "CNI",
+                    "FNV", "PM", "MCO", "RMS.PA", "GOOGL", "ASML", "SPGI", "V",
+                    "NVO", "AXP", "COST", "FICO", "KEY-6861.T", "EQNR", "CSU.TO",
+                ]),
                 unsafe_allow_html=True,
             )
 
