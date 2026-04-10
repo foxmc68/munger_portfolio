@@ -746,22 +746,45 @@ _MANUAL_METRICS_DEFAULTS: dict[str, float] = {
 }
 
 
+def _mm_ts_label(updated: Optional[str]) -> str:
+    """Return a display string for a per-field manual-metrics timestamp."""
+    if updated:
+        try:
+            dt = datetime.strptime(updated, "%Y-%m-%d")
+            return f"Updated: {dt.strftime('%b')} {dt.day}, {dt.year}"
+        except Exception:
+            return f"Updated: {updated}"
+    return "Never updated"
+
+
 def load_manual_metrics() -> dict:
+    """Return {field: {"value": float, "updated": str|None}} for all known fields."""
+    defaults = {k: {"value": v, "updated": None} for k, v in _MANUAL_METRICS_DEFAULTS.items()}
     if os.path.exists(MANUAL_METRICS_FILE):
         try:
             with open(MANUAL_METRICS_FILE) as fh:
                 data = json.load(fh)
-            return {k: data.get(k, v) for k, v in _MANUAL_METRICS_DEFAULTS.items()}
+            result = {}
+            for k, default_val in _MANUAL_METRICS_DEFAULTS.items():
+                raw = data.get(k)
+                if raw is None:
+                    result[k] = {"value": default_val, "updated": None}
+                elif isinstance(raw, (int, float)):
+                    # Old format — migrate gracefully
+                    result[k] = {"value": float(raw), "updated": None}
+                elif isinstance(raw, dict):
+                    result[k] = {"value": float(raw.get("value", default_val)), "updated": raw.get("updated")}
+                else:
+                    result[k] = {"value": default_val, "updated": None}
+            return result
         except Exception:
             pass
-    return dict(_MANUAL_METRICS_DEFAULTS)
+    return defaults
 
 
-def save_manual_metrics(metrics: dict, timestamp: str) -> None:
-    payload = dict(metrics)
-    payload["_last_updated"] = timestamp
+def save_manual_metrics(metrics: dict) -> None:
     with open(MANUAL_METRICS_FILE, "w") as fh:
-        json.dump(payload, fh, indent=2)
+        json.dump(metrics, fh, indent=2)
 
 
 # ── Custom tickers persistence ────────────────────────────────────────────────
@@ -1026,39 +1049,45 @@ def compute_row(
     # ── Manual metrics hard gates ─────────────────────────────────────────────
     if manual_metrics:
         mm = manual_metrics
+        def _mmv(field):
+            """Extract float value from new {value, updated} format or legacy float."""
+            raw = mm.get(field, 0)
+            if isinstance(raw, dict):
+                return float(raw.get("value", 0))
+            return float(raw) if raw else 0.0
         if ticker == "PGR":
-            v = mm.get("pgr_combined_ratio", 0)
+            v = _mmv("pgr_combined_ratio")
             if v > 0 and v > 96:
                 fails.append(f"Combined Ratio {v:.1f}% > 96%")
         elif ticker == "CB":
-            v = mm.get("cb_combined_ratio", 0)
+            v = _mmv("cb_combined_ratio")
             if v > 0 and v > 96:
                 fails.append(f"Combined Ratio {v:.1f}% > 96%")
         elif ticker == "CNI":
-            v = mm.get("cni_operating_ratio", 0)
+            v = _mmv("cni_operating_ratio")
             if v > 0 and v > 65:
                 fails.append(f"Operating Ratio {v:.1f}% > 65%")
         elif ticker == "JPM":
-            roa = mm.get("jpm_roa", 0)
-            eff = mm.get("jpm_efficiency_ratio", 0)
+            roa = _mmv("jpm_roa")
+            eff = _mmv("jpm_efficiency_ratio")
             if roa > 0 and roa < 1.0:
                 fails.append(f"ROA {roa:.2f}% < 1.0%")
             if eff > 0 and eff > 60:
                 fails.append(f"Efficiency Ratio {eff:.1f}% > 60%")
         elif ticker == "EPD":
-            v = mm.get("epd_dcf_coverage", 0)
+            v = _mmv("epd_dcf_coverage")
             if v > 0 and v < 1.5:
                 fails.append(f"DCF Coverage {v:.2f}x < 1.5x")
         elif ticker == "PM":
-            v = mm.get("pm_dividend_coverage", 0)
+            v = _mmv("pm_dividend_coverage")
             if v > 0 and v < 1.3:
                 fails.append(f"Dividend Coverage {v:.2f}x < 1.3x")
         elif ticker == "CVX":
-            v = mm.get("cvx_dividend_coverage", 0)
+            v = _mmv("cvx_dividend_coverage")
             if v > 0 and v < 2.0:
                 fails.append(f"Div Coverage @$70 oil {v:.2f}x < 2.0x")
         elif ticker == "COP":
-            v = mm.get("cop_dividend_coverage", 0)
+            v = _mmv("cop_dividend_coverage")
             if v > 0 and v < 2.0:
                 fails.append(f"Div Coverage @$70 oil {v:.2f}x < 2.0x")
 
@@ -1606,15 +1635,10 @@ def main() -> None:
     if "manual_metrics" not in st.session_state:
         _mm_loaded = load_manual_metrics()
         st.session_state.manual_metrics = _mm_loaded
-        # Load last-updated timestamp if present
-        _mm_ts = None
-        if os.path.exists(MANUAL_METRICS_FILE):
-            try:
-                with open(MANUAL_METRICS_FILE) as _fh:
-                    _mm_ts = json.load(_fh).get("_last_updated")
-            except Exception:
-                pass
-        st.session_state.manual_metrics_last_updated = _mm_ts
+        # Snapshot of last-saved values used to detect per-field changes on save
+        st.session_state.manual_metrics_saved = {
+            k: {"value": v["value"], "updated": v["updated"]} for k, v in _mm_loaded.items()
+        }
     if "custom_tickers" not in st.session_state:
         st.session_state.custom_tickers = load_custom_tickers()
     if "raw_rows_custom_a" not in st.session_state:
@@ -3193,38 +3217,42 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
         )
         _ins1, _ins2, _ins3 = st.columns(3)
         with _ins1:
-            _mm["pgr_combined_ratio"] = st.number_input(
+            _mm["pgr_combined_ratio"]["value"] = st.number_input(
                 "PGR Combined Ratio (target < 96%)",
                 min_value=50.0, max_value=150.0,
-                value=float(_mm["pgr_combined_ratio"]),
+                value=_mm["pgr_combined_ratio"]["value"],
                 step=0.1, format="%.1f",
                 key="mm_pgr_combined_ratio",
             )
+            st.caption(_mm_ts_label(_mm["pgr_combined_ratio"]["updated"]))
         with _ins2:
-            _mm["pgr_premium_growth"] = st.number_input(
+            _mm["pgr_premium_growth"]["value"] = st.number_input(
                 "PGR Premium Growth % (target ≥ 5%)",
                 min_value=-50.0, max_value=100.0,
-                value=float(_mm["pgr_premium_growth"]),
+                value=_mm["pgr_premium_growth"]["value"],
                 step=0.1, format="%.1f",
                 key="mm_pgr_premium_growth",
             )
+            st.caption(_mm_ts_label(_mm["pgr_premium_growth"]["updated"]))
         with _ins3:
-            _mm["cb_combined_ratio"] = st.number_input(
+            _mm["cb_combined_ratio"]["value"] = st.number_input(
                 "CB Combined Ratio (target < 96%)",
                 min_value=50.0, max_value=150.0,
-                value=float(_mm["cb_combined_ratio"]),
+                value=_mm["cb_combined_ratio"]["value"],
                 step=0.1, format="%.1f",
                 key="mm_cb_combined_ratio",
             )
+            st.caption(_mm_ts_label(_mm["cb_combined_ratio"]["updated"]))
         _ins4, _ins5, _ = st.columns(3)
         with _ins4:
-            _mm["cb_premium_growth"] = st.number_input(
+            _mm["cb_premium_growth"]["value"] = st.number_input(
                 "CB Premium Growth % (target ≥ 5%)",
                 min_value=-50.0, max_value=100.0,
-                value=float(_mm["cb_premium_growth"]),
+                value=_mm["cb_premium_growth"]["value"],
                 step=0.1, format="%.1f",
                 key="mm_cb_premium_growth",
             )
+            st.caption(_mm_ts_label(_mm["cb_premium_growth"]["updated"]))
 
         # ── RAILROAD ─────────────────────────────────────────────────────────
         st.markdown(
@@ -3234,13 +3262,14 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
         )
         _rr1, _rr2, _rr3 = st.columns(3)
         with _rr1:
-            _mm["cni_operating_ratio"] = st.number_input(
+            _mm["cni_operating_ratio"]["value"] = st.number_input(
                 "CNI Operating Ratio (target < 65%)",
                 min_value=40.0, max_value=100.0,
-                value=float(_mm["cni_operating_ratio"]),
+                value=_mm["cni_operating_ratio"]["value"],
                 step=0.1, format="%.1f",
                 key="mm_cni_operating_ratio",
             )
+            st.caption(_mm_ts_label(_mm["cni_operating_ratio"]["updated"]))
 
         # ── BANKS ────────────────────────────────────────────────────────────
         st.markdown(
@@ -3250,21 +3279,23 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
         )
         _bk1, _bk2, _bk3 = st.columns(3)
         with _bk1:
-            _mm["jpm_roa"] = st.number_input(
+            _mm["jpm_roa"]["value"] = st.number_input(
                 "JPM ROA % (target ≥ 1.0%)",
                 min_value=0.0, max_value=10.0,
-                value=float(_mm["jpm_roa"]),
+                value=_mm["jpm_roa"]["value"],
                 step=0.01, format="%.2f",
                 key="mm_jpm_roa",
             )
+            st.caption(_mm_ts_label(_mm["jpm_roa"]["updated"]))
         with _bk2:
-            _mm["jpm_efficiency_ratio"] = st.number_input(
+            _mm["jpm_efficiency_ratio"]["value"] = st.number_input(
                 "JPM Efficiency Ratio % (target < 60%)",
                 min_value=0.0, max_value=100.0,
-                value=float(_mm["jpm_efficiency_ratio"]),
+                value=_mm["jpm_efficiency_ratio"]["value"],
                 step=0.1, format="%.1f",
                 key="mm_jpm_efficiency_ratio",
             )
+            st.caption(_mm_ts_label(_mm["jpm_efficiency_ratio"]["updated"]))
 
         # ── MLPs ─────────────────────────────────────────────────────────────
         st.markdown(
@@ -3274,21 +3305,23 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
         )
         _mlp1, _mlp2, _mlp3 = st.columns(3)
         with _mlp1:
-            _mm["epd_dcf_coverage"] = st.number_input(
+            _mm["epd_dcf_coverage"]["value"] = st.number_input(
                 "EPD DCF Coverage (target ≥ 1.5x)",
                 min_value=0.0, max_value=10.0,
-                value=float(_mm["epd_dcf_coverage"]),
+                value=_mm["epd_dcf_coverage"]["value"],
                 step=0.01, format="%.2f",
                 key="mm_epd_dcf_coverage",
             )
+            st.caption(_mm_ts_label(_mm["epd_dcf_coverage"]["updated"]))
         with _mlp2:
-            _mm["epd_distribution_growth"] = st.number_input(
+            _mm["epd_distribution_growth"]["value"] = st.number_input(
                 "EPD Distribution Growth % (target ≥ 3%)",
                 min_value=-20.0, max_value=50.0,
-                value=float(_mm["epd_distribution_growth"]),
+                value=_mm["epd_distribution_growth"]["value"],
                 step=0.1, format="%.1f",
                 key="mm_epd_distribution_growth",
             )
+            st.caption(_mm_ts_label(_mm["epd_distribution_growth"]["updated"]))
 
         # ── ENERGY ───────────────────────────────────────────────────────────
         st.markdown(
@@ -3298,21 +3331,23 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
         )
         _en1, _en2, _en3 = st.columns(3)
         with _en1:
-            _mm["cvx_dividend_coverage"] = st.number_input(
+            _mm["cvx_dividend_coverage"]["value"] = st.number_input(
                 "CVX Dividend Coverage at $70 oil (target ≥ 2x)",
                 min_value=0.0, max_value=20.0,
-                value=float(_mm["cvx_dividend_coverage"]),
+                value=_mm["cvx_dividend_coverage"]["value"],
                 step=0.01, format="%.2f",
                 key="mm_cvx_dividend_coverage",
             )
+            st.caption(_mm_ts_label(_mm["cvx_dividend_coverage"]["updated"]))
         with _en2:
-            _mm["cop_dividend_coverage"] = st.number_input(
+            _mm["cop_dividend_coverage"]["value"] = st.number_input(
                 "COP Dividend Coverage at $70 oil (target ≥ 2x)",
                 min_value=0.0, max_value=20.0,
-                value=float(_mm["cop_dividend_coverage"]),
+                value=_mm["cop_dividend_coverage"]["value"],
                 step=0.01, format="%.2f",
                 key="mm_cop_dividend_coverage",
             )
+            st.caption(_mm_ts_label(_mm["cop_dividend_coverage"]["updated"]))
 
         # ── PHILIP MORRIS ────────────────────────────────────────────────────
         st.markdown(
@@ -3322,40 +3357,45 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
         )
         _pm1, _pm2, _pm3 = st.columns(3)
         with _pm1:
-            _mm["pm_dividend_coverage"] = st.number_input(
+            _mm["pm_dividend_coverage"]["value"] = st.number_input(
                 "PM Dividend Coverage Ratio (target > 1.3x)",
                 min_value=0.0, max_value=10.0,
-                value=float(_mm["pm_dividend_coverage"]),
+                value=_mm["pm_dividend_coverage"]["value"],
                 step=0.01, format="%.2f",
                 key="mm_pm_dividend_coverage",
             )
+            st.caption(_mm_ts_label(_mm["pm_dividend_coverage"]["updated"]))
         with _pm2:
-            _mm["pm_iqos_volume_growth"] = st.number_input(
+            _mm["pm_iqos_volume_growth"]["value"] = st.number_input(
                 "PM iQOS Volume Growth % (target ≥ 10%)",
                 min_value=-50.0, max_value=200.0,
-                value=float(_mm["pm_iqos_volume_growth"]),
+                value=_mm["pm_iqos_volume_growth"]["value"],
                 step=0.1, format="%.1f",
                 key="mm_pm_iqos_volume_growth",
             )
+            st.caption(_mm_ts_label(_mm["pm_iqos_volume_growth"]["updated"]))
 
-        # ── Save button + timestamp ───────────────────────────────────────────
+        # ── Save button ───────────────────────────────────────────────────────
         st.markdown("<div style='margin-top:12px'></div>", unsafe_allow_html=True)
-        _mm_save_col, _mm_ts_col = st.columns([1, 3])
-        with _mm_save_col:
-            if st.button("Save Manual Metrics", key="save_manual_metrics", type="primary", use_container_width=True):
-                _now_ts = datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
-                save_manual_metrics(_mm, _now_ts)
-                st.session_state.manual_metrics = _mm
-                st.session_state.manual_metrics_last_updated = _now_ts
-                # Invalidate cached rows so compute_row() re-runs with new manual metrics
-                st.session_state.raw_rows = None
-                st.session_state.raw_rows_b = None
-                st.session_state.raw_rows_custom_a = None
-                st.session_state.raw_rows_custom_b = None
-                st.success("Saved.")
-        with _mm_ts_col:
-            _mm_ts_display = st.session_state.manual_metrics_last_updated or "never"
-            st.caption(f"Last updated: **{_mm_ts_display}**")
+        if st.button("Save Manual Metrics", key="save_manual_metrics", type="primary"):
+            _today = datetime.now().strftime("%Y-%m-%d")
+            _saved_snap = st.session_state.get("manual_metrics_saved", {})
+            for _field in _MANUAL_METRICS_DEFAULTS:
+                _cur_val = _mm[_field]["value"]
+                _prev_val = _saved_snap.get(_field, {}).get("value") if isinstance(_saved_snap.get(_field), dict) else None
+                if _prev_val is None or _cur_val != _prev_val:
+                    _mm[_field]["updated"] = _today
+            save_manual_metrics(_mm)
+            st.session_state.manual_metrics = _mm
+            st.session_state.manual_metrics_saved = {
+                k: {"value": v["value"], "updated": v["updated"]} for k, v in _mm.items()
+            }
+            # Invalidate cached rows so compute_row() re-runs with new manual metrics
+            st.session_state.raw_rows = None
+            st.session_state.raw_rows_b = None
+            st.session_state.raw_rows_custom_a = None
+            st.session_state.raw_rows_custom_b = None
+            st.success("Saved.")
 
         st.caption(
             "Update these quarterly after earnings releases. "
