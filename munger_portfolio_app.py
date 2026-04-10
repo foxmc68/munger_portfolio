@@ -38,7 +38,7 @@ FLAG_NAMES = [
 
 PORTFOLIO: dict[str, dict] = {
     "Tier 1": {
-        "tickers": ["V", "MCO", "SPGI", "MSFT", "GOOGL", "COST", "RMS.PA", "ASML", "RMBS"],
+        "tickers": ["V", "MCO", "SPGI", "MSFT", "GOOGL", "COST", "RMS.PA", "ASML", "RMBS", "WKL", "RAA.DE"],
         "fair_pe": 25,
     },
     "Tier 2": {
@@ -49,7 +49,7 @@ PORTFOLIO: dict[str, dict] = {
         "fair_pe": 20,
     },
     "Tier 3": {
-        "tickers": ["JPM", "CVX", "COP", "EPD", "ASR", "PM"],
+        "tickers": ["JPM", "CVX", "COP", "EPD", "ASR"],
         "fair_pe": 16,
     },
 }
@@ -78,6 +78,8 @@ ALL_TICKERS: list[str] = [t for td in PORTFOLIO.values() for t in td["tickers"]]
 #   ITW  24 – diversified industrials, 80/20 execution and high ROIC
 #   EOG  14 – best-in-class E&P, capital discipline, low breakeven costs
 #   EMR  20 – automation-focused industrial compounder, recurring software
+#   PM   16 – iQOS/IQOS-led heated tobacco transition; strong dividend coverage;
+#             ex-US geographic diversification reduces US regulatory risk
 
 PORTFOLIO_B_TICKERS: dict[str, float] = {
     "NEE":  22.0,
@@ -100,6 +102,7 @@ PORTFOLIO_B_TICKERS: dict[str, float] = {
     "ITW":  24.0,
     "EOG":  14.0,
     "EMR":  20.0,
+    "PM":   16.0,
 }
 
 ALL_TICKERS_B: list[str] = list(PORTFOLIO_B_TICKERS.keys())
@@ -206,8 +209,10 @@ COMPANY_NAMES: dict[str, str] = {
     "COP":    "ConocoPhillips (E&P Energy)",
     "EPD":    "Enterprise Products (Midstream MLP)",
     "ASR":    "Grupo Aeroportuario (Mexican Airports)",
-    "PM":     "Philip Morris (International Tobacco)",
+    "WKL":    "Wolters Kluwer (Professional Information Services)",
+    "RAA.DE": "Rational AG (Commercial Kitchen Equipment)",
     # Portfolio B
+    "PM":     "Philip Morris (International Tobacco)",
     "NEE":  "NextEra Energy (Renewable Utility)",
     "PGR":  "Progressive (Auto Insurance)",
     "PG":   "Procter & Gamble (Consumer Staples)",
@@ -601,6 +606,7 @@ STOCK_CATEGORY: dict[str, str] = {
     # Asset-Light Compounders
     "MSFT": "asset_light", "GOOGL": "asset_light", "FICO": "asset_light",
     "VRSN": "asset_light", "ADP": "asset_light", "RMBS": "asset_light",
+    "WKL": "asset_light", "RAA.DE": "asset_light",
     # Toll Bridge Financials
     "MCO": "toll_financial", "CME": "toll_financial", "AXP": "toll_financial",
     "SPGI": "bank",  # IHS Markit acquisition ($44B goodwill) inflates IC → standard ROIC formula misleading
@@ -904,6 +910,7 @@ def compute_row(
     mos_pct: float,
     red_flags: dict,
     ticker_meta: dict,
+    manual_metrics: Optional[dict] = None,
 ) -> dict:
     meta = ticker_meta[ticker]
     fair_multiple = fair_override if fair_override is not None else meta["base_fair"]
@@ -1015,6 +1022,45 @@ def compute_row(
             fails.append(f"D/E {de_ratio:.2f} > {de_thr}")
 
     de_limit = de_thr  # preserve for display column
+
+    # ── Manual metrics hard gates ─────────────────────────────────────────────
+    if manual_metrics:
+        mm = manual_metrics
+        if ticker == "PGR":
+            v = mm.get("pgr_combined_ratio", 0)
+            if v > 0 and v > 96:
+                fails.append(f"Combined Ratio {v:.1f}% > 96%")
+        elif ticker == "CB":
+            v = mm.get("cb_combined_ratio", 0)
+            if v > 0 and v > 96:
+                fails.append(f"Combined Ratio {v:.1f}% > 96%")
+        elif ticker == "CNI":
+            v = mm.get("cni_operating_ratio", 0)
+            if v > 0 and v > 65:
+                fails.append(f"Operating Ratio {v:.1f}% > 65%")
+        elif ticker == "JPM":
+            roa = mm.get("jpm_roa", 0)
+            eff = mm.get("jpm_efficiency_ratio", 0)
+            if roa > 0 and roa < 1.0:
+                fails.append(f"ROA {roa:.2f}% < 1.0%")
+            if eff > 0 and eff > 60:
+                fails.append(f"Efficiency Ratio {eff:.1f}% > 60%")
+        elif ticker == "EPD":
+            v = mm.get("epd_dcf_coverage", 0)
+            if v > 0 and v < 1.5:
+                fails.append(f"DCF Coverage {v:.2f}x < 1.5x")
+        elif ticker == "PM":
+            v = mm.get("pm_dividend_coverage", 0)
+            if v > 0 and v < 1.3:
+                fails.append(f"Dividend Coverage {v:.2f}x < 1.3x")
+        elif ticker == "CVX":
+            v = mm.get("cvx_dividend_coverage", 0)
+            if v > 0 and v < 2.0:
+                fails.append(f"Div Coverage @$70 oil {v:.2f}x < 2.0x")
+        elif ticker == "COP":
+            v = mm.get("cop_dividend_coverage", 0)
+            if v > 0 and v < 2.0:
+                fails.append(f"Div Coverage @$70 oil {v:.2f}x < 2.0x")
 
     quality = "PASS" if not fails else "FAIL"
 
@@ -1753,7 +1799,8 @@ def main() -> None:
             for i, tk in enumerate(ALL_TICKERS):
                 override = fair_overrides.get(tk)
                 raw_rows.append(
-                    compute_row(tk, override, mos_pct, st.session_state.red_flags, _TICKER_META)
+                    compute_row(tk, override, mos_pct, st.session_state.red_flags, _TICKER_META,
+                                manual_metrics=st.session_state.manual_metrics)
                 )
                 progress.progress((i + 1) / len(ALL_TICKERS), text=f"Fetching {tk}…")
             progress.empty()
@@ -1855,7 +1902,8 @@ def main() -> None:
                     _ctk = _ct["ticker"]
                     _cmeta = {_ctk: {"tier": "Custom", "rank": _ci, "base_fair": _ct["fair_pe"], "is_custom": True}}
                     _custom_rows_a.append(
-                        compute_row(_ctk, None, mos_pct, st.session_state.red_flags, _cmeta)
+                        compute_row(_ctk, None, mos_pct, st.session_state.red_flags, _cmeta,
+                                    manual_metrics=st.session_state.manual_metrics)
                     )
                 st.session_state.raw_rows_custom_a = _custom_rows_a
             _df_raw_ca = pd.DataFrame(st.session_state.raw_rows_custom_a)
@@ -1986,7 +2034,7 @@ ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effecti
             fair_overrides_b[_tk_b] = _val_b if _val_b != _default_pe else None
 
         # ── Red Flags pills (Portfolio B) ─────────────────────────────────────
-        _B_DEFENSIVES = ["PG", "KO", "CHD", "CL", "ABBV", "JNJ"]
+        _B_DEFENSIVES = ["PG", "KO", "PM", "CHD", "CL", "ABBV", "JNJ"]
         _B_GROWTH = [
             "NEE", "PGR", "PLD", "TXN", "XOM", "BLK", "BIP",
             "CB", "AVGO", "FCX", "ITW", "EOG", "EMR", "KMI",
@@ -2042,7 +2090,8 @@ ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effecti
             for i, tk in enumerate(ALL_TICKERS_B):
                 override = fair_overrides_b.get(tk)
                 raw_rows_b.append(
-                    compute_row(tk, override, mos_pct, st.session_state.red_flags_b, _TICKER_META_B)
+                    compute_row(tk, override, mos_pct, st.session_state.red_flags_b, _TICKER_META_B,
+                                manual_metrics=st.session_state.manual_metrics)
                 )
                 progress_b.progress((i + 1) / len(ALL_TICKERS_B), text=f"Fetching {tk}…")
             progress_b.empty()
@@ -2164,7 +2213,8 @@ ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effecti
                     _ctk = _ct["ticker"]
                     _cmeta = {_ctk: {"tier": "Portfolio B", "rank": len(ALL_TICKERS_B) + _ci, "base_fair": _ct["fair_pe"], "is_custom": True}}
                     _custom_rows_b.append(
-                        compute_row(_ctk, None, mos_pct, st.session_state.red_flags_b, _cmeta)
+                        compute_row(_ctk, None, mos_pct, st.session_state.red_flags_b, _cmeta,
+                                    manual_metrics=st.session_state.manual_metrics)
                     )
                 st.session_state.raw_rows_custom_b = _custom_rows_b
             _df_raw_cb = pd.DataFrame(st.session_state.raw_rows_custom_b)
@@ -3331,7 +3381,6 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             "BAM":    (3, "Portfolio A"),
             "CNI":    (2, "Portfolio A"),
             "FNV":    (2, "Portfolio A"),
-            "PM":     (2, "Portfolio A"),
             "MCO":    (2, "Portfolio A"),
             "RMS.PA": (2, "Portfolio A"),
             "V":      (3, "Portfolio A"),
@@ -3365,6 +3414,7 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             "ITW":  (2, "Portfolio B"),
             "EOG":  (2, "Portfolio B"),
             "EMR":  (1, "Portfolio B"),
+            "PM":   (2, "Portfolio B"),
             "NEE":  (1, "Portfolio B"),
             "KMI":  (1, "Portfolio B"),
             "PLD":  (1, "Portfolio B"),
@@ -3677,9 +3727,9 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                     stocks=[
                         ("BRK-B", 4), ("MSFT", 3), ("CME", 3), ("CVX", 3),
                         ("COP", 2), ("EPD", 2), ("BAM", 3), ("CNI", 2),
-                        ("FNV", 2), ("PM", 2), ("MCO", 2), ("RMS.PA", 2),
+                        ("FNV", 2), ("MCO", 2), ("RMS.PA", 2),
                     ],
-                    note="Deploy now into these 12 names. Retain 75% in SGOV as dry powder.",
+                    note="Deploy now into these 11 names. Retain 75% in SGOV as dry powder.",
                     accent="#7caa7c",
                     accent_dark="#4d7a4d",
                 )
@@ -3746,7 +3796,7 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             st.markdown(
                 _company_legend([
                     "BRK-B", "MSFT", "CME", "CVX", "COP", "EPD", "BAM", "CNI",
-                    "FNV", "PM", "MCO", "RMS.PA", "GOOGL", "ASML", "SPGI", "V",
+                    "FNV", "MCO", "RMS.PA", "GOOGL", "ASML", "SPGI", "V",
                     "NVO", "AXP", "COST", "FICO", "KEY-6861.T", "EQNR", "CSU.TO",
                 ]),
                 unsafe_allow_html=True,
@@ -3796,7 +3846,7 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
         # ── Portfolio A ───────────────────────────────────────────────────────
         st.markdown(
             "<div style='background:#5a7f6a;color:#fff;padding:6px 14px;border-radius:5px;"
-            "font-weight:700;font-size:1rem;margin:8px 0 4px 0'>Portfolio A  ·  27 tickers</div>",
+            "font-weight:700;font-size:1rem;margin:8px 0 4px 0'>Portfolio A  ·  28 tickers</div>",
             unsafe_allow_html=True,
         )
         for _tk in ALL_TICKERS:

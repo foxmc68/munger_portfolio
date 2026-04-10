@@ -124,5 +124,11 @@
     "Mgmt Turnover": false,
     "Regulatory Threat": false,
     "Moat Deteriorating": false
+  },
+  "PM": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
   }
 }
