@@ -1490,14 +1490,14 @@ def render_table(df_display: pd.DataFrame, df_raw: pd.DataFrame, tier_name: str,
 
     signal_series = pd.Series(signals)
     styled = _style_df(tier_disp, signal_series)
-    st.dataframe(
-        styled,
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Ticker": st.column_config.TextColumn("Ticker")
-        },
-    )
+    _table_kwargs: dict = {
+        "use_container_width": True,
+        "hide_index": True,
+        "column_config": {"Ticker": st.column_config.TextColumn("Ticker")},
+    }
+    if tier_name in ("Tier 1", "Tier 2"):
+        _table_kwargs["height"] = (len(tier_disp) + 1) * 35 + 10
+    st.dataframe(styled, **_table_kwargs)
     st.markdown(_company_legend(tier_disp["Ticker"].tolist()), unsafe_allow_html=True)
 
 
@@ -2157,6 +2157,7 @@ ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effecti
             _b_styled,
             use_container_width=True,
             hide_index=True,
+            height=(len(tier_disp_b) + 1) * 35 + 10,
             column_config={
                 "Ticker": st.column_config.TextColumn("Ticker")
             },
@@ -2376,6 +2377,7 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             _retired_styled,
             use_container_width=True,
             hide_index=True,
+            height=(len(df_retired) + 1) * 35 + 10,
             column_config={
                 "Ticker": st.column_config.TextColumn("Ticker")
             },
