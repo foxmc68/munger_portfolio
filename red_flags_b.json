@@ -130,5 +130,23 @@
     "Mgmt Turnover": false,
     "Regulatory Threat": false,
     "Moat Deteriorating": false
+  },
+  "NVO": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "ITRK.L": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "BVI.PA": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
   }
 }

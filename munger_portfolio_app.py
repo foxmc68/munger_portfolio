@@ -103,6 +103,9 @@ PORTFOLIO_B_TICKERS: dict[str, float] = {
     "EOG":  14.0,
     "EMR":  20.0,
     "PM":   16.0,
+    "NVO":  22.0,
+    "ITRK.L": 22.0,
+    "BVI.PA": 20.0,
 }
 
 ALL_TICKERS_B: list[str] = list(PORTFOLIO_B_TICKERS.keys())
@@ -247,13 +250,16 @@ COMPANY_NAMES: dict[str, str] = {
     "KMB":  "Kimberly-Clark (Consumer Paper)",
     # Wait List / Deployment extras
     "FNV":       "Franco-Nevada (Gold Royalty Streaming)",
-    "NVO":       "Novo Nordisk (GLP-1/Diabetes)",
+    "NVO":       "Novo Nordisk (GLP-1 Pharma)",
     "EQNR":      "Equinor (Norwegian Oil & Gas)",
     "CSU.TO":    "Constellation Software (Vertical Market SaaS)",
     "6861.T":    "Keyence (Japanese Sensors/Automation)",
     "KEY-6861.T":"Keyence (Japanese Sensors/Automation)",
     "WTKWY":     "Wolters Kluwer (Professional Information)",
     "CLPBY":     "Coloplast (Medical Devices/Ostomy)",
+    "ITRK.L":   "Intertek (Testing & Certification)",
+    "BVI.PA":   "Bureau Veritas (Testing & Certification)",
+    "DPLM.L":   "Diploma PLC (UK Industrial Distribution)",
 }
 
 
@@ -331,16 +337,6 @@ WAIT_LIST_ADD: list[dict] = [
 
 WAIT_LIST_NEW: list[dict] = [
     {
-        "ticker": "NVO",
-        "metric": "P/E",
-        "entry_pe_target": 16,
-        "entry_low": 52.0,
-        "entry_high": 55.0,
-        "add_more_at": 46.0,
-        "currency_symbol": "$",
-        "note": "Ozempic/Wegovy secular opportunity. Lilly competition and patent cliff risk demand 16× discipline — no premium for biotech uncertainty.",
-    },
-    {
         "ticker": "EQNR",
         "metric": "P/E",
         "entry_pe_target": 8,
@@ -410,6 +406,16 @@ WAIT_LIST_NEW: list[dict] = [
         "add_more_at": 10.0,
         "currency_symbol": "$",
         "note": "Danish medical device compounder. Ostomy and continence care — deeply personal, high switching cost, recurring consumable revenue. Slower compounder suited to income allocation. US ADR available.",
+    },
+    {
+        "ticker": "DPLM.L",
+        "metric": "P/E",
+        "entry_pe_target": 20,
+        "entry_low": 18.0,
+        "entry_high": 20.0,
+        "add_more_at": 15.0,
+        "currency_symbol": "£",
+        "note": "UK industrial distribution — emergency parts switching cost moat. ROIC borderline at 15%, watch for improvement as margins expand to 25% target. Access via Fidelity international trading.",
     },
 ]
 
@@ -619,7 +625,7 @@ STOCK_CATEGORY: dict[str, str] = {
     # Consumer Staples
     "PG": "consumer_staples", "KO": "consumer_staples", "KMB": "consumer_staples",
     "PM": "consumer_staples", "CL": "consumer_staples", "CHD": "consumer_staples",
-    "COST": "consumer_staples",
+    "COST": "consumer_staples", "NVO": "consumer_staples",
     # Energy Majors
     "CVX": "energy", "COP": "energy", "XOM": "energy", "EOG": "energy", "EQNR": "energy",
     # MLPs
@@ -630,6 +636,7 @@ STOCK_CATEGORY: dict[str, str] = {
     "DHR": "industrial", "IDXX": "industrial", "WM": "industrial", "ASML": "industrial",
     "RMS.PA": "industrial", "ITW": "industrial", "EMR": "industrial", "TXN": "industrial",
     "AVGO": "industrial", "ABBV": "industrial", "JNJ": "industrial",
+    "ITRK.L": "industrial", "BVI.PA": "industrial",
     # Airport Concessions
     "ASR": "airport",
     # Special
@@ -2689,7 +2696,7 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             unsafe_allow_html=True,
         )
         st.markdown(
-            _company_legend(["NVO", "EQNR", "AXP", "FICO", "CSU.TO", "KEY-6861.T", "WTKWY", "CLPBY"]),
+            _company_legend(["EQNR", "AXP", "FICO", "CSU.TO", "KEY-6861.T", "WTKWY", "CLPBY", "DPLM.L"]),
             unsafe_allow_html=True,
         )
 
@@ -3460,21 +3467,24 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             "JNJ":  (2, "Portfolio B"),
             "ITW":  (2, "Portfolio B"),
             "EOG":  (2, "Portfolio B"),
-            "EMR":  (1, "Portfolio B"),
-            "PM":   (2, "Portfolio B"),
-            "NEE":  (1, "Portfolio B"),
-            "KMI":  (1, "Portfolio B"),
-            "PLD":  (1, "Portfolio B"),
+            "EMR":    (1, "Portfolio B"),
+            "PM":     (2, "Portfolio B"),
+            "NEE":    (1, "Portfolio B"),
+            "KMI":    (1, "Portfolio B"),
+            "PLD":    (1, "Portfolio B"),
+            "NVO":    (2, "Portfolio B"),
+            "ITRK.L": (2, "Portfolio B"),
+            "BVI.PA": (2, "Portfolio B"),
             # Wait List
             "GOOGL":   (4, "Wait List"),
             "ASML":    (3, "Wait List"),
             "COST":    (3, "Wait List"),
-            "NVO":     (2, "Wait List"),
             "EQNR":    (2, "Wait List"),
             "CSU.TO":  (2, "Wait List"),
             "6861.T":  (2, "Wait List"),
             "WTKWY":   (2, "Wait List"),
             "CLPBY":   (1, "Wait List"),
+            "DPLM.L":  (1, "Wait List"),
         }
         # V and AXP and FICO appear in both Portfolio A and Wait List —
         # prefer the Portfolio A entry (already set above); Wait List
@@ -3789,7 +3799,7 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                     deploy_pct=20,
                     stocks=[
                         ("GOOGL", 2), ("ASML", 2), ("MSFT add", 2), ("SPGI add", 2),
-                        ("V", 2), ("NVO", 2), ("AXP", 2),
+                        ("V", 2), ("NVO add", 2), ("AXP", 2),
                     ],
                     note="Focus on wait-list names that have reached entry targets.",
                     accent="#c8a040",
