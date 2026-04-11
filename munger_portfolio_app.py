@@ -1546,33 +1546,42 @@ def main() -> None:
         "<style>"
         ".stApp,[data-testid='stAppViewContainer']{background-color:#BDBDBF}"
         "[data-testid='stSidebar'],[data-testid='stSidebarContent']{background-color:#CACBCD}"
-        "[data-testid='metric-container']{background-color:#c8c9cb;border-radius:6px;padding:8px}"
+        # ── Metric cards: centered text, larger number ────────────────────────
+        "[data-testid='metric-container']{background-color:#c8c9cb;border-radius:6px;padding:8px;text-align:center}"
+        "[data-testid='stMetricLabel']{justify-content:center !important;display:flex !important}"
+        "[data-testid='stMetricValue']{font-size:2.2rem !important;justify-content:center !important;display:flex !important}"
+        # ── Tabs: lighter base weight (400), active tabs weight 500 ──────────
         ".stTabs [data-baseweb='tab-list']{gap:6px;border-bottom:2px solid #8a8b8d;margin-top:0}"
-        ".stTabs [data-baseweb='tab']{font-size:1.15rem;font-weight:700;padding:6px 28px;border-radius:8px 8px 0 0;color:#ffffff;background-color:#b0b1b3;border:none;letter-spacing:0.02em}"
+        ".stTabs [data-baseweb='tab']{font-size:1.15rem;font-weight:400;padding:6px 28px;border-radius:8px 8px 0 0;color:#ffffff;background-color:#b0b1b3;border:none;letter-spacing:0.02em}"
         ".stTabs [data-baseweb='tab']:nth-child(1){background-color:#6e9b82 !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(1):hover{background-color:#5f8a72 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(1)[aria-selected='true']{background-color:#4d7a5f !important;color:#ffffff !important;border-bottom:3px solid #4d7a5f !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(1)[aria-selected='true']{background-color:#4d7a5f !important;color:#ffffff !important;border-bottom:3px solid #4d7a5f !important;font-weight:500 !important}"
         ".stTabs [data-baseweb='tab']:nth-child(2){background-color:#6e8fa0 !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(2):hover{background-color:#5f7e90 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(2)[aria-selected='true']{background-color:#4d6e80 !important;color:#ffffff !important;border-bottom:3px solid #4d6e80 !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(2)[aria-selected='true']{background-color:#4d6e80 !important;color:#ffffff !important;border-bottom:3px solid #4d6e80 !important;font-weight:500 !important}"
         ".stTabs [data-baseweb='tab']:nth-child(3){background-color:#8e8eaa !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(3):hover{background-color:#7a7a98 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(3)[aria-selected='true']{background-color:#5a5a7f !important;color:#ffffff !important;border-bottom:3px solid #5a5a7f !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(3)[aria-selected='true']{background-color:#5a5a7f !important;color:#ffffff !important;border-bottom:3px solid #5a5a7f !important;font-weight:500 !important}"
         ".stTabs [data-baseweb='tab']:nth-child(4){background-color:#8a9a6e !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(4):hover{background-color:#7a8a5e !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(4)[aria-selected='true']{background-color:#6a7a4e !important;color:#ffffff !important;border-bottom:3px solid #6a7a4e !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4)[aria-selected='true']{background-color:#6a7a4e !important;color:#ffffff !important;border-bottom:3px solid #6a7a4e !important;font-weight:500 !important}"
         ".stTabs [data-baseweb='tab']:nth-child(5){background-color:#b88070 !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(5):hover{background-color:#a87060 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(5)[aria-selected='true']{background-color:#a07060 !important;color:#ffffff !important;border-bottom:3px solid #a07060 !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(5)[aria-selected='true']{background-color:#a07060 !important;color:#ffffff !important;border-bottom:3px solid #a07060 !important;font-weight:500 !important}"
         ".stTabs [data-baseweb='tab']:nth-child(6){background-color:#7a7a8a !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(6):hover{background-color:#6a6a7a !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(6)[aria-selected='true']{background-color:#5a5a6a !important;color:#ffffff !important;border-bottom:3px solid #5a5a6a !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(6)[aria-selected='true']{background-color:#5a5a6a !important;color:#ffffff !important;border-bottom:3px solid #5a5a6a !important;font-weight:500 !important}"
         ".stTabs [data-baseweb='tab']:nth-child(7){background-color:#6e9b9b !important;color:#ffffff !important}"
         ".stTabs [data-baseweb='tab']:nth-child(7):hover{background-color:#5d8888 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(7)[aria-selected='true']{background-color:#4d7878 !important;color:#ffffff !important;border-bottom:3px solid #4d7878 !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(7)[aria-selected='true']{background-color:#4d7878 !important;color:#ffffff !important;border-bottom:3px solid #4d7878 !important;font-weight:500 !important}"
         ".stTabs [data-baseweb='tab-highlight']{display:none}"
-        ".block-container{padding-top:0.75rem !important;padding-bottom:1rem !important}"
+        # ── Layout / spacing ──────────────────────────────────────────────────
+        ".block-container{padding-top:0.75rem !important;padding-bottom:1rem !important;padding-left:2.5rem !important;padding-right:2.5rem !important}"
         "h1{margin-bottom:0.25rem !important;margin-top:0 !important}"
+        # ── Tier subheadings: lighter weight, slight letter-spacing ───────────
+        "h3{letter-spacing:0.05em !important;font-weight:400 !important}"
+        # ── Table cards: white card with border, lifted off grey bg ───────────
+        "[data-testid='stDataFrame']{background:#ffffff;border:0.5px solid #e8e8ed;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08)}"
         ".stTabs{margin-top:0 !important}"
         ".stButton{margin-top:0 !important}"
         "[data-testid='stMetric']{margin-bottom:0 !important}"
@@ -1711,7 +1720,19 @@ def main() -> None:
     # ── Sidebar removed — controls moved inline into each tab ─────────────────
 
     # ── Header ────────────────────────────────────────────────────────────────
-    st.title("Munger Toll Bridge Portfolio")
+    st.markdown(
+        "<div style='"
+        "background:#1d1d1f;"
+        "color:#f5f5f7;"
+        "padding:16px 2.5rem 14px;"
+        "margin:-0.75rem -2.5rem 1rem;"
+        "font-size:2rem;"
+        "font-weight:700;"
+        "line-height:1.2;"
+        "letter-spacing:-0.01em;"
+        "'>Munger Toll Bridge Portfolio</div>",
+        unsafe_allow_html=True,
+    )
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
     tab_a, tab_b, tab_r, tab_w, tab_m, tab_d, tab_n = st.tabs(["Portfolio A", "Portfolio B", "Retired", "Wait List", "Macro Signals", "Deployment", "News"])
