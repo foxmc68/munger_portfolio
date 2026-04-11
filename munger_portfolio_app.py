@@ -638,7 +638,8 @@ STOCK_CATEGORY: dict[str, str] = {
     "DHR": "industrial", "IDXX": "industrial", "WM": "industrial", "ASML": "industrial",
     "RMS.PA": "industrial", "ITW": "industrial", "EMR": "industrial", "TXN": "industrial",
     "AVGO": "industrial",
-    "ITRK.L": "industrial", "BVI.PA": "industrial",
+    # Testing, Inspection & Certification
+    "ITRK.L": "tic", "BVI.PA": "tic",
     # Airport Concessions
     "ASR": "airport",
     # Special
@@ -660,6 +661,7 @@ CATEGORY_THRESHOLDS: dict[str, dict] = {
     "pharma":           {"roic": 15,   "fcf_yield": None,"rev_growth": 5,  "de": 1.0},
     "airport":          {"roic": 8,    "fcf_yield": 2.5, "rev_growth": 3,  "de": 1.5},
     "special_azo":      {"roic": 15,   "fcf_yield": 3.0, "rev_growth": 3,  "de": None},
+    "tic":              {"roic": 12,   "fcf_yield": 2.5, "rev_growth": 3,  "de": 2.0},
 }
 
 # Fallback thresholds for tickers not in STOCK_CATEGORY
@@ -953,6 +955,14 @@ def _pos_float(info: dict, key: str) -> Optional[float]:
     return v if (v is not None and v > 0) else None
 
 
+def _price_from_info(info: dict) -> Optional[float]:
+    """Return current price from yfinance info, converting GBp (pence) → GBP for London stocks."""
+    price = _float(info, "currentPrice") or _float(info, "regularMarketPrice")
+    if price is not None and info.get("currency") == "GBp":
+        price = price / 100.0
+    return price
+
+
 def compute_row(
     ticker: str,
     fair_override: Optional[float],
@@ -968,9 +978,7 @@ def compute_row(
     info = fetch_info(ticker)
 
     # ── Price ────────────────────────────────────────────────────────────────
-    price: Optional[float] = (
-        _float(info, "currentPrice") or _float(info, "regularMarketPrice")
-    )
+    price: Optional[float] = _price_from_info(info)
 
     # ── Valuation multiple ───────────────────────────────────────────────────
     if ticker in USES_PB:
@@ -1163,9 +1171,7 @@ def compute_row(
 def compute_retired_row(stock: dict) -> dict:
     ticker = stock["ticker"]
     info = fetch_info(ticker)
-    price: Optional[float] = (
-        _float(info, "currentPrice") or _float(info, "regularMarketPrice")
-    )
+    price: Optional[float] = _price_from_info(info)
     pe: Optional[float] = _float(info, "trailingPE")
     return {
         "Ticker": ticker,
@@ -1180,9 +1186,7 @@ def compute_retired_row(stock: dict) -> dict:
 def compute_waitlist_row(stock: dict) -> dict:
     ticker = stock["ticker"]
     info = fetch_info(ticker)
-    price: Optional[float] = (
-        _float(info, "currentPrice") or _float(info, "regularMarketPrice")
-    )
+    price: Optional[float] = _price_from_info(info)
     pe: Optional[float] = _float(info, "trailingPE")
 
     entry_high = stock["entry_high"]
@@ -1930,7 +1934,7 @@ def main() -> None:
                 if _prev_a:
                     _pai = _prev_a["info"]
                     _paf = _prev_a["fins"]
-                    _pa_price = _float(_pai, "currentPrice") or _float(_pai, "regularMarketPrice")
+                    _pa_price = _price_from_info(_pai)
                     _pa_fcfy_raw = (_float(_pai, "freeCashflow") or 0) / (_float(_pai, "marketCap") or 1) * 100 if _float(_pai, "marketCap") else None
                     _pa_de_raw = _float(_pai, "debtToEquity")
                     _pa_de = _pa_de_raw / 100.0 if _pa_de_raw is not None else None
@@ -2001,6 +2005,7 @@ A threshold of **—** means that check is skipped for the category.
 | pharma | 15 | — | 5 | 1.0 |
 | airport | 8 | 2.5 | 3 | 1.5 |
 | special_azo | 15 | 3.0 | 3 | — |
+| tic | 12 | 2.5 | 3 | 2.0 |
 | *(default)* | 15 | 3.5 | 0 | 0.5 |
 
 ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effectiveTaxRate) and Invested Capital = totalAssets − currentLiabilities − cash.
@@ -2245,7 +2250,7 @@ RevGr% = 3-year revenue CAGR computed from annual Total Revenue: (revenue_year0 
                 if _prev_b:
                     _pbi = _prev_b["info"]
                     _pbf = _prev_b["fins"]
-                    _pb_price = _float(_pbi, "currentPrice") or _float(_pbi, "regularMarketPrice")
+                    _pb_price = _price_from_info(_pbi)
                     _pb_fcfy_raw = (_float(_pbi, "freeCashflow") or 0) / (_float(_pbi, "marketCap") or 1) * 100 if _float(_pbi, "marketCap") else None
                     _pb_de_raw = _float(_pbi, "debtToEquity")
                     _pb_de = _pb_de_raw / 100.0 if _pb_de_raw is not None else None
@@ -2319,6 +2324,11 @@ RevGr% = 3-year revenue CAGR computed from annual Total Revenue: (revenue_year0 
 | ITW | 24 | Diversified industrials, 80/20 execution and elite ROIC |
 | EOG | 14 | Best-in-class E&P, capital discipline, low breakeven oil price |
 | EMR | 20 | Automation-focused industrial compounder, growing software mix |
+| ITRK.L | 22 | Intertek — TIC leader, asset-light global testing network, pricing power |
+| BVI.PA | 20 | Bureau Veritas — TIC compounder, trade/infrastructure inspection moat |
+
+**TIC category (Testing, Inspection & Certification):** Regulated, asset-light, global trade compounders.
+Thresholds: ROIC ≥ 12%, FCF Yield ≥ 2.5%, RevGr ≥ 3%, D/E < 2.0.
 
 **BUY = Signal (DREAM or FAIR) AND Quality PASS AND no Red Flags active.**
 Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A for the full table).
@@ -2822,7 +2832,7 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             if _preview:
                 _pinfo = _preview["info"]
                 _pticker = _preview["ticker"]
-                _pprice = _float(_pinfo, "currentPrice") or _float(_pinfo, "regularMarketPrice")
+                _pprice = _price_from_info(_pinfo)
                 _ppe = _float(_pinfo, "trailingPE")
                 _pname = _pinfo.get("shortName", _pticker)
                 st.markdown(
