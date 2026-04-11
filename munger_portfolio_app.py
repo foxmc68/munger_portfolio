@@ -868,6 +868,8 @@ def fetch_financials(ticker: str) -> dict:
                 if v is not None and not (isinstance(v, float) and v != v):
                     result["taxRate"] = float(v)
             # 3-year revenue CAGR: (rev_year0 / rev_year3)^(1/3) - 1
+            # Requires at least 3 annual data points; fewer than that → omit (shown as N/A).
+            # Never fall back to single-year YoY which can reflect one bad quarter.
             if "Total Revenue" in inc.index:
                 rev_series = inc.loc["Total Revenue"].dropna()
                 rev_vals = [float(v) for v in rev_series if v is not None and not (isinstance(v, float) and v != v)]
@@ -880,10 +882,7 @@ def fetch_financials(ticker: str) -> dict:
                     r0, r2 = rev_vals[0], rev_vals[2]
                     if r2 > 0:
                         result["revenueCagr3yr"] = (r0 / r2) ** (1.0 / 2.0) - 1.0
-                elif len(rev_vals) == 2:
-                    r0, r1 = rev_vals[0], rev_vals[1]
-                    if r1 > 0:
-                        result["revenueCagr3yr"] = r0 / r1 - 1.0
+                # 2 data points = 1-year YoY only; not set → displayed as N/A
         bs = t.balance_sheet
         if bs is not None and not bs.empty:
             if "Total Assets" in bs.index:
@@ -1027,12 +1026,12 @@ def compute_row(
     mktcap = _float(info, "marketCap")
     fcfy: Optional[float] = (fcf / mktcap * 100.0) if (fcf and mktcap and mktcap > 0) else None
 
-    # Use 3-year revenue CAGR from annual financials; fall back to yfinance TTM growth
-    if fins.get("revenueCagr3yr") is not None:
-        rev_growth: Optional[float] = fins["revenueCagr3yr"] * 100.0
-    else:
-        rev_growth_raw = _float(info, "revenueGrowth")
-        rev_growth = rev_growth_raw * 100.0 if rev_growth_raw is not None else None
+    # Use 3-year revenue CAGR from annual financials.
+    # Do NOT fall back to yfinance revenueGrowth (TTM YoY) — it reflects a single quarter
+    # and can be badly misleading for ADRs or companies with inventory/seasonal corrections.
+    rev_growth: Optional[float] = (
+        fins["revenueCagr3yr"] * 100.0 if fins.get("revenueCagr3yr") is not None else None
+    )
 
     de_raw = _float(info, "debtToEquity")
     de_ratio: Optional[float] = de_raw / 100.0 if de_raw is not None else None
@@ -2006,7 +2005,7 @@ A threshold of **—** means that check is skipped for the category.
 
 ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effectiveTaxRate) and Invested Capital = totalAssets − currentLiabilities − cash.
 
-RevGr% = 3-year revenue CAGR computed from annual Total Revenue: (revenue_year0 / revenue_year3)^(1/3) − 1. Falls back to TTM YoY growth from yfinance if fewer than 2 years of annual data are available.
+RevGr% = 3-year revenue CAGR computed from annual Total Revenue: (revenue_year0 / revenue_year3)^(1/3) − 1. Requires at least 3 annual data points; shown as N/A otherwise. Does not fall back to TTM YoY (which can reflect a single bad quarter).
 
 **BUY = Signal (DREAM or FAIR) AND Quality PASS AND no Red Flags active.**
 """)
