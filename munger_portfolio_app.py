@@ -625,7 +625,9 @@ STOCK_CATEGORY: dict[str, str] = {
     # Consumer Staples
     "PG": "consumer_staples", "KO": "consumer_staples", "KMB": "consumer_staples",
     "PM": "consumer_staples", "CL": "consumer_staples", "CHD": "consumer_staples",
-    "COST": "consumer_staples", "NVO": "consumer_staples",
+    "COST": "consumer_staples",
+    # Pharma / Biotech
+    "NVO": "pharma", "ABBV": "pharma", "JNJ": "pharma",
     # Energy Majors
     "CVX": "energy", "COP": "energy", "XOM": "energy", "EOG": "energy", "EQNR": "energy",
     # MLPs
@@ -635,7 +637,7 @@ STOCK_CATEGORY: dict[str, str] = {
     # Industrials/Healthcare
     "DHR": "industrial", "IDXX": "industrial", "WM": "industrial", "ASML": "industrial",
     "RMS.PA": "industrial", "ITW": "industrial", "EMR": "industrial", "TXN": "industrial",
-    "AVGO": "industrial", "ABBV": "industrial", "JNJ": "industrial",
+    "AVGO": "industrial",
     "ITRK.L": "industrial", "BVI.PA": "industrial",
     # Airport Concessions
     "ASR": "airport",
@@ -655,6 +657,7 @@ CATEGORY_THRESHOLDS: dict[str, dict] = {
     "mlp":              {"roic": None, "fcf_yield": 4.0, "rev_growth": 2,  "de": 3.5},
     "royalty":          {"roic": 8,    "fcf_yield": 3.0, "rev_growth": 5,  "de": 0.3},
     "industrial":       {"roic": 15,   "fcf_yield": 2.5, "rev_growth": 5,  "de": 1.0},
+    "pharma":           {"roic": 15,   "fcf_yield": None,"rev_growth": 5,  "de": 1.0},
     "airport":          {"roic": 8,    "fcf_yield": 2.5, "rev_growth": 3,  "de": 1.5},
     "special_azo":      {"roic": 15,   "fcf_yield": 3.0, "rev_growth": 3,  "de": None},
 }
@@ -1996,6 +1999,7 @@ A threshold of **—** means that check is skipped for the category.
 | mlp | — | 4.0 | 2 | 3.5 |
 | royalty | 8 | 3.0 | 5 | 0.3 |
 | industrial | 15 | 2.5 | 5 | 1.0 |
+| pharma | 15 | — | 5 | 1.0 |
 | airport | 8 | 2.5 | 3 | 1.5 |
 | special_azo | 15 | 3.0 | 3 | — |
 | *(default)* | 15 | 3.5 | 0 | 0.5 |
