@@ -3791,9 +3791,9 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                 row_data = _mi.get(ind_id, {"current": "", "prior": "", "signal": "N/A", "updated": None})
                 cols = st.columns([1.4, 1.8, 1.0, 1.0, 1.0, 1.2, 1.2, 1.0, 2.5, 1.1])
                 with cols[0]:
-                    st.markdown(f"<p style='font-size:0.78rem;color:#444;margin:6px 0'>{category}</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='font-size:0.85rem;font-weight:700;color:#444;margin:6px 0'>{category}</p>", unsafe_allow_html=True)
                 with cols[1]:
-                    st.markdown(f"<p style='font-size:0.78rem;font-weight:600;color:#222;margin:6px 0'>{name}</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='font-size:1.0rem;font-weight:700;color:#222;margin:6px 0'>{name}</p>", unsafe_allow_html=True)
                 with cols[2]:
                     new_current = st.text_input("c", key=f"mi_cur_{ind_id}", label_visibility="collapsed")
                     _failed_autos = st.session_state.get("_mi_failed_autos", set())
@@ -3815,11 +3815,11 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                 with cols[4]:
                     delta_val = _delta_str(new_current, new_prior)
                     delta_color = "#2e7d32" if (delta_val.startswith("+") and delta_val != "+0.00") else ("#b71c1c" if delta_val.startswith("-") else "#555")
-                    st.markdown(f"<p style='font-size:0.82rem;font-weight:600;color:{delta_color};margin:8px 0'>{delta_val}</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='font-size:0.9rem;font-weight:600;color:{delta_color};margin:8px 0'>{delta_val}</p>", unsafe_allow_html=True)
                 with cols[5]:
-                    st.markdown(f"<p style='font-size:0.75rem;color:#666;margin:6px 0'>{watch_lvl}</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='font-size:0.9rem;color:#666;margin:6px 0'>{watch_lvl}</p>", unsafe_allow_html=True)
                 with cols[6]:
-                    st.markdown(f"<p style='font-size:0.75rem;color:#666;margin:6px 0'>{danger_lvl}</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='font-size:0.9rem;color:#666;margin:6px 0'>{danger_lvl}</p>", unsafe_allow_html=True)
                 with cols[7]:
                     cur_sig = row_data.get("signal", "N/A")
                     new_sig = st.selectbox("s", options=_SIG_OPTIONS, index=_SIG_OPTIONS.index(cur_sig) if cur_sig in _SIG_OPTIONS else 0, key=f"mi_sig_{ind_id}", label_visibility="collapsed")
