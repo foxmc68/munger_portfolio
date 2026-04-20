@@ -12,6 +12,7 @@ Data: Yahoo Finance via yfinance — no API key required.
 
 import json
 import os
+import requests
 from datetime import datetime
 from typing import Optional
 
@@ -27,6 +28,7 @@ CUSTOM_TICKERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "
 WAIT_LIST_CUSTOM_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wait_list_custom.json")
 MANUAL_METRICS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manual_metrics.json")
 MARKET_INDICATORS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "market_indicators.json")
+FRED_API_KEY = "f3c2c99c5652b7acc8617d439d7a803e"
 
 FLAG_NAMES = [
     "Accounting Issues",
@@ -819,6 +821,20 @@ _MARKET_INDICATOR_IDS = [
 
 _MARKET_INDICATOR_DEFAULT = {"current": "", "prior": "", "signal": "N/A", "updated": None}
 
+# Indicators auto-populated via yfinance or FRED API
+_AUTO_PULL_IDS = {
+    "dxy", "gold_price", "brent_crude", "treasury_10yr", "treasury_30yr",
+    "hy_spread", "ig_spread", "yield_curve", "initial_claims", "continuing_claims",
+    "ism_pmi", "conf_board_lei", "federal_deficit", "cc_delinquency", "auto_delinquency",
+}
+
+# Indicators that must be updated manually
+_MANUAL_IDS = {
+    "hormuz_volume", "red_sea_volume", "war_risk_premium", "treasury_bid_cover",
+    "indirect_bidders", "nyse_ad_line", "eps_guidance", "gross_margin",
+    "prof_tech_layoffs", "wage_growth",
+}
+
 
 def load_market_indicators() -> dict:
     """Return {indicator_id: {current, prior, signal, updated}} for all indicators."""
@@ -849,6 +865,110 @@ def load_market_indicators() -> dict:
 def save_market_indicators(indicators: dict) -> None:
     with open(MARKET_INDICATORS_FILE, "w") as fh:
         json.dump({"indicators": indicators}, fh, indent=2)
+
+
+@st.cache_data(ttl=4 * 3600)
+def _fetch_yfinance_market_data() -> dict:
+    """Fetch live prices from yfinance. Returns {indicator_id: formatted_string}."""
+    _tickers = {
+        "dxy":           ("DX-Y.NYB", lambda p: f"{p:.2f}"),
+        "gold_price":    ("GC=F",     lambda p: f"${p:,.0f}"),
+        "brent_crude":   ("BZ=F",     lambda p: f"${p:.2f}"),
+        "treasury_10yr": ("^TNX",     lambda p: f"{p:.2f}%"),
+        "treasury_30yr": ("^TYX",     lambda p: f"{p:.2f}%"),
+        "_2yr_yield":    ("^IRX",     lambda p: f"{p:.2f}%"),
+    }
+    result = {}
+    for key, (ticker, fmt) in _tickers.items():
+        try:
+            hist = yf.Ticker(ticker).history(period="5d")
+            if not hist.empty:
+                result[key] = fmt(float(hist["Close"].iloc[-1]))
+        except Exception:
+            pass
+    return result
+
+
+@st.cache_data(ttl=4 * 3600)
+def _fetch_fred_market_data() -> dict:
+    """Fetch latest observations from FRED. Returns {indicator_id: formatted_string}."""
+    _base = "https://api.stlouisfed.org/fred/series/observations"
+
+    def _get(series_id: str) -> Optional[float]:
+        try:
+            r = requests.get(
+                _base,
+                params={
+                    "series_id":  series_id,
+                    "api_key":    FRED_API_KEY,
+                    "file_type":  "json",
+                    "sort_order": "desc",
+                    "limit":      10,
+                },
+                timeout=12,
+            )
+            for obs in r.json().get("observations", []):
+                if obs.get("value") not in (".", ""):
+                    return float(obs["value"])
+        except Exception:
+            pass
+        return None
+
+    result: dict = {}
+
+    # HY spread — FRED stores in % (4.0 = 400 bps)
+    v = _get("BAMLH0A0HYM2")
+    if v is not None:
+        result["hy_spread"] = f"{v * 100:.0f} bps"
+
+    # IG spread
+    v = _get("BAMLC0A0CM")
+    if v is not None:
+        result["ig_spread"] = f"{v * 100:.0f} bps"
+
+    # 2yr/10yr yield curve (percentage points, negative = inverted)
+    v = _get("T10Y2Y")
+    if v is not None:
+        result["yield_curve"] = f"{v:.2f}%"
+
+    # Initial jobless claims 4-wk avg
+    v = _get("IC4WSA")
+    if v is not None:
+        result["initial_claims"] = f"{v:,.0f}"
+
+    # Continuing claims
+    v = _get("CCSA")
+    if v is not None:
+        result["continuing_claims"] = f"{v:,.0f}"
+
+    # ISM Manufacturing PMI — try MANEMP first, fallback NAPM
+    v = _get("MANEMP")
+    if v is None:
+        v = _get("NAPM")
+    if v is not None:
+        result["ism_pmi"] = f"{v:.1f}"
+
+    # Conference Board LEI (MoM)
+    v = _get("USSLIND")
+    if v is not None:
+        result["conf_board_lei"] = f"{v:.2f}"
+
+    # Federal deficit % of GDP (negative = deficit)
+    v = _get("FYFSGDA188S")
+    if v is not None:
+        result["federal_deficit"] = f"{v:.1f}%"
+
+    # Credit card delinquency rate
+    v = _get("DRCCLACBS")
+    if v is not None:
+        result["cc_delinquency"] = f"{v:.2f}%"
+
+    # Auto loan delinquency rate
+    v = _get("DRAUTOACBS")
+    if v is not None:
+        result["auto_delinquency"] = f"{v:.2f}%"
+
+    return result
 
 
 # ── Custom tickers persistence ────────────────────────────────────────────────
@@ -3567,6 +3687,31 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
 
         _mi = st.session_state.market_indicators
 
+        # ── Refresh Market Data button ─────────────────────────────────────────
+        _refresh_col, _refresh_status_col = st.columns([2, 5])
+        with _refresh_col:
+            if st.button("Refresh Market Data", type="primary", use_container_width=True):
+                _fetch_yfinance_market_data.clear()
+                _fetch_fred_market_data.clear()
+                with st.spinner("Fetching live market data…"):
+                    _yf_data  = _fetch_yfinance_market_data()
+                    _fr_data  = _fetch_fred_market_data()
+                _auto_fetched = {**_yf_data, **_fr_data}
+                _today = datetime.now().strftime("%Y-%m-%d")
+                for _aid, _aval in _auto_fetched.items():
+                    if _aid.startswith("_") or _aid not in _AUTO_PULL_IDS:
+                        continue
+                    _mi.setdefault(_aid, dict(_MARKET_INDICATOR_DEFAULT))
+                    _mi[_aid]["current"] = _aval
+                    _mi[_aid]["updated"] = _today
+                    st.session_state[f"mi_cur_{_aid}"] = _aval
+                save_market_indicators(_mi)
+                _pulled = len([k for k in _auto_fetched if not k.startswith("_") and k in _AUTO_PULL_IDS])
+                with _refresh_status_col:
+                    st.success(f"Updated {_pulled} indicators  ·  {_today}")
+                st.rerun()
+        st.markdown("<div style='margin-bottom:6px'></div>", unsafe_allow_html=True)
+
         # ── Header banner ─────────────────────────────────────────────────────
         st.markdown(
             "<div style='background:#4a5568;color:#fff;padding:10px 16px;border-radius:6px;"
@@ -3625,6 +3770,18 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                     st.markdown(f"<p style='font-size:0.78rem;font-weight:600;color:#222;margin:6px 0'>{name}</p>", unsafe_allow_html=True)
                 with cols[2]:
                     new_current = st.text_input("c", value=row_data.get("current", ""), key=f"mi_cur_{ind_id}", label_visibility="collapsed")
+                    if ind_id in _AUTO_PULL_IDS:
+                        st.markdown(
+                            "<span style='background:#9e9e9e;color:#fff;padding:1px 6px;"
+                            "border-radius:8px;font-size:0.67rem;font-weight:600'>AUTO</span>",
+                            unsafe_allow_html=True,
+                        )
+                    elif ind_id in _MANUAL_IDS:
+                        st.markdown(
+                            "<span style='background:#b85c38;color:#fff;padding:1px 6px;"
+                            "border-radius:8px;font-size:0.67rem;font-weight:600'>MANUAL</span>",
+                            unsafe_allow_html=True,
+                        )
                 with cols[3]:
                     new_prior = st.text_input("p", value=row_data.get("prior", ""), key=f"mi_pri_{ind_id}", label_visibility="collapsed")
                 with cols[4]:
