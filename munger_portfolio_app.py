@@ -869,6 +869,15 @@ def save_market_indicators(indicators: dict) -> None:
         json.dump({"indicators": indicators}, fh, indent=2)
 
 
+def _on_market_prior_change(ind_id: str) -> None:
+    """on_change callback: immediately persist a Prior field edit to JSON."""
+    mi = st.session_state.get("market_indicators", {})
+    new_val = st.session_state.get(f"mi_pri_{ind_id}", "")
+    mi.setdefault(ind_id, dict(_MARKET_INDICATOR_DEFAULT))
+    mi[ind_id]["prior"] = new_val
+    save_market_indicators(mi)
+
+
 @st.cache_data(ttl=4 * 3600)
 def _fetch_yfinance_market_data() -> dict:
     """Fetch live prices from yfinance. Returns {indicator_id: formatted_string}."""
@@ -3801,7 +3810,8 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                             unsafe_allow_html=True,
                         )
                 with cols[3]:
-                    new_prior = st.text_input("p", key=f"mi_pri_{ind_id}", label_visibility="collapsed")
+                    new_prior = st.text_input("p", key=f"mi_pri_{ind_id}", label_visibility="collapsed",
+                                              on_change=_on_market_prior_change, args=(ind_id,))
                 with cols[4]:
                     delta_val = _delta_str(new_current, new_prior)
                     delta_color = "#2e7d32" if (delta_val.startswith("+") and delta_val != "+0.00") else ("#b71c1c" if delta_val.startswith("-") else "#555")
