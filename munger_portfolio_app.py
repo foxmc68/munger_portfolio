@@ -26,6 +26,7 @@ RED_FLAGS_FILE_B  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "re
 CUSTOM_TICKERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "custom_tickers.json")
 WAIT_LIST_CUSTOM_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wait_list_custom.json")
 MANUAL_METRICS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manual_metrics.json")
+MARKET_INDICATORS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "market_indicators.json")
 
 FLAG_NAMES = [
     "Accounting Issues",
@@ -797,6 +798,57 @@ def load_manual_metrics() -> dict:
 def save_manual_metrics(metrics: dict) -> None:
     with open(MANUAL_METRICS_FILE, "w") as fh:
         json.dump(metrics, fh, indent=2)
+
+
+# ── Market Indicators persistence ─────────────────────────────────────────────
+
+_MARKET_INDICATOR_IDS = [
+    # Stage 1
+    "hy_spread", "ig_spread", "yield_curve", "pct_above_200ma", "nyse_ad_line",
+    "treasury_bid_cover", "indirect_bidders", "dxy", "gold_price", "ism_pmi",
+    "conf_board_lei",
+    # Stage 2
+    "treasury_10yr", "treasury_30yr", "brent_crude",
+    "hormuz_volume", "red_sea_volume", "war_risk_premium", "eps_guidance",
+    "gross_margin", "cc_delinquency", "auto_delinquency", "initial_claims",
+    # Stage 3
+    "continuing_claims", "prof_tech_layoffs", "wage_growth",
+    "retail_sales", "inventory_sales", "sp500_concentration",
+    "ai_capex_ratio", "cloud_revenue_growth", "federal_deficit",
+]
+
+_MARKET_INDICATOR_DEFAULT = {"current": "", "prior": "", "signal": "N/A", "updated": None}
+
+
+def load_market_indicators() -> dict:
+    """Return {indicator_id: {current, prior, signal, updated}} for all indicators."""
+    defaults = {k: dict(_MARKET_INDICATOR_DEFAULT) for k in _MARKET_INDICATOR_IDS}
+    if os.path.exists(MARKET_INDICATORS_FILE):
+        try:
+            with open(MARKET_INDICATORS_FILE) as fh:
+                data = json.load(fh)
+            stored = data.get("indicators", data)
+            result = {}
+            for k in _MARKET_INDICATOR_IDS:
+                raw = stored.get(k)
+                if isinstance(raw, dict):
+                    result[k] = {
+                        "current": raw.get("current", ""),
+                        "prior":   raw.get("prior", ""),
+                        "signal":  raw.get("signal", "N/A"),
+                        "updated": raw.get("updated"),
+                    }
+                else:
+                    result[k] = dict(_MARKET_INDICATOR_DEFAULT)
+            return result
+        except Exception:
+            pass
+    return defaults
+
+
+def save_market_indicators(indicators: dict) -> None:
+    with open(MARKET_INDICATORS_FILE, "w") as fh:
+        json.dump({"indicators": indicators}, fh, indent=2)
 
 
 # ── Custom tickers persistence ────────────────────────────────────────────────
@@ -1717,7 +1769,7 @@ def main() -> None:
     st.title("Munger Toll Bridge Portfolio")
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    tab_a, tab_b, tab_r, tab_w, tab_m, tab_d, tab_n = st.tabs(["Portfolio A", "Portfolio B", "Retired", "Wait List", "Macro Signals", "Deployment", "News"])
+    tab_a, tab_b, tab_r, tab_w, tab_m, tab_ms, tab_d, tab_n = st.tabs(["Portfolio A", "Portfolio B", "Retired", "Wait List", "Macro Signals", "Market Signals", "Deployment", "News"])
 
     # ══════════════════════════════════════════════════════════════════════════
     # PORTFOLIO A
@@ -3452,6 +3504,198 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             "Live data: Yahoo Finance via yfinance.  "
             "Static data: update quarterly from CBO/OMB, MSFT earnings, Berkshire 13-F.  "
             "Not financial advice."
+        )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # MARKET SIGNALS
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_ms:
+        # ── Signal color map ──────────────────────────────────────────────────
+        _SIG_COLORS = {
+            "CLEAR":   "#2e7d32",
+            "WATCH":   "#f9a825",
+            "CAUTION": "#e65100",
+            "DANGER":  "#b71c1c",
+            "N/A":     "#607d8b",
+        }
+        _SIG_OPTIONS = ["N/A", "CLEAR", "WATCH", "CAUTION", "DANGER"]
+
+        # ── Indicator definitions (id, category, name, watch, danger, note) ───
+        _STAGE1_INDICATORS = [
+            ("hy_spread",        "Credit Markets",     "HY Spread (ICE BofA)",            "≥400 bps",                    "≥550 bps",                    "Primary risk-on/off barometer. Widens before equities crack. Widening >50 bps in 4 weeks = early alert."),
+            ("ig_spread",        "Credit Markets",     "IG Spread (ICE BofA)",             "≥130 bps",                    "≥180 bps",                    "Subtler than HY but institutional money moves here first. Sustained IG widening often precedes HY blowout."),
+            ("yield_curve",      "Credit Markets",     "2yr/10yr Yield Curve",             "Re-steepening after inversion","Steepening >50 bps post-inversion","Re-steepening after prolonged inversion is historically more dangerous than the inversion itself — signals recession onset, not avoidance."),
+            ("pct_above_200ma",  "Equity Internals",   "% Stocks Above 200-day MA",        "<50%",                        "<35%",                        "Breadth deterioration leads index decline. Market can stay elevated while internals quietly hollow out."),
+            ("nyse_ad_line",     "Equity Internals",   "NYSE Advance/Decline Line",        "Negative 4-week trend",       "Sharply diverging from index", "Divergence from S&P — index making new highs while A/D weakens — is a classic distribution signal."),
+            ("treasury_bid_cover","Rates/Sovereign",   "Treasury Bid-to-Cover Ratio",      "<2.3x",                       "<2.0x",                       "Measures bond auction demand. Sustained decline = bond vigilante early warning. Watch 10yr and 30yr auctions separately."),
+            ("indirect_bidders", "Rates/Sovereign",    "Indirect Bidders %",               "<60%",                        "<50%",                        "Foreign central bank proxy. Decline signals dollar reserve erosion. Critical given debasement thesis."),
+            ("dxy",              "Macro/Dollar",       "DXY (Dollar Index)",               "Below 100",                   "Below 95",                    "Central to macro thesis. Dollar weakness accelerates inflation re-acceleration and commodity tailwind."),
+            ("gold_price",       "Macro/Dollar",       "Gold Price (USD/oz)",              ">$2,800",                     ">$3,200",                     "Monetary stress barometer and dollar-debasement signal. FNV tracks this closely. Surge = systemic loss of confidence."),
+            ("ism_pmi",          "Leading Indicators", "ISM Manufacturing PMI",            "<50 (contraction)",           "<46",                         "Best single early-cycle indicator. Below 50 = contraction. Below 46 = recession correlation high. Precedes labor data by ~3 months."),
+            ("conf_board_lei",   "Leading Indicators", "Conference Board LEI (MoM)",       "Negative 3 months",           "Negative 6+ months",          "Composite of 10 leading indicators. Six consecutive monthly declines have preceded every recession since 1960."),
+        ]
+
+        _STAGE2_INDICATORS = [
+            ("treasury_10yr",    "Rates/Sovereign",    "10yr Treasury Yield",              "≥4.75%",                      "≥5.50%",                      "Watch for rapid moves, not just level. A 50 bps spike in 3 weeks is more dangerous than a slow grind to same level."),
+            ("treasury_30yr",    "Rates/Sovereign",    "30yr Treasury Yield",              "≥5.00%",                      "≥5.75%",                      "Mortgage and long-term capital cost benchmark. Bond vigilante pressure most visible here."),
+            ("brent_crude",      "Energy/Geopolitical","Brent Crude (USD/bbl)",            ">$95",                        ">$110",                       "Supply-shock threshold. Above $95 begins meaningful consumer drag. Above $110 historically tips recessions."),
+            ("hormuz_volume",    "Energy/Geopolitical","Hormuz Strait Volume (% normal)",  "<85%",                        "<70%",                        "Direct Iran scenario monitor. ~20% of global oil + LNG transits here. Disruption = immediate energy shock."),
+            ("red_sea_volume",   "Energy/Geopolitical","Red Sea / Suez Volume (% normal)", "<75%",                        "<60%",                        "Shipping disruption = goods inflation re-acceleration. Houthi activity already demonstrated sensitivity."),
+            ("war_risk_premium", "Energy/Geopolitical","War Risk Insurance Premium (bps)", ">50 bps above baseline",      ">150 bps above baseline",     "VLCC and tanker war risk premia are real-time geopolitical pricing. Spike precedes commodity price moves."),
+            ("eps_guidance",     "Corporate Earnings", "Forward EPS Guidance Trend",       "Negative revisions >5%",      "Negative revisions >15%",     "Management guidance is mid-cycle because executives see it before analysts. Watch breadth of cuts, not just magnitude."),
+            ("gross_margin",     "Corporate Earnings", "Gross Margin Trend (S&P 500)",     "Declining 100 bps YoY",       "Declining 200+ bps YoY",      "Margin compression precedes full earnings collapse. Input costs + pricing power = the battle. Labor is the lagging piece."),
+            ("cc_delinquency",   "Consumer Stress",    "Credit Card Delinquency Rate",     ">3.5%",                       ">5.0%",                       "Lower-income canary. Stress here signals consumer spending slow-down before retail data shows it."),
+            ("auto_delinquency", "Consumer Stress",    "Auto Loan Delinquency Rate (60d+)", ">3.0%",                      ">4.5%",                       "Middle-income stress signal. Auto delinquencies tend to peak mid-recession, not late."),
+            ("initial_claims",   "Labor Market",       "Initial Jobless Claims (4-wk avg)", ">260K",                      ">320K",                       "More leading than continuing claims. Spike above 300K = labor market turning."),
+        ]
+
+        _STAGE3_INDICATORS = [
+            ("continuing_claims","Labor Market",       "Continuing Jobless Claims",        ">1.9M",                       ">2.5M",                       "Confirms labor deterioration after initial claims signal. Watch for plateau pattern — people falling off UI without finding jobs."),
+            ("prof_tech_layoffs","Labor Market",       "Professional/Technical Layoffs",   "Sustained monthly >30K",      "Sustained monthly >60K",      "Tech/professional layoffs signal AI capex may be overcorrecting real hiring."),
+            ("wage_growth",      "Labor Market",       "Wage Growth (YoY, ECI)",           ">4.5% (re-acceleration)",     "<2.5% (collapse)",            "Double-edged late indicator. Re-acceleration = inflation problem. Sudden collapse = demand destruction. Both are danger signals."),
+            ("retail_sales",     "Consumer/Retail",    "Retail Sales ex-Autos & Gas (MoM)","Negative 2 consecutive months","Negative 4+ months",         "Lags by design. By the time this turns, recession is typically already underway. Useful for magnitude, not timing."),
+            ("inventory_sales",  "Corporate",          "Inventory-to-Sales Ratio",         "Rising >1.5x trend",          "Rising >1.7x trend",          "Build-up = forced production cuts ahead. Mid-2022 inventory glut is the textbook case."),
+            ("sp500_concentration","Equity Internals", "S&P 500 Top-10 Concentration",     ">35% of index",               ">40% of index",               "Narrow leadership = fragile market. A correction in 5-6 mega-caps = index rout even with healthy breadth elsewhere."),
+            ("ai_capex_ratio",   "AI Sector Check",   "AI CapEx vs. Revenue Growth Ratio","CapEx >2x revenue growth",    "CapEx >3x revenue growth",    "Key AI bubble monitor. $300B+ hyperscaler capex must eventually be justified by revenue. Watch MSFT, GOOG, AMZN, META quarterly."),
+            ("cloud_revenue_growth","AI Sector Check", "Hyperscaler Cloud Revenue Growth", "Deceleration >5 ppts YoY",    "Deceleration >10 ppts YoY",   "The monetization side of the AI equation. Slowing cloud growth while capex surges = the blow-up scenario for tech."),
+            ("federal_deficit",  "Macro/Dollar",       "Federal Deficit (% of GDP, TTM)",  ">7% GDP",                     ">9% GDP",                     "Structural fiscal excess is the backbone of the debasement thesis. A widening deficit during expansion = fiscal dominance risk."),
+        ]
+
+        # ── Load persisted indicator data ─────────────────────────────────────
+        if "market_indicators" not in st.session_state:
+            st.session_state.market_indicators = load_market_indicators()
+
+        _mi = st.session_state.market_indicators
+
+        # ── Header banner ─────────────────────────────────────────────────────
+        st.markdown(
+            "<div style='background:#4a5568;color:#fff;padding:10px 16px;border-radius:6px;"
+            "margin-bottom:10px'>"
+            "<div><strong>Market Signals Dashboard</strong> — 31 early-warning macro indicators across 3 stages.</div>"
+            "<div style='margin-top:6px;display:flex;flex-wrap:wrap;gap:6px'>"
+            "<span style='background:#2e7d32;color:#fff;padding:2px 10px;border-radius:10px;font-size:0.82rem'>&#9679; CLEAR</span>"
+            "<span style='background:#f9a825;color:#fff;padding:2px 10px;border-radius:10px;font-size:0.82rem'>&#9650; WATCH</span>"
+            "<span style='background:#e65100;color:#fff;padding:2px 10px;border-radius:10px;font-size:0.82rem'>&#9888; CAUTION</span>"
+            "<span style='background:#b71c1c;color:#fff;padding:2px 10px;border-radius:10px;font-size:0.82rem'>&#9888; DANGER</span>"
+            "<span style='background:#607d8b;color:#fff;padding:2px 10px;border-radius:10px;font-size:0.82rem'>&#8213; N/A</span>"
+            "</div>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        def _delta_str(current: str, prior: str) -> str:
+            """Auto-calculate delta when both readings are numeric."""
+            try:
+                c = float(current.replace(",", "").replace("%", "").replace("$", "").replace("K", "e3").replace("M", "e6").replace("B", "e9"))
+                p = float(prior.replace(",", "").replace("%", "").replace("$", "").replace("K", "e3").replace("M", "e6").replace("B", "e9"))
+                delta = c - p
+                sign = "+" if delta >= 0 else ""
+                if abs(delta) >= 1e9:
+                    return f"{sign}{delta/1e9:.2f}B"
+                elif abs(delta) >= 1e6:
+                    return f"{sign}{delta/1e6:.2f}M"
+                elif abs(delta) >= 1e3:
+                    return f"{sign}{delta/1e3:.1f}K"
+                else:
+                    return f"{sign}{delta:.2f}"
+            except Exception:
+                return "—"
+
+        def _render_stage(stage_label: str, header_color: str, indicators: list) -> None:
+            st.markdown(
+                f"<div style='background:{header_color};color:#fff;padding:8px 14px;"
+                f"border-radius:5px;margin:18px 0 8px 0;font-weight:700;font-size:0.95rem'>"
+                f"{stage_label}</div>",
+                unsafe_allow_html=True,
+            )
+            # Column header row
+            hc = st.columns([1.4, 1.8, 1.0, 1.0, 1.0, 1.2, 1.2, 1.0, 2.5, 1.1])
+            _hdr_style = "font-size:0.75rem;font-weight:700;color:#555;margin:0"
+            for _col, _lbl in zip(hc, ["Category", "Indicator", "Current", "Prior", "Delta", "Watch Level", "Danger Level", "Signal", "Notes", "Updated"]):
+                _col.markdown(f"<p style='{_hdr_style}'>{_lbl}</p>", unsafe_allow_html=True)
+            st.markdown("<hr style='margin:2px 0 6px 0;border-color:#ddd'/>", unsafe_allow_html=True)
+
+            _dirty = False
+            for (ind_id, category, name, watch_lvl, danger_lvl, note) in indicators:
+                row_data = _mi.get(ind_id, {"current": "", "prior": "", "signal": "N/A", "updated": None})
+                cols = st.columns([1.4, 1.8, 1.0, 1.0, 1.0, 1.2, 1.2, 1.0, 2.5, 1.1])
+                with cols[0]:
+                    st.markdown(f"<p style='font-size:0.78rem;color:#444;margin:6px 0'>{category}</p>", unsafe_allow_html=True)
+                with cols[1]:
+                    st.markdown(f"<p style='font-size:0.78rem;font-weight:600;color:#222;margin:6px 0'>{name}</p>", unsafe_allow_html=True)
+                with cols[2]:
+                    new_current = st.text_input("c", value=row_data.get("current", ""), key=f"mi_cur_{ind_id}", label_visibility="collapsed")
+                with cols[3]:
+                    new_prior = st.text_input("p", value=row_data.get("prior", ""), key=f"mi_pri_{ind_id}", label_visibility="collapsed")
+                with cols[4]:
+                    delta_val = _delta_str(new_current, new_prior)
+                    delta_color = "#2e7d32" if (delta_val.startswith("+") and delta_val != "+0.00") else ("#b71c1c" if delta_val.startswith("-") else "#555")
+                    st.markdown(f"<p style='font-size:0.82rem;font-weight:600;color:{delta_color};margin:8px 0'>{delta_val}</p>", unsafe_allow_html=True)
+                with cols[5]:
+                    st.markdown(f"<p style='font-size:0.75rem;color:#666;margin:6px 0'>{watch_lvl}</p>", unsafe_allow_html=True)
+                with cols[6]:
+                    st.markdown(f"<p style='font-size:0.75rem;color:#666;margin:6px 0'>{danger_lvl}</p>", unsafe_allow_html=True)
+                with cols[7]:
+                    cur_sig = row_data.get("signal", "N/A")
+                    new_sig = st.selectbox("s", options=_SIG_OPTIONS, index=_SIG_OPTIONS.index(cur_sig) if cur_sig in _SIG_OPTIONS else 0, key=f"mi_sig_{ind_id}", label_visibility="collapsed")
+                    sig_bg = _SIG_COLORS.get(new_sig, "#607d8b")
+                    st.markdown(f"<div style='background:{sig_bg};color:#fff;padding:1px 6px;border-radius:10px;font-size:0.75rem;text-align:center;margin-top:-4px'>{new_sig}</div>", unsafe_allow_html=True)
+                with cols[8]:
+                    st.markdown(f"<p style='font-size:0.72rem;color:#555;margin:6px 0;line-height:1.4'>{note}</p>", unsafe_allow_html=True)
+                with cols[9]:
+                    upd = row_data.get("updated")
+                    upd_label = upd if upd else "—"
+                    st.markdown(f"<p style='font-size:0.72rem;color:#888;margin:6px 0'>{upd_label}</p>", unsafe_allow_html=True)
+
+                # Detect changes and update session state
+                changed = (
+                    new_current != row_data.get("current", "") or
+                    new_prior   != row_data.get("prior", "") or
+                    new_sig     != row_data.get("signal", "N/A")
+                )
+                if changed:
+                    _mi[ind_id] = {
+                        "current": new_current,
+                        "prior":   new_prior,
+                        "signal":  new_sig,
+                        "updated": datetime.now().strftime("%Y-%m-%d"),
+                    }
+                    _dirty = True
+            return _dirty
+
+        _any_dirty = False
+        _any_dirty |= _render_stage("STAGE 1 — EARLY INDICATORS", "#6e9b82", _STAGE1_INDICATORS)
+        _any_dirty |= _render_stage("STAGE 2 — MID-CYCLE INDICATORS", "#8a9a6e", _STAGE2_INDICATORS)
+        _any_dirty |= _render_stage("STAGE 3 — LATE / LAGGING INDICATORS", "#a07060", _STAGE3_INDICATORS)
+
+        if _any_dirty:
+            save_market_indicators(_mi)
+
+        # ── Summary row ───────────────────────────────────────────────────────
+        st.divider()
+        _sig_counts = {"CLEAR": 0, "WATCH": 0, "CAUTION": 0, "DANGER": 0, "N/A": 0}
+        for _d in _mi.values():
+            _s = _d.get("signal", "N/A")
+            if _s in _sig_counts:
+                _sig_counts[_s] += 1
+        _all_indicators = _STAGE1_INDICATORS + _STAGE2_INDICATORS + _STAGE3_INDICATORS
+        _total = len(_all_indicators)
+        st.markdown(
+            f"<div style='background:#f5f5f5;border:1px solid #ddd;border-radius:6px;"
+            f"padding:10px 16px;display:flex;gap:16px;flex-wrap:wrap;align-items:center'>"
+            f"<span style='font-weight:700;color:#333;font-size:0.88rem'>Signal Summary ({_total} indicators):</span>"
+            f"<span style='background:#2e7d32;color:#fff;padding:2px 12px;border-radius:10px;font-size:0.85rem'>CLEAR: {_sig_counts['CLEAR']}</span>"
+            f"<span style='background:#f9a825;color:#fff;padding:2px 12px;border-radius:10px;font-size:0.85rem'>WATCH: {_sig_counts['WATCH']}</span>"
+            f"<span style='background:#e65100;color:#fff;padding:2px 12px;border-radius:10px;font-size:0.85rem'>CAUTION: {_sig_counts['CAUTION']}</span>"
+            f"<span style='background:#b71c1c;color:#fff;padding:2px 12px;border-radius:10px;font-size:0.85rem'>DANGER: {_sig_counts['DANGER']}</span>"
+            f"<span style='background:#607d8b;color:#fff;padding:2px 12px;border-radius:10px;font-size:0.85rem'>N/A: {_sig_counts['N/A']}</span>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.caption(
+            "Sources: FRED, ICE BofA, ISM, Conference Board, Bloomberg, EIA, Lloyd's of London | Update weekly"
         )
 
     # ══════════════════════════════════════════════════════════════════════════
