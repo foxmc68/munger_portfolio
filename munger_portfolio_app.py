@@ -833,6 +833,8 @@ _MANUAL_IDS = {
     "hormuz_volume", "red_sea_volume", "war_risk_premium", "treasury_bid_cover",
     "indirect_bidders", "nyse_ad_line", "eps_guidance", "gross_margin",
     "prof_tech_layoffs", "wage_growth",
+    "pct_above_200ma", "retail_sales", "inventory_sales",
+    "sp500_concentration", "ai_capex_ratio", "cloud_revenue_growth",
 }
 
 
@@ -963,10 +965,12 @@ def _fetch_fred_market_data() -> dict:
     if v is not None:
         result["cc_delinquency"] = f"{v:.2f}%"
 
-    # Auto loan delinquency rate
-    v = _get("DRAUTOACBS")
-    if v is not None:
-        result["auto_delinquency"] = f"{v:.2f}%"
+    # Auto loan delinquency rate — try multiple series in order
+    for _auto_series in ("DTAUTHFNM", "DRALACBS", "DRAUT", "DRAUTOACBS"):
+        v = _get(_auto_series)
+        if v is not None:
+            result["auto_delinquency"] = f"{v:.2f}%"
+            break
 
     return result
 
@@ -3687,6 +3691,15 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
 
         _mi = st.session_state.market_indicators
 
+        # Pre-initialize widget session states from JSON so text_input never
+        # fights with value= on rerun (Streamlit session-state-wins contract)
+        for _init_id in _MARKET_INDICATOR_IDS:
+            _init_data = _mi.get(_init_id, {})
+            if f"mi_cur_{_init_id}" not in st.session_state:
+                st.session_state[f"mi_cur_{_init_id}"] = _init_data.get("current", "")
+            if f"mi_pri_{_init_id}" not in st.session_state:
+                st.session_state[f"mi_pri_{_init_id}"] = _init_data.get("prior", "")
+
         # ── Refresh Market Data button ─────────────────────────────────────────
         _refresh_col, _refresh_status_col = st.columns([2, 5])
         with _refresh_col:
@@ -3705,6 +3718,10 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                     _mi[_aid]["current"] = _aval
                     _mi[_aid]["updated"] = _today
                     st.session_state[f"mi_cur_{_aid}"] = _aval
+                # Track which AUTO indicators failed to fetch (show MANUAL badge for those)
+                st.session_state["_mi_failed_autos"] = {
+                    _aid for _aid in _AUTO_PULL_IDS if _aid not in _auto_fetched
+                }
                 save_market_indicators(_mi)
                 _pulled = len([k for k in _auto_fetched if not k.startswith("_") and k in _AUTO_PULL_IDS])
                 with _refresh_status_col:
@@ -3769,21 +3786,22 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                 with cols[1]:
                     st.markdown(f"<p style='font-size:0.78rem;font-weight:600;color:#222;margin:6px 0'>{name}</p>", unsafe_allow_html=True)
                 with cols[2]:
-                    new_current = st.text_input("c", value=row_data.get("current", ""), key=f"mi_cur_{ind_id}", label_visibility="collapsed")
-                    if ind_id in _AUTO_PULL_IDS:
+                    new_current = st.text_input("c", key=f"mi_cur_{ind_id}", label_visibility="collapsed")
+                    _failed_autos = st.session_state.get("_mi_failed_autos", set())
+                    if ind_id in _AUTO_PULL_IDS and ind_id not in _failed_autos:
                         st.markdown(
                             "<span style='background:#9e9e9e;color:#fff;padding:1px 6px;"
                             "border-radius:8px;font-size:0.67rem;font-weight:600'>AUTO</span>",
                             unsafe_allow_html=True,
                         )
-                    elif ind_id in _MANUAL_IDS:
+                    elif ind_id in _MANUAL_IDS or ind_id in _failed_autos:
                         st.markdown(
                             "<span style='background:#b85c38;color:#fff;padding:1px 6px;"
                             "border-radius:8px;font-size:0.67rem;font-weight:600'>MANUAL</span>",
                             unsafe_allow_html=True,
                         )
                 with cols[3]:
-                    new_prior = st.text_input("p", value=row_data.get("prior", ""), key=f"mi_pri_{ind_id}", label_visibility="collapsed")
+                    new_prior = st.text_input("p", key=f"mi_pri_{ind_id}", label_visibility="collapsed")
                 with cols[4]:
                     delta_val = _delta_str(new_current, new_prior)
                     delta_color = "#2e7d32" if (delta_val.startswith("+") and delta_val != "+0.00") else ("#b71c1c" if delta_val.startswith("-") else "#555")
@@ -3796,7 +3814,15 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                     cur_sig = row_data.get("signal", "N/A")
                     new_sig = st.selectbox("s", options=_SIG_OPTIONS, index=_SIG_OPTIONS.index(cur_sig) if cur_sig in _SIG_OPTIONS else 0, key=f"mi_sig_{ind_id}", label_visibility="collapsed")
                     sig_bg = _SIG_COLORS.get(new_sig, "#607d8b")
-                    st.markdown(f"<div style='background:{sig_bg};color:#fff;padding:1px 6px;border-radius:10px;font-size:0.75rem;text-align:center;margin-top:-4px'>{new_sig}</div>", unsafe_allow_html=True)
+                    # Highlight when an auto-fetched value is present but signal still N/A
+                    _needs_signal = (new_sig == "N/A" and new_current.strip() and ind_id in _AUTO_PULL_IDS)
+                    _sig_extra = ";outline:2px solid #f9a825;outline-offset:2px" if _needs_signal else ""
+                    st.markdown(
+                        f"<div style='background:{sig_bg};color:#fff;padding:1px 6px;border-radius:10px;"
+                        f"font-size:0.75rem;text-align:center;margin-top:-4px{_sig_extra}'>"
+                        f"{new_sig}{'  ★' if _needs_signal else ''}</div>",
+                        unsafe_allow_html=True,
+                    )
                 with cols[8]:
                     st.markdown(f"<p style='font-size:0.72rem;color:#555;margin:6px 0;line-height:1.4'>{note}</p>", unsafe_allow_html=True)
                 with cols[9]:
