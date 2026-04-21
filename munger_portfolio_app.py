@@ -340,6 +340,16 @@ WAIT_LIST_ADD: list[dict] = [
 
 WAIT_LIST_NEW: list[dict] = [
     {
+        "ticker": "NVO",
+        "metric": "P/E",
+        "entry_pe_target": 20,
+        "entry_low": 52.0,
+        "entry_high": 55.0,
+        "add_more_at": 45.0,
+        "currency_symbol": "$",
+        "note": "Novo Nordisk — GLP-1 weight-loss monopoly. Ozempic/Wegovy still in early innings of global adoption. Valuation compressed from peak; waiting for further multiple reset to 20× trailing P/E.",
+    },
+    {
         "ticker": "EQNR",
         "metric": "P/E",
         "entry_pe_target": 8,
@@ -1386,11 +1396,11 @@ def compute_waitlist_row(stock: dict) -> dict:
     if gap_pct is None:
         status = "N/A"
     elif gap_pct <= 0:
-        status = "ENTER"
-    elif gap_pct <= 10.0:
-        status = "CLOSE"
+        status = "AT TARGET"
+    elif gap_pct <= 15.0:
+        status = "APPROACHING"
     else:
-        status = "WAIT"
+        status = "NOT YET"
 
     return {
         "ticker": ticker,
@@ -2635,8 +2645,8 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             "<div style='background:#6a7a4e;color:#fff;padding:10px 16px;border-radius:6px;"
             "margin-bottom:12px'>"
             "<strong>Wait List</strong> — Entry price targets for both existing holdings and new positions. "
-            "Status: <b>ENTER</b> = price at or below entry range · "
-            "<b>CLOSE</b> = within 10% of range · <b>WAIT</b> = more than 10% above range."
+            "Status: <b>AT TARGET</b> = price within or below entry range · "
+            "<b>APPROACHING</b> = within 15% above range · <b>NOT YET</b> = more than 15% above range."
             "</div>",
             unsafe_allow_html=True,
         )
@@ -2671,41 +2681,41 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             )
 
         # ── Combined summary metrics (both sections) ──────────────────────────
-        _wl_enter = sum(1 for r in raw_rows_waitlist if r["status"] == "ENTER")
-        _wl_close = sum(1 for r in raw_rows_waitlist if r["status"] == "CLOSE")
-        _wl_wait  = sum(1 for r in raw_rows_waitlist if r["status"] == "WAIT")
+        _wl_target     = sum(1 for r in raw_rows_waitlist if r["status"] == "AT TARGET")
+        _wl_approach   = sum(1 for r in raw_rows_waitlist if r["status"] == "APPROACHING")
+        _wl_not_yet    = sum(1 for r in raw_rows_waitlist if r["status"] == "NOT YET")
         _wmc1, _wmc2, _wmc3, _wmc4 = st.columns(4)
-        _wmc1.metric("ENTER (in range)", _wl_enter, delta_color="off")
-        _wmc2.metric("CLOSE (within 10%)", _wl_close, delta_color="off")
-        _wmc3.metric("WAIT (>10% above)", _wl_wait, delta_color="off")
+        _wmc1.metric("AT TARGET (in range)", _wl_target, delta_color="off")
+        _wmc2.metric("APPROACHING (≤15% above)", _wl_approach, delta_color="off")
+        _wmc3.metric("NOT YET (>15% above)", _wl_not_yet, delta_color="off")
         _wmc4.metric("Total Watching", len(WAIT_LIST), delta_color="off")
 
         st.divider()
 
         # ── Status color maps ─────────────────────────────────────────────────
         _WL_STATUS_BG: dict[str, str] = {
-            "ENTER": "#5a8a5a",   # sage green
-            "CLOSE": "#b8860b",   # amber
-            "WAIT":  "#9b4a4a",   # muted red
-            "N/A":   "#777777",
+            "AT TARGET":  "#5a8a5a",   # sage green
+            "APPROACHING": "#b8860b",  # amber
+            "NOT YET":    "#777777",   # grey
+            "N/A":        "#777777",
         }
         _WL_STATUS_FG: dict[str, str] = {
-            "ENTER": "#e8f4e8",
-            "CLOSE": "#fff8e0",
-            "WAIT":  "#fce8e8",
-            "N/A":   "#dddddd",
+            "AT TARGET":  "#e8f4e8",
+            "APPROACHING": "#fff8e0",
+            "NOT YET":    "#dddddd",
+            "N/A":        "#dddddd",
         }
         _WL_ROW_BG: dict[str, str] = {
-            "ENTER": "#c8dfc8",   # light sage green
-            "CLOSE": "#f0e0a0",   # light amber
-            "WAIT":  "#e8c8c8",   # light muted red
-            "N/A":   "#d8d8d8",
+            "AT TARGET":  "#c8dfc8",   # light sage green
+            "APPROACHING": "#f0e0a0",  # light amber
+            "NOT YET":    "#e0e0e0",   # light grey
+            "N/A":        "#d8d8d8",
         }
         _WL_ROW_FG: dict[str, str] = {
-            "ENTER": "#1a3a1a",
-            "CLOSE": "#3d2800",
-            "WAIT":  "#3d0f00",
-            "N/A":   "#555555",
+            "AT TARGET":  "#1a3a1a",
+            "APPROACHING": "#3d2800",
+            "NOT YET":    "#444444",
+            "N/A":        "#555555",
         }
 
         # ── Column definitions ────────────────────────────────────────────────
@@ -3952,6 +3962,7 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             "GOOGL":   (4, "Wait List"),
             "ASML":    (3, "Wait List"),
             "COST":    (3, "Wait List"),
+            "NVO":     (2, "Wait List"),
             "EQNR":    (2, "Wait List"),
             "CSU.TO":  (2, "Wait List"),
             "6861.T":  (2, "Wait List"),
@@ -4019,11 +4030,11 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                         "Alloc%":       _alloc_pct,
                     })
 
-        # Wait List — ENTER status maps to FAIR signal
+        # Wait List — AT TARGET status surfaces in Deployment tab
         _raw_wl = st.session_state.get("raw_rows_waitlist")
         if _raw_wl:
             for _r in _raw_wl:
-                if _r.get("status") == "ENTER":
+                if _r.get("status") == "AT TARGET":
                     _tk = _r["ticker"]
                     _alloc_pct, _ = _DEPLOY_ALLOC.get(_tk, (1, "Wait List"))
                     _price = _r.get("price")
@@ -4034,7 +4045,7 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                     _deploy_rows.append({
                         "Ticker":      _r.get("display_ticker", _tk),
                         "List":        "Wait List",
-                        "Signal":      "ENTER",
+                        "Signal":      "AT TARGET",
                         "Price":       _price,
                         "Fair Price":  _entry_high,
                         "Dream Price": _entry_low,
@@ -4078,8 +4089,8 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                     icon="ℹ️",
                 )
         else:
-            # Sort: DREAM first, then FAIR/ENTER; within each group by Alloc% desc
-            _signal_order = {"DREAM": 0, "FAIR": 1, "ENTER": 2}
+            # Sort: DREAM first, then FAIR/AT TARGET; within each group by Alloc% desc
+            _signal_order = {"DREAM": 0, "FAIR": 1, "AT TARGET": 2}
             _deploy_rows.sort(
                 key=lambda r: (_signal_order.get(r["Signal"], 9), -r["Alloc%"])
             )
@@ -4119,7 +4130,7 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                 elif _r["Signal"] == "FAIR":
                     _row_bg = "#fff0b3"   # amber
                     _sig_color = "#5a3a00"
-                else:  # ENTER (wait list)
+                else:  # AT TARGET (wait list)
                     _row_bg = "#fde8b0"   # slightly warmer amber for wait list
                     _sig_color = "#5a3a00"
 
