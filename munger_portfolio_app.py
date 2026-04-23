@@ -1136,6 +1136,96 @@ def fetch_news(ticker: str) -> list[dict]:
         return []
 
 
+# ── Earnings calendar ─────────────────────────────────────────────────────────
+
+@st.cache_data(ttl=24 * 3600, show_spinner=False)
+def fetch_earnings_calendar_all() -> list[dict]:
+    """Fetch next earnings dates for all portfolio + wait list tickers. 24-hour cache."""
+    today = datetime.now().date()
+
+    # Build ticker → portfolio map; priority: A > B > Wait List
+    ticker_portfolio: dict[str, str] = {}
+    for tk in ALL_TICKERS:
+        ticker_portfolio[tk] = "A"
+    for tk in ALL_TICKERS_B:
+        if tk not in ticker_portfolio:
+            ticker_portfolio[tk] = "B"
+    for s in WAIT_LIST:
+        tk = s["ticker"]
+        if tk not in ticker_portfolio:
+            ticker_portfolio[tk] = "Wait List"
+
+    rows = []
+    for ticker, portfolio in ticker_portfolio.items():
+        try:
+            t = yf.Ticker(ticker)
+            cal = t.calendar
+            earnings_dt = None
+            eps_consensus = None
+
+            if isinstance(cal, dict) and cal:
+                ed = cal.get("Earnings Date")
+                if ed is not None:
+                    ed0 = ed[0] if hasattr(ed, "__len__") and len(ed) > 0 else ed
+                    try:
+                        earnings_dt = pd.Timestamp(ed0).date()
+                    except Exception:
+                        pass
+                eps_avg = cal.get("Earnings Average")
+                if eps_avg is not None:
+                    try:
+                        eps_consensus = float(eps_avg)
+                    except Exception:
+                        pass
+
+            if earnings_dt is None:
+                info_d = t.info
+                ed_raw = info_d.get("earningsDate") or info_d.get("earningsTimestamp")
+                if ed_raw:
+                    if isinstance(ed_raw, list):
+                        ed_raw = ed_raw[0]
+                    try:
+                        earnings_dt = (
+                            pd.Timestamp(ed_raw, unit="s").date()
+                            if isinstance(ed_raw, (int, float))
+                            else pd.Timestamp(ed_raw).date()
+                        )
+                    except Exception:
+                        pass
+
+            if earnings_dt is not None and earnings_dt >= today:
+                days_until: int | str = (earnings_dt - today).days
+                date_str = earnings_dt.strftime("%b %d, %Y")
+                sort_key = days_until
+            else:
+                days_until = ""
+                date_str = "N/A"
+                sort_key = 9999
+
+            rows.append({
+                "Ticker": ticker,
+                "Company": COMPANY_NAMES.get(ticker, ticker),
+                "Earnings Date": date_str,
+                "Days Until": days_until,
+                "EPS Consensus": f"${eps_consensus:.2f}" if eps_consensus is not None else "",
+                "Portfolio": portfolio,
+                "_sort": sort_key,
+            })
+        except Exception:
+            rows.append({
+                "Ticker": ticker,
+                "Company": COMPANY_NAMES.get(ticker, ticker),
+                "Earnings Date": "N/A",
+                "Days Until": "",
+                "EPS Consensus": "",
+                "Portfolio": portfolio,
+                "_sort": 9999,
+            })
+
+    rows.sort(key=lambda r: r["_sort"])
+    return rows
+
+
 # ── Core computation ──────────────────────────────────────────────────────────
 
 def _float(info: dict, key: str) -> Optional[float]:
@@ -2214,6 +2304,32 @@ ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effecti
 RevGr% = 3-year revenue CAGR computed from annual Total Revenue: (revenue_year0 / revenue_year3)^(1/3) − 1. Requires at least 3 annual data points; shown as N/A otherwise. Does not fall back to TTM YoY (which can reflect a single bad quarter).
 
 **BUY = Signal (DREAM or FAIR) AND Quality PASS AND no Red Flags active.**
+""")
+
+        with st.expander("Investment Thesis (Portfolio B)", expanded=False):
+            st.markdown("""
+| Ticker | Fair P/E Target | Why This Multiple |
+|---|---|---|
+| NEE | 22× | Regulated utility with renewable energy growth; predictable cash flows justify premium to pure utility peers |
+| PGR | 18× | Best-in-class auto insurer with telematics moat; below historical average given combined ratio uncertainty |
+| PG | 24× | Consumer staples compounding machine; pricing power and global distribution justify premium |
+| KMI | 12× | MLP with improving balance sheet; pipeline toll roads but leverage history warrants discount |
+| KO | 22× | Irreplaceable global brand with 130-country distribution; modest growth but near-zero disruption risk |
+| PLD | 18× | E-commerce logistics REIT; secular tailwind but rate sensitivity warrants discount to peak multiple |
+| TXN | 20× | Analog semiconductor toll road; long product cycles and 95% direct sales model |
+| XOM | 12× | Integrated energy with best-in-class balance sheet; commodity exposure caps multiple |
+| BLK | 18× | Asset management at scale with Aladdin platform moat; fee compression risk limits multiple |
+| BIP | 18× | Brookfield infrastructure with inflation-linked contracts; complex structure warrants slight discount |
+| CHD | 22× | Consumer staples compounder with ARM & Hammer moat; consistent mid-single-digit growth |
+| CB | 15× | World-class P&C insurer with Greenberg capital discipline; Buffett-owned, float machine |
+| ABBV | 14× | Pharma with Humira cliff navigated; Skyrizi/Rinvoq growth offsets patent risk |
+| AVGO | 22× | Semiconductor and infrastructure software toll road; AI custom chip position adds optionality |
+| CL | 20× | Global oral care and personal products compounder; emerging market penetration drives growth |
+| FCX | 10× | Copper mining leverage to electrification; cyclical business warrants low multiple |
+| JNJ | 16× | Diversified healthcare with MedTech and pharma; Kenvue spin simplifies story |
+| ITW | 20× | Industrial compounder with 80/20 simplification model; best-in-class margins |
+| EOG | 10× | Premium E&P with low-cost shale assets; commodity exposure caps multiple |
+| EMR | 18× | Industrial automation compounder; AspenTech integration adds software multiple |
 """)
 
         with st.expander("Valuation Key", expanded=False):
@@ -4364,6 +4480,40 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
                 "5 most recent headlines per ticker  ·  "
                 "Publisher color-coded  ·  Click headline to open article"
             )
+
+        # ── Earnings Calendar ─────────────────────────────────────────────────
+        st.markdown(
+            "<div style='color:#6e9b9b;font-weight:700;font-size:1.05rem;"
+            "margin:10px 0 6px 0'>Earnings Calendar</div>",
+            unsafe_allow_html=True,
+        )
+        with st.spinner("Loading earnings dates…"):
+            _ec_rows = fetch_earnings_calendar_all()
+        _ec_df = pd.DataFrame([
+            {k: v for k, v in r.items() if not k.startswith("_")}
+            for r in _ec_rows
+        ])
+
+        def _style_ec_row(row: pd.Series) -> list[str]:
+            days = row["Days Until"]
+            if isinstance(days, int):
+                if days <= 7:
+                    bg = "background-color:#ffcccc"
+                elif days <= 30:
+                    bg = "background-color:#fff3cd"
+                else:
+                    return [""] * len(row)
+                return [bg] * len(row)
+            return [""] * len(row)
+
+        _ec_styled = _ec_df.style.apply(_style_ec_row, axis=1)
+        st.dataframe(
+            _ec_styled,
+            use_container_width=True,
+            hide_index=True,
+            height=min(400, (len(_ec_df) + 1) * 35 + 10),
+        )
+        st.divider()
 
         def _render_news_expander(ticker: str, label_prefix: str = "") -> None:
             header = f"{ticker}  {label_prefix}".strip() if label_prefix else ticker
