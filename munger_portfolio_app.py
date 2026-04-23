@@ -2306,32 +2306,6 @@ RevGr% = 3-year revenue CAGR computed from annual Total Revenue: (revenue_year0 
 **BUY = Signal (DREAM or FAIR) AND Quality PASS AND no Red Flags active.**
 """)
 
-        with st.expander("Investment Thesis (Portfolio B)", expanded=False):
-            st.markdown("""
-| Ticker | Fair P/E Target | Why This Multiple |
-|---|---|---|
-| NEE | 22× | Regulated utility with renewable energy growth; predictable cash flows justify premium to pure utility peers |
-| PGR | 18× | Best-in-class auto insurer with telematics moat; below historical average given combined ratio uncertainty |
-| PG | 24× | Consumer staples compounding machine; pricing power and global distribution justify premium |
-| KMI | 12× | MLP with improving balance sheet; pipeline toll roads but leverage history warrants discount |
-| KO | 22× | Irreplaceable global brand with 130-country distribution; modest growth but near-zero disruption risk |
-| PLD | 18× | E-commerce logistics REIT; secular tailwind but rate sensitivity warrants discount to peak multiple |
-| TXN | 20× | Analog semiconductor toll road; long product cycles and 95% direct sales model |
-| XOM | 12× | Integrated energy with best-in-class balance sheet; commodity exposure caps multiple |
-| BLK | 18× | Asset management at scale with Aladdin platform moat; fee compression risk limits multiple |
-| BIP | 18× | Brookfield infrastructure with inflation-linked contracts; complex structure warrants slight discount |
-| CHD | 22× | Consumer staples compounder with ARM & Hammer moat; consistent mid-single-digit growth |
-| CB | 15× | World-class P&C insurer with Greenberg capital discipline; Buffett-owned, float machine |
-| ABBV | 14× | Pharma with Humira cliff navigated; Skyrizi/Rinvoq growth offsets patent risk |
-| AVGO | 22× | Semiconductor and infrastructure software toll road; AI custom chip position adds optionality |
-| CL | 20× | Global oral care and personal products compounder; emerging market penetration drives growth |
-| FCX | 10× | Copper mining leverage to electrification; cyclical business warrants low multiple |
-| JNJ | 16× | Diversified healthcare with MedTech and pharma; Kenvue spin simplifies story |
-| ITW | 20× | Industrial compounder with 80/20 simplification model; best-in-class margins |
-| EOG | 10× | Premium E&P with low-cost shale assets; commodity exposure caps multiple |
-| EMR | 18× | Industrial automation compounder; AspenTech integration adds software multiple |
-""")
-
         with st.expander("Valuation Key", expanded=False):
             st.markdown(f"""
 | Signal | Condition |
@@ -2649,6 +2623,32 @@ Thresholds: ROIC ≥ 12%, FCF Yield ≥ 2.5%, RevGr ≥ 3%, D/E < 2.0.
 
 **BUY = Signal (DREAM or FAIR) AND Quality PASS AND no Red Flags active.**
 Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A for the full table).
+""")
+
+        with st.expander("Investment Thesis (Portfolio B)", expanded=False):
+            st.markdown("""
+| Ticker | Fair P/E Target | Why This Multiple |
+|---|---|---|
+| NEE | 22× | Regulated utility with renewable energy growth; predictable cash flows justify premium to pure utility peers |
+| PGR | 18× | Best-in-class auto insurer with telematics moat; below historical average given combined ratio uncertainty |
+| PG | 24× | Consumer staples compounding machine; pricing power and global distribution justify premium |
+| KMI | 12× | MLP with improving balance sheet; pipeline toll roads but leverage history warrants discount |
+| KO | 22× | Irreplaceable global brand with 130-country distribution; modest growth but near-zero disruption risk |
+| PLD | 18× | E-commerce logistics REIT; secular tailwind but rate sensitivity warrants discount to peak multiple |
+| TXN | 20× | Analog semiconductor toll road; long product cycles and 95% direct sales model |
+| XOM | 12× | Integrated energy with best-in-class balance sheet; commodity exposure caps multiple |
+| BLK | 18× | Asset management at scale with Aladdin platform moat; fee compression risk limits multiple |
+| BIP | 18× | Brookfield infrastructure with inflation-linked contracts; complex structure warrants slight discount |
+| CHD | 22× | Consumer staples compounder with ARM & Hammer moat; consistent mid-single-digit growth |
+| CB | 15× | World-class P&C insurer with Greenberg capital discipline; Buffett-owned, float machine |
+| ABBV | 14× | Pharma with Humira cliff navigated; Skyrizi/Rinvoq growth offsets patent risk |
+| AVGO | 22× | Semiconductor and infrastructure software toll road; AI custom chip position adds optionality |
+| CL | 20× | Global oral care and personal products compounder; emerging market penetration drives growth |
+| FCX | 10× | Copper mining leverage to electrification; cyclical business warrants low multiple |
+| JNJ | 16× | Diversified healthcare with MedTech and pharma; Kenvue spin simplifies story |
+| ITW | 20× | Industrial compounder with 80/20 simplification model; best-in-class margins |
+| EOG | 10× | Premium E&P with low-cost shale assets; commodity exposure caps multiple |
+| EMR | 18× | Industrial automation compounder; AspenTech integration adds software multiple |
 """)
 
         with st.expander("Valuation Key", expanded=False):
