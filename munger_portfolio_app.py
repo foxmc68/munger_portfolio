@@ -41,12 +41,12 @@ FLAG_NAMES = [
 
 PORTFOLIO: dict[str, dict] = {
     "Tier 1": {
-        "tickers": ["V", "MCO", "SPGI", "MSFT", "GOOGL", "COST", "RMS.PA", "ASML", "RMBS", "WKL", "RAA.DE"],
+        "tickers": ["V", "MCO", "SPGI", "MSFT", "GOOGL", "COST", "RMS.PA", "ASML", "RMBS", "WKL", "RAA.DE", "FICO"],
         "fair_pe": 25,
     },
     "Tier 2": {
         "tickers": [
-            "ADP", "FICO", "AXP", "BRK-B", "CME", "DHR",
+            "ADP", "AXP", "BRK-B", "CME", "DHR",
             "IDXX", "VRSN", "CNI", "BAM", "WM", "AZO",
         ],
         "fair_pe": 20,
@@ -626,6 +626,8 @@ STOCK_CATEGORY: dict[str, str] = {
     "MSFT": "asset_light", "GOOGL": "asset_light", "FICO": "asset_light",
     "VRSN": "asset_light", "ADP": "asset_light", "RMBS": "asset_light",
     "WKL": "asset_light", "RAA.DE": "asset_light",
+    # Payment Networks
+    "V": "payment_network",
     # Toll Bridge Financials
     "MCO": "toll_financial", "CME": "toll_financial", "AXP": "toll_financial",
     "SPGI": "bank",  # IHS Markit acquisition ($44B goodwill) inflates IC → standard ROIC formula misleading
@@ -661,6 +663,7 @@ STOCK_CATEGORY: dict[str, str] = {
 
 CATEGORY_THRESHOLDS: dict[str, dict] = {
     "asset_light":      {"roic": 25,   "fcf_yield": 2.0, "rev_growth": 8,  "de": 0.5},
+    "payment_network":  {"roic": 25,   "fcf_yield": 2.0, "rev_growth": 8,  "de": 1.0},
     "toll_financial":   {"roic": 15,   "fcf_yield": 2.0, "rev_growth": 5,  "de": 2.0},
     "bank":             {"roic": None, "fcf_yield": 2.5, "rev_growth": 3,  "de": None},
     "insurance":        {"roic": None, "fcf_yield": None,"rev_growth": 5,  "de": None},
@@ -2187,6 +2190,7 @@ A threshold of **—** means that check is skipped for the category.
 | Category | ROIC% ≥ | FCF Yield% ≥ | Rev Growth% ≥ | D/E ≤ |
 |---|---|---|---|---|
 | asset_light | 25 | 2.0 | 8 | 0.5 |
+| payment_network | 25 | 2.0 | 8 | 1.0 |
 | toll_financial | 15 | 2.0 | 5 | 2.0 |
 | bank | — | 2.5 | 3 | — |
 | insurance | — | — | 5 | — |
@@ -2202,6 +2206,8 @@ A threshold of **—** means that check is skipped for the category.
 | special_azo | 15 | 3.0 | 3 | — |
 | tic | 12 | 2.5 | 3 | 2.0 |
 | *(default)* | 15 | 3.5 | 0 | 0.5 |
+
+**payment_network category (Payment Networks):** Payment network — asset-light toll road on global commerce. Thresholds: ROIC ≥25%, FCF Yield ≥2.0%, RevGr ≥8%, D/E <1.0.
 
 ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effectiveTaxRate) and Invested Capital = totalAssets − currentLiabilities − cash.
 
