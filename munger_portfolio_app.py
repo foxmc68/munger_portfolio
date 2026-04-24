@@ -41,13 +41,13 @@ FLAG_NAMES = [
 
 PORTFOLIO: dict[str, dict] = {
     "Tier 1": {
-        "tickers": ["V", "MCO", "SPGI", "MSFT", "GOOGL", "COST", "RMS.PA", "ASML", "RMBS", "WKL", "RAA.DE", "FICO"],
+        "tickers": ["V", "MCO", "SPGI", "MSFT", "GOOGL", "COST", "RMS.PA", "ASML", "RMBS", "WTKWY", "RAA.DE", "FICO"],
         "fair_pe": 25,
     },
     "Tier 2": {
         "tickers": [
             "ADP", "AXP", "BRK-B", "CME", "DHR",
-            "IDXX", "VRSN", "CNI", "BAM", "WM", "AZO",
+            "IDXX", "VRSN", "CNI", "BAM", "WM", "AZO", "FNV",
         ],
         "fair_pe": 20,
     },
@@ -625,7 +625,7 @@ STOCK_CATEGORY: dict[str, str] = {
     # Asset-Light Compounders
     "MSFT": "asset_light", "GOOGL": "asset_light", "FICO": "asset_light",
     "VRSN": "asset_light", "ADP": "asset_light", "RMBS": "asset_light",
-    "WKL": "asset_light", "RAA.DE": "asset_light",
+    "WTKWY": "asset_light", "RAA.DE": "asset_light",
     # Payment Networks
     "V": "payment_network",
     # Toll Bridge Financials
@@ -4543,7 +4543,7 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
         # ── Portfolio A ───────────────────────────────────────────────────────
         st.markdown(
             "<div style='background:#5a7f6a;color:#fff;padding:6px 14px;border-radius:5px;"
-            "font-weight:700;font-size:1rem;margin:8px 0 4px 0'>Portfolio A  ·  28 tickers</div>",
+            "font-weight:700;font-size:1rem;margin:8px 0 4px 0'>Portfolio A  ·  29 tickers</div>",
             unsafe_allow_html=True,
         )
         for _tk in ALL_TICKERS:
