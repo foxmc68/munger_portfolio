@@ -625,7 +625,9 @@ STOCK_CATEGORY: dict[str, str] = {
     # Asset-Light Compounders
     "MSFT": "asset_light", "GOOGL": "asset_light", "FICO": "asset_light",
     "VRSN": "asset_light", "ADP": "asset_light", "RMBS": "asset_light",
-    "WTKWY": "asset_light", "RAA.DE": "asset_light",
+    "RAA.DE": "asset_light",
+    # Professional Information
+    "WTKWY": "prof_info",
     # Payment Networks
     "V": "payment_network",
     # Toll Bridge Financials
@@ -678,6 +680,7 @@ CATEGORY_THRESHOLDS: dict[str, dict] = {
     "airport":          {"roic": 8,    "fcf_yield": 2.5, "rev_growth": 3,  "de": 1.5},
     "special_azo":      {"roic": 15,   "fcf_yield": 3.0, "rev_growth": 3,  "de": None},
     "tic":              {"roic": 12,   "fcf_yield": 2.5, "rev_growth": 3,  "de": 2.0},
+    "prof_info":        {"roic": 15,   "fcf_yield": 2.5, "rev_growth": 3,  "interest_coverage": 8},
 }
 
 # Fallback thresholds for tickers not in STOCK_CATEGORY
@@ -1067,6 +1070,10 @@ def fetch_financials(ticker: str) -> dict:
                 v = inc.loc["Tax Rate For Calcs"].iloc[0]
                 if v is not None and not (isinstance(v, float) and v != v):
                     result["taxRate"] = float(v)
+            if "Interest Expense" in inc.index:
+                v = inc.loc["Interest Expense"].iloc[0]
+                if v is not None and not (isinstance(v, float) and v != v):
+                    result["interestExpense"] = float(v)
             # 3-year revenue CAGR: (rev_year0 / rev_year3)^(1/3) - 1
             # Requires at least 3 annual data points; fewer than that → omit (shown as N/A).
             # Never fall back to single-year YoY which can reflect one bad quarter.
@@ -1332,6 +1339,15 @@ def compute_row(
     de_raw = _float(info, "debtToEquity")
     de_ratio: Optional[float] = de_raw / 100.0 if de_raw is not None else None
 
+    # Interest coverage = EBIT / Interest Expense (used for prof_info category
+    # where buyback-shrunken equity distorts D/E). yfinance reports interest
+    # expense as a positive number on income_stmt.
+    interest_expense = fins.get("interestExpense")
+    if (op_income is not None and interest_expense is not None and interest_expense > 0):
+        interest_coverage: Optional[float] = op_income / interest_expense
+    else:
+        interest_coverage = None
+
     gm_raw = _float(info, "grossMargins")
     gm_pct: Optional[float] = gm_raw * 100.0 if gm_raw is not None else None
 
@@ -1344,7 +1360,8 @@ def compute_row(
     roic_thr = thresholds["roic"]
     fcfy_thr = thresholds["fcf_yield"]
     revgr_thr = thresholds["rev_growth"]
-    de_thr = thresholds["de"]
+    de_thr = thresholds.get("de")
+    ic_thr = thresholds.get("interest_coverage")
 
     if roic_thr is not None:
         if roic is None:
@@ -1364,7 +1381,14 @@ def compute_row(
         elif rev_growth < revgr_thr:
             fails.append(f"RevGr {rev_growth:.1f}% < {revgr_thr}%")
 
-    if de_thr is not None:
+    # Prefer interest_coverage when the category specifies it (prof_info);
+    # otherwise apply D/E. Categories never mix the two.
+    if ic_thr is not None:
+        if interest_coverage is None:
+            fails.append("Int Coverage N/A")
+        elif interest_coverage < ic_thr:
+            fails.append(f"Int Coverage {interest_coverage:.1f}x < {ic_thr}x")
+    elif de_thr is not None:
         if de_ratio is None:
             fails.append("D/E N/A")
         elif de_ratio > de_thr:
@@ -2295,9 +2319,12 @@ A threshold of **—** means that check is skipped for the category.
 | airport | 8 | 2.5 | 3 | 1.5 |
 | special_azo | 15 | 3.0 | 3 | — |
 | tic | 12 | 2.5 | 3 | 2.0 |
+| prof_info | 15 | 2.5 | 3 | — (Int Coverage ≥ 8x) |
 | *(default)* | 15 | 3.5 | 0 | 0.5 |
 
 **payment_network category (Payment Networks):** Payment network — asset-light toll road on global commerce. Thresholds: ROIC ≥25%, FCF Yield ≥2.0%, RevGr ≥8%, D/E <1.0.
+
+**prof_info category (Professional Information):** Professional Information — mature workflow-embedded compounders with mandatory-use content. Thresholds: ROIC ≥15%, FCF Yield ≥2.5%, RevGr ≥3%, Interest Coverage ≥8x (D/E excluded — buyback-distorted equity).
 
 ROIC = NOPAT / Invested Capital, where NOPAT = operatingIncome × (1 − effectiveTaxRate) and Invested Capital = totalAssets − currentLiabilities − cash.
 
