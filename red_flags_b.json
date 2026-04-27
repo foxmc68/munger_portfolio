@@ -77,12 +77,6 @@
     "Regulatory Threat": false,
     "Moat Deteriorating": false
   },
-  "ABBV": {
-    "Accounting Issues": false,
-    "Mgmt Turnover": false,
-    "Regulatory Threat": false,
-    "Moat Deteriorating": false
-  },
   "AVGO": {
     "Accounting Issues": false,
     "Mgmt Turnover": false,
@@ -126,12 +120,6 @@
     "Moat Deteriorating": false
   },
   "PM": {
-    "Accounting Issues": false,
-    "Mgmt Turnover": false,
-    "Regulatory Threat": false,
-    "Moat Deteriorating": false
-  },
-  "NVO": {
     "Accounting Issues": false,
     "Mgmt Turnover": false,
     "Regulatory Threat": false,

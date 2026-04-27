@@ -73,7 +73,6 @@ ALL_TICKERS: list[str] = [t for td in PORTFOLIO.values() for t in td["tickers"]]
 #   BIP  18 – global infrastructure with long-dated contracted revenues
 #   CHD  26 – consumer staples compounder, consistent execution
 #   CB   15 – disciplined insurer, underwriting excellence over decades
-#   ABBV 16 – pharma with near-term patent risk offset by strong pipeline
 #   AVGO 25 – semiconductor/software hybrid, dominant switching-cost moat
 #   CL   24 – global consumer staples, emerging-market distribution moat
 #   FCX  14 – premier copper miner, cyclical commodity; discounted for cycle
@@ -97,7 +96,6 @@ PORTFOLIO_B_TICKERS: dict[str, float] = {
     "BIP":  18.0,
     "CHD":  26.0,
     "CB":   15.0,
-    "ABBV": 16.0,
     "AVGO": 25.0,
     "CL":   24.0,
     "FCX":  14.0,
@@ -106,7 +104,6 @@ PORTFOLIO_B_TICKERS: dict[str, float] = {
     "EOG":  14.0,
     "EMR":  20.0,
     "PM":   16.0,
-    "NVO":  22.0,
     "ITRK.L": 22.0,
     "BVI.PA": 20.0,
 }
@@ -181,6 +178,18 @@ RETIRED_STOCKS: list[dict] = [
         "from_portfolio": "B",
         "date_retired": "2026-04-08",
         "removal_reason": "Debt/equity of 4.65 far exceeds 0.5 threshold — 30 years of debt-funded buybacks and dividends. Acquired Kenvue (J&J consumer spinoff including talc liability) for $48B with borrowed money. Private label competition in diapers and paper products limiting growth. Business going nowhere.",
+    },
+    {
+        "ticker": "NVO",
+        "from_portfolio": "B",
+        "date_retired": "2026-04-27",
+        "removal_reason": "Too-hard pile — pharma pipeline complexity exceeds Munger comprehensibility threshold. GLP-1 market size thesis is real but not a moat thesis. Competitive position vs Lilly depends on clinical trial outcomes, FDA sequencing, reimbursement policy, and consumer preference variables no non-specialist can evaluate with 10-year confidence. Buffett sold his pharma positions in 2021 for identical reasons.",
+    },
+    {
+        "ticker": "ABBV",
+        "from_portfolio": "B",
+        "date_retired": "2026-04-27",
+        "removal_reason": "Too-hard pile — same pharma pipeline complexity as NVO. Humira cliff navigated but Skyrizi and Rinvoq compete in markets requiring clinical trial expertise to evaluate. Patent timelines and pipeline risk make 10-year competitive position judgment unreliable for a non-specialist investor.",
     },
 ]
 
@@ -644,7 +653,7 @@ STOCK_CATEGORY: dict[str, str] = {
     "PM": "consumer_staples", "CL": "consumer_staples", "CHD": "consumer_staples",
     "COST": "consumer_staples",
     # Pharma / Biotech
-    "NVO": "pharma", "ABBV": "pharma", "JNJ": "pharma",
+    "JNJ": "pharma",
     # Energy Majors
     "CVX": "energy", "COP": "energy", "XOM": "energy", "EOG": "energy", "EQNR": "energy",
     # MLPs
@@ -2414,7 +2423,7 @@ RevGr% = 3-year revenue CAGR computed from annual Total Revenue: (revenue_year0 
             fair_overrides_b[_tk_b] = _val_b if _val_b != _default_pe else None
 
         # ── Red Flags pills (Portfolio B) ─────────────────────────────────────
-        _B_DEFENSIVES = ["PG", "KO", "PM", "CHD", "CL", "ABBV", "JNJ"]
+        _B_DEFENSIVES = ["PG", "KO", "PM", "CHD", "CL", "JNJ"]
         _B_GROWTH = [
             "NEE", "PGR", "PLD", "TXN", "XOM", "BLK", "BIP",
             "CB", "AVGO", "FCX", "ITW", "EOG", "EMR", "KMI",
@@ -2634,7 +2643,6 @@ RevGr% = 3-year revenue CAGR computed from annual Total Revenue: (revenue_year0 
 | BIP | 18 | Global infrastructure with long-dated contracted revenues |
 | CHD | 26 | Consumer staples compounder, consistent execution record |
 | CB | 15 | Disciplined insurer with decades of underwriting excellence |
-| ABBV | 16 | Pharma with near-term patent risk, offset by strong pipeline |
 | AVGO | 25 | Semiconductor/software hybrid with dominant switching-cost moat |
 | CL | 24 | Global consumer staples, emerging-market distribution reach |
 | FCX | 14 | Premier copper producer, cyclical commodity; cycle discount |
@@ -2668,7 +2676,6 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
 | BIP | 18× | Brookfield infrastructure with inflation-linked contracts; complex structure warrants slight discount |
 | CHD | 22× | Consumer staples compounder with ARM & Hammer moat; consistent mid-single-digit growth |
 | CB | 15× | World-class P&C insurer with Greenberg capital discipline; Buffett-owned, float machine |
-| ABBV | 14× | Pharma with Humira cliff navigated; Skyrizi/Rinvoq growth offsets patent risk |
 | AVGO | 22× | Semiconductor and infrastructure software toll road; AI custom chip position adds optionality |
 | CL | 20× | Global oral care and personal products compounder; emerging market penetration drives growth |
 | FCX | 10× | Copper mining leverage to electrification; cyclical business warrants low multiple |
@@ -4092,7 +4099,6 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             "BLK":  (2, "Portfolio B"),
             "BIP":  (3, "Portfolio B"),
             "CHD":  (1, "Portfolio B"),
-            "ABBV": (2, "Portfolio B"),
             "AVGO": (2, "Portfolio B"),
             "CL":   (1, "Portfolio B"),
             "FCX":  (2, "Portfolio B"),
@@ -4104,7 +4110,6 @@ Quality thresholds are category-specific (see Quality Gate Rules in Portfolio A 
             "NEE":    (1, "Portfolio B"),
             "KMI":    (1, "Portfolio B"),
             "PLD":    (1, "Portfolio B"),
-            "NVO":    (2, "Portfolio B"),
             "ITRK.L": (2, "Portfolio B"),
             "BVI.PA": (2, "Portfolio B"),
             # Wait List
