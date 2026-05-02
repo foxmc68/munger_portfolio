@@ -24,7 +24,6 @@ import yfinance as yf
 
 RED_FLAGS_FILE    = os.path.join(os.path.dirname(os.path.abspath(__file__)), "red_flags.json")
 RED_FLAGS_FILE_B  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "red_flags_b.json")
-RED_FLAGS_FILE_U  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "red_flags_universe.json")
 CUSTOM_TICKERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "custom_tickers.json")
 WAIT_LIST_CUSTOM_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wait_list_custom.json")
 MANUAL_METRICS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manual_metrics.json")
@@ -110,127 +109,6 @@ PORTFOLIO_B_TICKERS: dict[str, float] = {
 }
 
 ALL_TICKERS_B: list[str] = list(PORTFOLIO_B_TICKERS.keys())
-
-# ── Munger Universe (primary monitoring) ──────────────────────────────────────
-# K's quality ranking — 5 tiers across the full coverage list. NVO and ABBV
-# are excluded (retired to too-hard pile, see RETIRED_STOCKS). Each entry is
-# (ticker, fair_multiple). BRK-B uses P/B (1.35); all others use P/E.
-
-UNIVERSE_TIERS: dict[str, dict] = {
-    "Tier 1": {
-        "label": "Tier 1 — Near-Perfect Munger",
-        "color": "#1a3a5c",
-        "description": "Wide-moat compounders with extraordinary economics and durable mandatory-use advantages.",
-        "stocks": [
-            ("VRSN",  25.0),
-            ("MSCI",  25.0),
-            ("MCO",   25.0),
-            ("SPGI",  25.0),
-            ("V",     25.0),
-            ("MA",    25.0),
-            ("CME",   25.0),
-            ("FICO",  25.0),
-            ("ASML",  25.0),
-        ],
-    },
-    "Tier 2": {
-        "label": "Tier 2 — Excellent Munger",
-        "color": "#2e5fa3",
-        "description": "Excellent businesses with deep moats; minor caveats on growth, leverage, or cyclicality.",
-        "stocks": [
-            ("COST",   25.0),
-            ("CSU.TO", 20.0),
-            ("AZO",    20.0),
-            ("IDXX",   20.0),
-            ("CNI",    20.0),
-            ("WM",     20.0),
-            ("PAYX",   20.0),
-            ("TXN",    20.0),
-            ("ITW",    20.0),
-            ("DHR",    20.0),
-            ("CTAS",   20.0),
-            ("ICE",    20.0),
-            ("ROP",    20.0),
-            ("BRK-B",   1.35),  # P/B
-        ],
-    },
-    "Tier 3": {
-        "label": "Tier 3 — Very Good, One Flaw",
-        "color": "#6e9b82",
-        "description": "Very good businesses with one notable flaw — leverage, cyclicality, or moderate moat erosion.",
-        "stocks": [
-            ("PGR",    18.0),
-            ("CB",     15.0),
-            ("AXP",    17.0),
-            ("KO",     22.0),
-            ("AVGO",   22.0),
-            ("GOOGL",  22.0),
-            ("RMS.PA", 25.0),
-            ("TDG",    18.0),
-            ("RELX",   22.0),
-            ("AMT",    18.0),
-            ("BAM",    20.0),
-            ("RACE",   25.0),
-        ],
-    },
-    "Tier 4": {
-        "label": "Tier 4 — Good / Munger-Adjacent",
-        "color": "#8a9a6e",
-        "description": "Solid franchises adjacent to Munger ideal; valuation discipline matters more here.",
-        "stocks": [
-            ("PG",     22.0),
-            ("HSY",    18.0),
-            ("JNJ",    16.0),
-            ("BLK",    18.0),
-            ("PM",     14.0),
-            ("NEE",    18.0),
-            ("MDT",    16.0),
-            ("TROW",   14.0),
-            ("CHD",    20.0),
-            ("CL",     20.0),
-            ("EMR",    18.0),
-            ("PLD",    18.0),
-            ("JPM",    14.0),
-            ("SCHW",   16.0),
-            ("WFC",    12.0),
-            ("ROL",    18.0),
-            ("BKNG",   16.0),
-            ("CSGP",   16.0),
-            ("DPLM.L", 16.0),
-            ("TOI.V",  15.0),
-            ("WTKWY",  25.0),
-            ("ASR",    16.0),
-            ("FNV",    20.0),
-        ],
-    },
-    "Tier 5": {
-        "label": "Tier 5 — Macro / Income Only",
-        "color": "#a07060",
-        "description": "Macro/cyclical or pure-income vehicles. Track for yield and capital cycle, not compounding.",
-        "stocks": [
-            ("EPD",  16.0),
-            ("CVX",  12.0),
-            ("COP",  12.0),
-            ("XOM",  12.0),
-            ("EOG",  10.0),
-            ("KMI",  16.0),
-        ],
-    },
-}
-
-ALL_TICKERS_UNIVERSE: list[str] = [
-    tk for td in UNIVERSE_TIERS.values() for tk, _ in td["stocks"]
-]
-
-UNIVERSE_EXCLUDED: list[dict] = [
-    {"ticker": "PSX",  "reason": "No moat — refining cyclicality"},
-    {"ticker": "FCX",  "reason": "Commodity mining, no pricing power"},
-    {"ticker": "KMB",  "reason": "Inferior to PG in every dimension"},
-    {"ticker": "HRL",  "reason": "Weak brand portfolio"},
-    {"ticker": "SYY",  "reason": "Thin margin logistics"},
-    {"ticker": "RMBS", "reason": "Patent licensing too binary"},
-    {"ticker": "ODFL", "reason": "Operational excellence not a structural moat"},
-]
 
 # ── Retired stocks ────────────────────────────────────────────────────────────
 
@@ -394,21 +272,6 @@ COMPANY_NAMES: dict[str, str] = {
     "ITRK.L":   "Intertek (Testing & Certification)",
     "BVI.PA":   "Bureau Veritas (Testing & Certification)",
     "DPLM.L":   "Diploma PLC (UK Industrial Distribution)",
-    # Universe additions
-    "MA":       "Mastercard (Payment Networks)",
-    "MSCI":     "MSCI (Index Provider)",
-    "CTAS":     "Cintas (Uniform Services)",
-    "ICE":      "Intercontinental Exchange (Exchange/Mortgage Tech)",
-    "ROP":      "Roper Technologies (Diversified Software)",
-    "TDG":      "TransDigm (Aircraft Components)",
-    "RELX":     "RELX (Professional Information)",
-    "RACE":     "Ferrari (Luxury Automotive)",
-    "HSY":      "Hershey (Confectionery)",
-    "ROL":      "Rollins (Pest Control)",
-    "BKNG":     "Booking Holdings (Online Travel)",
-    "CSGP":     "CoStar Group (Commercial RE Data)",
-    "TOI.V":    "Topicus (Vertical Market SaaS)",
-    "AMT":      "American Tower (Cell Tower REIT)",
 }
 
 
@@ -807,19 +670,6 @@ STOCK_CATEGORY: dict[str, str] = {
     "ASR": "airport",
     # Special
     "AZO": "special_azo",
-    # ── Universe additions ────────────────────────────────────────────────────
-    "MA": "payment_network",
-    "MSCI": "toll_financial",
-    "ICE": "toll_financial",
-    "CSU.TO": "asset_light", "PAYX": "asset_light", "CTAS": "asset_light",
-    "ROP": "asset_light", "ROL": "asset_light", "BKNG": "asset_light",
-    "CSGP": "asset_light", "TOI.V": "asset_light",
-    "TDG": "industrial", "RACE": "industrial", "MDT": "industrial",
-    "DPLM.L": "industrial",
-    "RELX": "prof_info",
-    "AMT": "infrastructure",
-    "HSY": "consumer_staples",
-    "TROW": "bank", "SCHW": "bank", "WFC": "bank",
 }
 
 CATEGORY_THRESHOLDS: dict[str, dict] = {
@@ -865,18 +715,6 @@ for _rank, (_tk, _fair_pe) in enumerate(PORTFOLIO_B_TICKERS.items(), start=1):
         "rank": _rank,
         "base_fair": _fair_pe,
     }
-
-# Universe meta — sequential rank across all 5 tiers
-_TICKER_META_UNIVERSE: dict[str, dict] = {}
-_u_rank = 0
-for _tier_name, _td in UNIVERSE_TIERS.items():
-    for _tk, _fair in _td["stocks"]:
-        _u_rank += 1
-        _TICKER_META_UNIVERSE[_tk] = {
-            "tier": _tier_name,
-            "rank": _u_rank,
-            "base_fair": _fair,
-        }
 
 
 def _category_thresholds(ticker: str) -> dict:
@@ -927,32 +765,6 @@ def load_red_flags_b() -> dict:
 
 def save_red_flags_b(flags: dict) -> None:
     _save_flags(RED_FLAGS_FILE_B, flags)
-
-
-def load_red_flags_universe() -> dict:
-    """Load universe red flags. On first run, seed values from red_flags.json
-    and red_flags_b.json so existing concerns carry over; new tickers default
-    to all flags False."""
-    if os.path.exists(RED_FLAGS_FILE_U):
-        return _load_flags(RED_FLAGS_FILE_U, ALL_TICKERS_UNIVERSE)
-    base = _default_flags(ALL_TICKERS_UNIVERSE)
-    for path in (RED_FLAGS_FILE, RED_FLAGS_FILE_B):
-        if os.path.exists(path):
-            try:
-                with open(path) as fh:
-                    stored = json.load(fh)
-                for tk in ALL_TICKERS_UNIVERSE:
-                    if tk in stored and isinstance(stored[tk], dict):
-                        for fl in FLAG_NAMES:
-                            base[tk][fl] = bool(stored[tk].get(fl, False))
-            except Exception:
-                pass
-    _save_flags(RED_FLAGS_FILE_U, base)
-    return base
-
-
-def save_red_flags_universe(flags: dict) -> None:
-    _save_flags(RED_FLAGS_FILE_U, flags)
 
 
 # ── Manual metrics persistence ────────────────────────────────────────────────
@@ -2061,42 +1873,27 @@ def main() -> None:
         "[data-testid='metric-container']{background-color:#c8c9cb;border-radius:6px;padding:8px}"
         ".stTabs [data-baseweb='tab-list']{gap:6px;border-bottom:2px solid #8a8b8d;margin-top:0}"
         ".stTabs [data-baseweb='tab']{font-size:1.15rem;font-weight:700;padding:6px 28px;border-radius:8px 8px 0 0;color:#ffffff;background-color:#b0b1b3;border:none;letter-spacing:0.02em}"
-        # 1. Universe — deep navy
-        ".stTabs [data-baseweb='tab']:nth-child(1){background-color:#2c3e50 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(1):hover{background-color:#22303d !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(1)[aria-selected='true']{background-color:#1a2530 !important;color:#ffffff !important;border-bottom:3px solid #1a2530 !important}"
-        # 2. Wait List — olive
-        ".stTabs [data-baseweb='tab']:nth-child(2){background-color:#8a9a6e !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(2):hover{background-color:#7a8a5e !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(2)[aria-selected='true']{background-color:#6a7a4e !important;color:#ffffff !important;border-bottom:3px solid #6a7a4e !important}"
-        # 3. Macro Signals — rust
-        ".stTabs [data-baseweb='tab']:nth-child(3){background-color:#b88070 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(3):hover{background-color:#a87060 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(3)[aria-selected='true']{background-color:#a07060 !important;color:#ffffff !important;border-bottom:3px solid #a07060 !important}"
-        # 4. Market Signals — slate
-        ".stTabs [data-baseweb='tab']:nth-child(4){background-color:#7a7a8a !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(4):hover{background-color:#6a6a7a !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(4)[aria-selected='true']{background-color:#5a5a6a !important;color:#ffffff !important;border-bottom:3px solid #5a5a6a !important}"
-        # 5. Deployment — teal
-        ".stTabs [data-baseweb='tab']:nth-child(5){background-color:#6e9b9b !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(5):hover{background-color:#5d8888 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(5)[aria-selected='true']{background-color:#4d7878 !important;color:#ffffff !important;border-bottom:3px solid #4d7878 !important}"
-        # 6. Retired — purple
-        ".stTabs [data-baseweb='tab']:nth-child(6){background-color:#8e8eaa !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(6):hover{background-color:#7a7a98 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(6)[aria-selected='true']{background-color:#5a5a7f !important;color:#ffffff !important;border-bottom:3px solid #5a5a7f !important}"
-        # 7. News — muted teal
-        ".stTabs [data-baseweb='tab']:nth-child(7){background-color:#7a9b95 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(7):hover{background-color:#688883 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(7)[aria-selected='true']{background-color:#557572 !important;color:#ffffff !important;border-bottom:3px solid #557572 !important}"
-        # 8. Portfolio A (archived) — grey
-        ".stTabs [data-baseweb='tab']:nth-child(8){background-color:#888888 !important;color:#dddddd !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(8):hover{background-color:#777777 !important;color:#eeeeee !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(8)[aria-selected='true']{background-color:#666666 !important;color:#ffffff !important;border-bottom:3px solid #666666 !important}"
-        # 9. Portfolio B (archived) — grey
-        ".stTabs [data-baseweb='tab']:nth-child(9){background-color:#888888 !important;color:#dddddd !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(9):hover{background-color:#777777 !important;color:#eeeeee !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(9)[aria-selected='true']{background-color:#666666 !important;color:#ffffff !important;border-bottom:3px solid #666666 !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(1){background-color:#6e9b82 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(1):hover{background-color:#5f8a72 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(1)[aria-selected='true']{background-color:#4d7a5f !important;color:#ffffff !important;border-bottom:3px solid #4d7a5f !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(2){background-color:#6e8fa0 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(2):hover{background-color:#5f7e90 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(2)[aria-selected='true']{background-color:#4d6e80 !important;color:#ffffff !important;border-bottom:3px solid #4d6e80 !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(3){background-color:#8e8eaa !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(3):hover{background-color:#7a7a98 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(3)[aria-selected='true']{background-color:#5a5a7f !important;color:#ffffff !important;border-bottom:3px solid #5a5a7f !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4){background-color:#8a9a6e !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4):hover{background-color:#7a8a5e !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4)[aria-selected='true']{background-color:#6a7a4e !important;color:#ffffff !important;border-bottom:3px solid #6a7a4e !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(5){background-color:#b88070 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(5):hover{background-color:#a87060 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(5)[aria-selected='true']{background-color:#a07060 !important;color:#ffffff !important;border-bottom:3px solid #a07060 !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(6){background-color:#7a7a8a !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(6):hover{background-color:#6a6a7a !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(6)[aria-selected='true']{background-color:#5a5a6a !important;color:#ffffff !important;border-bottom:3px solid #5a5a6a !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(7){background-color:#6e9b9b !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(7):hover{background-color:#5d8888 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(7)[aria-selected='true']{background-color:#4d7878 !important;color:#ffffff !important;border-bottom:3px solid #4d7878 !important}"
         ".stTabs [data-baseweb='tab-highlight']{display:none}"
         ".block-container{padding-top:0.75rem !important;padding-bottom:1rem !important}"
         "h1{margin-bottom:0.25rem !important;margin-top:0 !important}"
@@ -2162,12 +1959,6 @@ def main() -> None:
         st.session_state.red_flags = load_red_flags()
     if "red_flags_b" not in st.session_state:
         st.session_state.red_flags_b = load_red_flags_b()
-    if "red_flags_universe" not in st.session_state:
-        st.session_state.red_flags_universe = load_red_flags_universe()
-    if "raw_rows_universe" not in st.session_state:
-        st.session_state.raw_rows_universe = None
-    if "last_fetched_universe" not in st.session_state:
-        st.session_state.last_fetched_universe = None
     if "raw_rows" not in st.session_state:
         st.session_state.raw_rows = None
     if "raw_rows_b" not in st.session_state:
@@ -2223,8 +2014,6 @@ def main() -> None:
         st.session_state.mos_pct = DEFAULT_MOS_PCT
     if "mos_pct_b" not in st.session_state:
         st.session_state.mos_pct_b = DEFAULT_MOS_PCT
-    if "mos_pct_u" not in st.session_state:
-        st.session_state.mos_pct_u = DEFAULT_MOS_PCT
 
     # Ensure custom tickers have red-flag entries
     for _ct in st.session_state.custom_tickers:
@@ -2249,221 +2038,12 @@ def main() -> None:
     st.title("Munger Toll Bridge Portfolio")
 
     # ── Tabs ──────────────────────────────────────────────────────────────────
-    # New order: Universe is the primary monitoring tab. Portfolio A and B are
-    # archived (greyed) at the end pending eventual removal.
-    tab_u, tab_w, tab_m, tab_ms, tab_d, tab_r, tab_n, tab_a, tab_b = st.tabs([
-        "Universe",
-        "Wait List",
-        "Macro Signals",
-        "Market Signals",
-        "Deployment",
-        "Retired",
-        "News",
-        "Portfolio A",
-        "Portfolio B",
-    ])
+    tab_a, tab_b, tab_r, tab_w, tab_m, tab_ms, tab_d, tab_n = st.tabs(["Portfolio A", "Portfolio B", "Retired", "Wait List", "Macro Signals", "Market Signals", "Deployment", "News"])
 
     # ══════════════════════════════════════════════════════════════════════════
-    # UNIVERSE  (primary monitoring tab — replaces Portfolio A and B)
-    # ══════════════════════════════════════════════════════════════════════════
-    with tab_u:
-        st.markdown(
-            "<div style='background:#2c3e50;color:#fff;padding:12px 16px;border-radius:6px;"
-            "margin-bottom:12px'>"
-            "<strong>Munger Universe</strong> — Primary monitoring tab. "
-            f"{len(ALL_TICKERS_UNIVERSE)} stocks across 5 quality tiers, ordered by Munger-quality rank."
-            "</div>",
-            unsafe_allow_html=True,
-        )
-
-        col_refresh_u, col_ts_u = st.columns([1, 4])
-        with col_refresh_u:
-            if st.button("Refresh Data", key="refresh_u", type="primary", use_container_width=True):
-                fetch_info.clear()
-                fetch_news.clear()
-                st.session_state.raw_rows_universe = None
-
-        # MoS slider + Sort toggle
-        _mos_c1_u, _mos_c2_u, _mos_c3_u = st.columns([2, 2, 3])
-        with _mos_c1_u:
-            def _sync_mos_u_to_others():
-                st.session_state.mos_pct = st.session_state.mos_pct_u
-                st.session_state.mos_pct_b = st.session_state.mos_pct_u
-            st.slider(
-                "Dream MoS %",
-                min_value=10, max_value=50, step=5,
-                key="mos_pct_u",
-                on_change=_sync_mos_u_to_others,
-                help="Dream = Fair × (1 − MoS%). Shared across tabs.",
-            )
-        with _mos_c2_u:
-            st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
-            st.checkbox("Sort by Signal (DREAM first)", key="universe_sort_signal", value=False)
-
-        mos_pct_u = st.session_state.mos_pct_u
-
-        if st.session_state.raw_rows_universe is None:
-            progress_u = st.progress(0, text="Fetching market data…")
-            raw_rows_universe: list[dict] = []
-            for i, tk in enumerate(ALL_TICKERS_UNIVERSE):
-                raw_rows_universe.append(
-                    compute_row(tk, None, mos_pct_u,
-                                st.session_state.red_flags_universe,
-                                _TICKER_META_UNIVERSE,
-                                manual_metrics=st.session_state.manual_metrics)
-                )
-                progress_u.progress((i + 1) / len(ALL_TICKERS_UNIVERSE), text=f"Fetching {tk}…")
-            progress_u.empty()
-            st.session_state.raw_rows_universe = raw_rows_universe
-            st.session_state.last_fetched_universe = datetime.now()
-
-        raw_rows_universe = st.session_state.raw_rows_universe
-
-        fetched_str_u = (
-            st.session_state.last_fetched_universe.strftime("%Y-%m-%d  %H:%M:%S")
-            if st.session_state.last_fetched_universe else "—"
-        )
-        with col_ts_u:
-            st.caption(
-                f"Last fetched: **{fetched_str_u}**  ·  Data: Yahoo Finance (yfinance)"
-            )
-
-        # Summary header
-        df_raw_u = pd.DataFrame(raw_rows_universe)
-        n_dream_u = int((df_raw_u["Signal"] == "DREAM").sum())
-        n_fair_u  = int((df_raw_u["Signal"] == "FAIR").sum())
-        n_wait_u  = int((df_raw_u["Signal"] == "WAIT").sum())
-        n_buy_u   = int((df_raw_u["Decision"] == "BUY").sum())
-        _uc1, _uc2, _uc3, _uc4, _uc5, _uc6 = st.columns(6)
-        _uc1.metric("Total Monitored", len(ALL_TICKERS_UNIVERSE), delta_color="off")
-        _uc2.metric("DREAM", n_dream_u, delta_color="off")
-        _uc3.metric("FAIR",  n_fair_u,  delta_color="off")
-        _uc4.metric("WAIT",  n_wait_u,  delta_color="off")
-        _uc5.metric("BUY Signals", n_buy_u, delta_color="off")
-        _uc6.metric("New vs Prior", 15, delta_color="off")
-
-        st.divider()
-
-        df_display_u = build_display_df(raw_rows_universe)
-        sort_dream_first = st.session_state.get("universe_sort_signal", False)
-
-        for _tier_name, _td in UNIVERSE_TIERS.items():
-            _tier_color = _td["color"]
-            _tier_label = _td["label"]
-            _tier_desc  = _td["description"]
-            _n_in_tier  = len(_td["stocks"])
-
-            # Tier-level BUY count
-            _tier_raw = df_raw_u[df_raw_u["Tier"] == _tier_name]
-            _n_tier_buy = int((_tier_raw["Decision"] == "BUY").sum())
-
-            st.markdown(
-                f"<div style='background:{_tier_color};color:#fff;padding:8px 14px;"
-                f"border-radius:5px;margin-top:8px;margin-bottom:6px'>"
-                f"<strong>{_tier_label}</strong> &nbsp;·&nbsp; {_n_in_tier} stocks "
-                f"&nbsp;·&nbsp; BUY signals: {_n_tier_buy}<br>"
-                f"<span style='font-weight:400;font-size:0.85rem;opacity:0.92'>{_tier_desc}</span>"
-                f"</div>",
-                unsafe_allow_html=True,
-            )
-
-            tier_mask = df_display_u["Tier"] == _tier_name
-            tier_disp = df_display_u[tier_mask][DISPLAY_COLS + ["_signal"]].reset_index(drop=True)
-
-            if sort_dream_first:
-                _signal_order = {"DREAM": 0, "FAIR": 1, "WAIT": 2, "N/A": 3}
-                tier_disp["_signal_sort"] = tier_disp["_signal"].map(_signal_order).fillna(99)
-                tier_disp = tier_disp.sort_values(["_signal_sort", "#"]).drop("_signal_sort", axis=1).reset_index(drop=True)
-
-            signals = tier_disp["_signal"].tolist()
-            tier_disp = tier_disp[DISPLAY_COLS].copy()
-            styled = _style_df(tier_disp, pd.Series(signals))
-            st.dataframe(
-                styled,
-                use_container_width=True,
-                hide_index=True,
-                height=(len(tier_disp) + 1) * 35 + 10,
-                column_config={"Ticker": st.column_config.TextColumn("Ticker")},
-            )
-            st.markdown(_company_legend(tier_disp["Ticker"].tolist()), unsafe_allow_html=True)
-
-        # Excluded section
-        with st.expander(f"Excluded — {len(UNIVERSE_EXCLUDED)} stocks deliberately not in Universe", expanded=False):
-            for ex in UNIVERSE_EXCLUDED:
-                _name = COMPANY_NAMES.get(ex["ticker"], "")
-                st.markdown(
-                    f"- **{ex['ticker']}**"
-                    + (f" — {_name}" if _name else "")
-                    + f"  ·  *{ex['reason']}*"
-                )
-
-        # Methodology / Quality Gates
-        with st.expander("Methodology / Quality Gates", expanded=False):
-            st.markdown(f"""
-**Tiers** rank companies by Munger quality. Each tier has its own typical Fair P/E ceiling.
-
-| Signal | Condition |
-|---|---|
-| **DREAM** | Current multiple ≤ Fair × (1 − {mos_pct_u}%) |
-| **FAIR**  | Current multiple ≤ Fair multiple |
-| **WAIT**  | Current multiple > Fair multiple |
-
-**Quality gate:** Each stock is evaluated against thresholds specific to its business category (see Portfolio A → Quality Gate Rules for the full matrix).
-
-**BUY = Signal (DREAM or FAIR) AND Quality PASS AND no Red Flags active.**
-
-BRK-B uses Price/Book (Fair P/B = 1.35) instead of P/E.
-""")
-
-        # Red Flags editor
-        with st.expander("Red Flags — toggle per ticker", expanded=False):
-            _flags_u_changed = False
-            for _tier_name, _td in UNIVERSE_TIERS.items():
-                st.markdown(
-                    f"<p style='font-size:0.85rem;font-weight:700;color:{_td['color']};"
-                    f"margin:8px 0 4px 0'>{_td['label']}</p>",
-                    unsafe_allow_html=True,
-                )
-                for _tk, _ in _td["stocks"]:
-                    _rf_cols = st.columns([1.2] + [1] * len(FLAG_NAMES))
-                    _rf_cols[0].markdown(f"**{_tk}**")
-                    for _fi, _fl in enumerate(FLAG_NAMES):
-                        with _rf_cols[_fi + 1]:
-                            _cur_u = st.session_state.red_flags_universe.get(_tk, {}).get(_fl, False)
-                            _new_u = st.checkbox(_fl, value=_cur_u, key=f"rf_u_{_tk}_{_fl}")
-                            if _new_u != _cur_u:
-                                st.session_state.red_flags_universe.setdefault(
-                                    _tk, {f: False for f in FLAG_NAMES}
-                                )[_fl] = _new_u
-                                _flags_u_changed = True
-            if _flags_u_changed:
-                save_red_flags_universe(st.session_state.red_flags_universe)
-                st.session_state.raw_rows_universe = None
-                st.rerun()
-
-        st.divider()
-        csv_bytes_u = df_display_u[["Tier"] + DISPLAY_COLS].to_csv(index=False).encode()
-        st.download_button(
-            label="Download Universe as CSV",
-            data=csv_bytes_u,
-            file_name=f"universe_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-            mime="text/csv",
-        )
-
-        st.caption("Data: Yahoo Finance via yfinance.  Not financial advice.")
-
-    # ══════════════════════════════════════════════════════════════════════════
-    # PORTFOLIO A  (ARCHIVED — superseded by Universe)
+    # PORTFOLIO A
     # ══════════════════════════════════════════════════════════════════════════
     with tab_a:
-        st.markdown(
-            "<div style='background:#888888;color:#f0f0f0;padding:8px 14px;"
-            "border-radius:5px;margin-bottom:10px;border-left:4px solid #555'>"
-            "&#9888;&#65039; <strong>ARCHIVED</strong> — This tab has been superseded by the "
-            "Universe tab. Maintained temporarily for reference. Will be removed in a future update."
-            "</div>",
-            unsafe_allow_html=True,
-        )
         col_refresh_a, col_ts_a = st.columns([1, 4])
         with col_refresh_a:
             if st.button("Refresh Data", key="refresh_a", type="primary", use_container_width=True):
@@ -2779,17 +2359,9 @@ RevGr% = 3-year revenue CAGR computed from annual Total Revenue: (revenue_year0 
         st.caption("Data: Yahoo Finance via yfinance.  Not financial advice.")
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PORTFOLIO B  (ARCHIVED — superseded by Universe)
+    # PORTFOLIO B
     # ══════════════════════════════════════════════════════════════════════════
     with tab_b:
-        st.markdown(
-            "<div style='background:#888888;color:#f0f0f0;padding:8px 14px;"
-            "border-radius:5px;margin-bottom:10px;border-left:4px solid #555'>"
-            "&#9888;&#65039; <strong>ARCHIVED</strong> — This tab has been superseded by the "
-            "Universe tab. Maintained temporarily for reference. Will be removed in a future update."
-            "</div>",
-            unsafe_allow_html=True,
-        )
         col_refresh_b, col_ts_b = st.columns([1, 4])
         with col_refresh_b:
             if st.button("Refresh Data", key="refresh_b", type="primary", use_container_width=True):

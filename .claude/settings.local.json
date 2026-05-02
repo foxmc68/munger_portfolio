@@ -17,7 +17,10 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git -C /Users/mfox/munger-portfolio add -A)",
+      "Bash(git -C /Users/mfox/munger-portfolio commit -m ' *)",
+      "Bash(git -C /Users/mfox/munger-portfolio push)"
     ]
   }
 }
