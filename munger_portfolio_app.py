@@ -29,6 +29,7 @@ CUSTOM_TICKERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "
 WAIT_LIST_CUSTOM_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wait_list_custom.json")
 MANUAL_METRICS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manual_metrics.json")
 MARKET_INDICATORS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "market_indicators.json")
+STRUCTURAL_SCORES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "structural_scores.json")
 FRED_API_KEY = "f3c2c99c5652b7acc8617d439d7a803e"
 
 FLAG_NAMES = [
@@ -955,6 +956,36 @@ def save_red_flags_universe(flags: dict) -> None:
     _save_flags(RED_FLAGS_FILE_U, flags)
 
 
+# ── Structural Moat Score (SMS) persistence ───────────────────────────────────
+# Display-only score (1–30) reflecting AI-era moat durability. Manually
+# assigned; has no effect on Signal, Quality, or Decision logic.
+
+_INITIAL_STRUCTURAL_SCORES: dict[str, int] = {
+    "CNI": 28, "BRK-B": 24, "V": 25, "MA": 25, "ASML": 24,
+    "COST": 22, "CME": 22, "PGR": 22, "VRSN": 22, "MCO": 20,
+    "SPGI": 20, "AXP": 21, "FNV": 21, "CB": 21, "ADP": 18,
+    "MSCI": 17, "GOOGL": 17, "MSFT": 17, "WTKWY": 14,
+    "FICO": 13, "TROW": 11,
+}
+
+
+def load_structural_scores() -> dict[str, int]:
+    if os.path.exists(STRUCTURAL_SCORES_FILE):
+        try:
+            with open(STRUCTURAL_SCORES_FILE) as fh:
+                data = json.load(fh)
+            return {k: int(v) for k, v in data.items() if isinstance(v, (int, float))}
+        except Exception:
+            pass
+    save_structural_scores(_INITIAL_STRUCTURAL_SCORES)
+    return dict(_INITIAL_STRUCTURAL_SCORES)
+
+
+def save_structural_scores(scores: dict[str, int]) -> None:
+    with open(STRUCTURAL_SCORES_FILE, "w") as fh:
+        json.dump(scores, fh, indent=2)
+
+
 # ── Manual metrics persistence ────────────────────────────────────────────────
 
 _MANUAL_METRICS_DEFAULTS: dict[str, float] = {
@@ -1853,6 +1884,56 @@ def _style_df(display_df: pd.DataFrame, signal_series: pd.Series) -> object:
     return display_df.style.apply(lambda _: styles, axis=None)
 
 
+# ── SMS (Structural Moat Score) display helpers ───────────────────────────────
+# Buckets (high → low). Returns (bg, fg) for the cell pill.
+_SMS_BUCKETS: list[tuple[int, str, str]] = [
+    (25, "#2f7a3f", "#ffffff"),  # green
+    (20, "#a8c89a", "#1a3a1f"),  # light green
+    (15, "#d8c060", "#3d2800"),  # yellow
+    (10, "#dfa898", "#3d0f00"),  # light red
+    (0,  "#9b3a3a", "#ffffff"),  # red
+]
+
+
+def _sms_colors(score: Optional[int]) -> tuple[str, str]:
+    if score is None:
+        return ("#c0c0c0", "#666666")
+    for min_s, bg, fg in _SMS_BUCKETS:
+        if score >= min_s:
+            return (bg, fg)
+    return ("#c0c0c0", "#666666")
+
+
+def _sms_display_text(score: Optional[int], signal: str) -> str:
+    """Cell text for SMS column: '—' if missing, '{score}' otherwise.
+    Append amber warning glyph when Signal is FAIR/DREAM and SMS < 15."""
+    if score is None:
+        return "—"
+    base = str(int(score))
+    if signal in ("DREAM", "FAIR") and score < 15:
+        return f"{base} ⚠"
+    return base
+
+
+def _style_df_universe(display_df: pd.DataFrame,
+                       signal_series: pd.Series,
+                       sms_score_series: pd.Series) -> object:
+    """Like _style_df but overrides the SMS column with a per-cell pill color
+    driven by the raw score (not the row's Signal)."""
+    styles = pd.DataFrame("", index=display_df.index, columns=display_df.columns)
+    for i, idx in enumerate(display_df.index):
+        sig_css = _SIGNAL_STYLE.get(signal_series.iloc[i], "")
+        styles.iloc[i, :] = sig_css
+        if "SMS" in display_df.columns:
+            score = sms_score_series.iloc[i]
+            bg, fg = _sms_colors(score if score is not None else None)
+            styles.at[idx, "SMS"] = (
+                f"background-color:{bg};color:{fg};"
+                "font-weight:700;text-align:center"
+            )
+    return display_df.style.apply(lambda _: styles, axis=None)
+
+
 # ── Shared display helper ─────────────────────────────────────────────────────
 
 DISPLAY_COLS = [
@@ -1861,6 +1942,11 @@ DISPLAY_COLS = [
     "Discount", "Signal", "ROIC%", "FCFy%", "RevGr%", "GM%", "Insider%", "D/E",
     "Quality", "Fail Reasons", "Red Flags", "Active Flags", "Decision",
 ]
+
+# Universe tab uses the same columns plus an SMS pill between Signal and ROIC%.
+_sig_idx = DISPLAY_COLS.index("Signal")
+UNIVERSE_DISPLAY_COLS = DISPLAY_COLS[:_sig_idx + 1] + ["SMS"] + DISPLAY_COLS[_sig_idx + 1:]
+del _sig_idx
 
 # HTML row column specs: (header_label, display_df_field, flex_pct, align)
 _TABLE_COLS: list[tuple[str, str, str, str]] = [
@@ -2168,6 +2254,8 @@ def main() -> None:
         st.session_state.raw_rows_universe = None
     if "last_fetched_universe" not in st.session_state:
         st.session_state.last_fetched_universe = None
+    if "structural_scores" not in st.session_state:
+        st.session_state.structural_scores = load_structural_scores()
     if "raw_rows" not in st.session_state:
         st.session_state.raw_rows = None
     if "raw_rows_b" not in st.session_state:
@@ -2370,20 +2458,37 @@ def main() -> None:
             tier_mask = df_display_u["Tier"] == _tier_name
             tier_disp = df_display_u[tier_mask][DISPLAY_COLS + ["_signal"]].reset_index(drop=True)
 
+            # Inject SMS column (raw score for styling, formatted text for display).
+            _scores = st.session_state.structural_scores
+            tier_disp["_sms_score"] = [
+                _scores.get(t) if t in _scores else None
+                for t in tier_disp["Ticker"]
+            ]
+            tier_disp["SMS"] = [
+                _sms_display_text(s, sig)
+                for s, sig in zip(tier_disp["_sms_score"], tier_disp["_signal"])
+            ]
+
             if sort_dream_first:
                 _signal_order = {"DREAM": 0, "FAIR": 1, "WAIT": 2, "N/A": 3}
                 tier_disp["_signal_sort"] = tier_disp["_signal"].map(_signal_order).fillna(99)
                 tier_disp = tier_disp.sort_values(["_signal_sort", "#"]).drop("_signal_sort", axis=1).reset_index(drop=True)
 
             signals = tier_disp["_signal"].tolist()
-            tier_disp = tier_disp[DISPLAY_COLS].copy()
-            styled = _style_df(tier_disp, pd.Series(signals))
+            sms_scores_list = tier_disp["_sms_score"].tolist()
+            tier_disp = tier_disp[UNIVERSE_DISPLAY_COLS].copy()
+            styled = _style_df_universe(
+                tier_disp, pd.Series(signals), pd.Series(sms_scores_list, dtype=object)
+            )
             st.dataframe(
                 styled,
                 use_container_width=True,
                 hide_index=True,
                 height=(len(tier_disp) + 1) * 35 + 10,
-                column_config={"Ticker": st.column_config.TextColumn("Ticker")},
+                column_config={
+                    "Ticker": st.column_config.TextColumn("Ticker"),
+                    "SMS": st.column_config.TextColumn("SMS", help="Structural Moat Score (1–30) — AI-era moat durability. Display only."),
+                },
             )
             st.markdown(_company_legend(tier_disp["Ticker"].tolist()), unsafe_allow_html=True)
 
