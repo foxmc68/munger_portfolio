@@ -11,6 +11,7 @@ Data: Yahoo Finance via yfinance — no API key required.
 """
 
 import json
+import math
 import os
 import requests
 from datetime import datetime
@@ -1895,8 +1896,21 @@ _SMS_BUCKETS: list[tuple[int, str, str]] = [
 ]
 
 
-def _sms_colors(score: Optional[int]) -> tuple[str, str]:
+def _sms_is_missing(score) -> bool:
+    """True if score is None, NaN, or otherwise not a finite number."""
     if score is None:
+        return True
+    if isinstance(score, float) and math.isnan(score):
+        return True
+    try:
+        float(score)
+    except (TypeError, ValueError):
+        return True
+    return False
+
+
+def _sms_colors(score) -> tuple[str, str]:
+    if _sms_is_missing(score):
         return ("#c0c0c0", "#666666")
     for min_s, bg, fg in _SMS_BUCKETS:
         if score >= min_s:
@@ -1904,10 +1918,10 @@ def _sms_colors(score: Optional[int]) -> tuple[str, str]:
     return ("#c0c0c0", "#666666")
 
 
-def _sms_display_text(score: Optional[int], signal: str) -> str:
+def _sms_display_text(score, signal: str) -> str:
     """Cell text for SMS column: '—' if missing, '{score}' otherwise.
     Append amber warning glyph when Signal is FAIR/DREAM and SMS < 15."""
-    if score is None:
+    if _sms_is_missing(score):
         return "—"
     base = str(int(score))
     if signal in ("DREAM", "FAIR") and score < 15:
@@ -1926,7 +1940,7 @@ def _style_df_universe(display_df: pd.DataFrame,
         styles.iloc[i, :] = sig_css
         if "SMS" in display_df.columns:
             score = sms_score_series.iloc[i]
-            bg, fg = _sms_colors(score if score is not None else None)
+            bg, fg = _sms_colors(score)
             styles.at[idx, "SMS"] = (
                 f"background-color:{bg};color:{fg};"
                 "font-weight:700;text-align:center"
