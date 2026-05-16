@@ -1970,23 +1970,34 @@ def _sms_display_text(score, signal: str, r_score=None) -> str:
 
 
 # ── Rate-sensitivity (R) display helpers ──────────────────────────────────────
-_R_PILL_STYLES: dict[Optional[str], tuple[str, str, str]] = {
-    "R1":   ("#1E6B3C", "#ffffff", "R1"),
-    "R2":   ("#C8931A", "#ffffff", "R2"),
-    "R3":   ("#C0392B", "#ffffff", "R3"),
-    None:   ("#888888", "#ffffff", "UNSCORED"),
+# Rendered as a small inline pill badge inside a white cell (distinct from SMS,
+# which uses full-cell shading). Streamlit's st.dataframe doesn't render HTML
+# inside cells, so the pill is faked via CSS: a white cell background with a
+# centered, hard-edged radial-gradient ellipse acting as the colored badge,
+# with white text rendered on top.
+_R_PILL_COLORS: dict[Optional[str], str] = {
+    "R1":   "#1E6B3C",
+    "R2":   "#C8931A",
+    "R3":   "#C0392B",
+    None:   "#888888",
 }
 
 
 def _r_display_text(r_score) -> str:
     if r_score in _VALID_R_SCORES:
         return r_score
-    return "UNSCORED"
+    return "?"
 
 
-def _r_colors(r_score) -> tuple[str, str]:
-    style = _R_PILL_STYLES.get(r_score if r_score in _VALID_R_SCORES else None)
-    return (style[0], style[1])
+def _r_pill_css(r_score) -> str:
+    color = _R_PILL_COLORS.get(r_score if r_score in _VALID_R_SCORES else None)
+    return (
+        "background-color:white;"
+        f"background-image:radial-gradient(ellipse 14px 8px at center,"
+        f"{color} 100%,transparent 100%);"
+        "background-repeat:no-repeat;"
+        "color:white;font-weight:700;font-size:11px;text-align:center;"
+    )
 
 
 def _style_df_universe(display_df: pd.DataFrame,
@@ -2009,11 +2020,7 @@ def _style_df_universe(display_df: pd.DataFrame,
             )
         if "R" in display_df.columns and r_score_series is not None:
             r_val = r_score_series.iloc[i]
-            bg, fg = _r_colors(r_val)
-            styles.at[idx, "R"] = (
-                f"background-color:{bg};color:{fg};"
-                "font-weight:700;text-align:center"
-            )
+            styles.at[idx, "R"] = _r_pill_css(r_val)
     return display_df.style.apply(lambda _: styles, axis=None)
 
 
