@@ -2602,7 +2602,7 @@ def main() -> None:
                     "Signal": st.column_config.TextColumn("Signal", help="DREAM (deeply undervalued), FAIR (at fair value), WAIT (overvalued)"),
                     "SMS": st.column_config.TextColumn("SMS", help="Structural Moat Score (1–30). AI-era moat durability. Display only."),
                     "R_img": st.column_config.ImageColumn(
-                        "R",
+                        "Rate",
                         help="Rate Sensitivity. R1 = benefits from high rates. R2 = rate neutral. R3 = vulnerable to rate compression. Display only.",
                         width="small",
                     ),
