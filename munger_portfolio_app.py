@@ -31,6 +31,7 @@ WAIT_LIST_CUSTOM_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 MANUAL_METRICS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manual_metrics.json")
 MARKET_INDICATORS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "market_indicators.json")
 STRUCTURAL_SCORES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "structural_scores.json")
+RATE_SCORES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rate_scores.json")
 FRED_API_KEY = "f3c2c99c5652b7acc8617d439d7a803e"
 
 FLAG_NAMES = [
@@ -987,6 +988,37 @@ def save_structural_scores(scores: dict[str, int]) -> None:
         json.dump(scores, fh, indent=2)
 
 
+# ── Rate-sensitivity Score (R) persistence ────────────────────────────────────
+# Display-only label (R1/R2/R3 or None=UNSCORED) reflecting rate sensitivity.
+# Manually assigned; has no effect on Signal, Quality, or Decision logic.
+
+_VALID_R_SCORES = {"R1", "R2", "R3"}
+
+
+def load_rate_scores() -> dict[str, Optional[str]]:
+    if os.path.exists(RATE_SCORES_FILE):
+        try:
+            with open(RATE_SCORES_FILE) as fh:
+                data = json.load(fh)
+            out: dict[str, Optional[str]] = {}
+            for k, v in data.items():
+                if v is None:
+                    out[k] = None
+                elif isinstance(v, str) and v in _VALID_R_SCORES:
+                    out[k] = v
+                else:
+                    out[k] = None
+            return out
+        except Exception:
+            pass
+    return {}
+
+
+def save_rate_scores(scores: dict[str, Optional[str]]) -> None:
+    with open(RATE_SCORES_FILE, "w") as fh:
+        json.dump(scores, fh, indent=2)
+
+
 # ── Manual metrics persistence ────────────────────────────────────────────────
 
 _MANUAL_METRICS_DEFAULTS: dict[str, float] = {
@@ -1918,22 +1950,52 @@ def _sms_colors(score) -> tuple[str, str]:
     return ("#c0c0c0", "#666666")
 
 
-def _sms_display_text(score, signal: str) -> str:
+def _sms_display_text(score, signal: str, r_score=None) -> str:
     """Cell text for SMS column: '—' if missing, '{score}' otherwise.
-    Append amber warning glyph when Signal is FAIR/DREAM and SMS < 15."""
+    Append amber ⚠ when Signal is FAIR/DREAM and SMS < 15.
+    Append blue 🔵 when Signal is FAIR/DREAM and R == R3. Both can co-fire."""
     if _sms_is_missing(score):
-        return "—"
-    base = str(int(score))
-    if signal in ("DREAM", "FAIR") and score < 15:
-        return f"{base} ⚠"
-    return base
+        base = "—"
+        sms_warn = False
+    else:
+        base = str(int(score))
+        sms_warn = signal in ("DREAM", "FAIR") and score < 15
+    rate_warn = signal in ("DREAM", "FAIR") and r_score == "R3"
+    pips = ""
+    if sms_warn:
+        pips += " ⚠"
+    if rate_warn:
+        pips += " 🔵"
+    return f"{base}{pips}"
+
+
+# ── Rate-sensitivity (R) display helpers ──────────────────────────────────────
+_R_PILL_STYLES: dict[Optional[str], tuple[str, str, str]] = {
+    "R1":   ("#1E6B3C", "#ffffff", "R1"),
+    "R2":   ("#C8931A", "#ffffff", "R2"),
+    "R3":   ("#C0392B", "#ffffff", "R3"),
+    None:   ("#888888", "#ffffff", "UNSCORED"),
+}
+
+
+def _r_display_text(r_score) -> str:
+    if r_score in _VALID_R_SCORES:
+        return r_score
+    return "UNSCORED"
+
+
+def _r_colors(r_score) -> tuple[str, str]:
+    style = _R_PILL_STYLES.get(r_score if r_score in _VALID_R_SCORES else None)
+    return (style[0], style[1])
 
 
 def _style_df_universe(display_df: pd.DataFrame,
                        signal_series: pd.Series,
-                       sms_score_series: pd.Series) -> object:
+                       sms_score_series: pd.Series,
+                       r_score_series: Optional[pd.Series] = None) -> object:
     """Like _style_df but overrides the SMS column with a per-cell pill color
-    driven by the raw score (not the row's Signal)."""
+    driven by the raw score (not the row's Signal). Also styles the R column
+    when present using R1/R2/R3/UNSCORED pill colors."""
     styles = pd.DataFrame("", index=display_df.index, columns=display_df.columns)
     for i, idx in enumerate(display_df.index):
         sig_css = _SIGNAL_STYLE.get(signal_series.iloc[i], "")
@@ -1942,6 +2004,13 @@ def _style_df_universe(display_df: pd.DataFrame,
             score = sms_score_series.iloc[i]
             bg, fg = _sms_colors(score)
             styles.at[idx, "SMS"] = (
+                f"background-color:{bg};color:{fg};"
+                "font-weight:700;text-align:center"
+            )
+        if "R" in display_df.columns and r_score_series is not None:
+            r_val = r_score_series.iloc[i]
+            bg, fg = _r_colors(r_val)
+            styles.at[idx, "R"] = (
                 f"background-color:{bg};color:{fg};"
                 "font-weight:700;text-align:center"
             )
@@ -1957,9 +2026,9 @@ DISPLAY_COLS = [
     "Quality", "Fail Reasons", "Red Flags", "Active Flags", "Decision",
 ]
 
-# Universe tab uses the same columns plus an SMS pill between Signal and ROIC%.
+# Universe tab uses the same columns plus SMS and R pills between Signal and ROIC%.
 _sig_idx = DISPLAY_COLS.index("Signal")
-UNIVERSE_DISPLAY_COLS = DISPLAY_COLS[:_sig_idx + 1] + ["SMS"] + DISPLAY_COLS[_sig_idx + 1:]
+UNIVERSE_DISPLAY_COLS = DISPLAY_COLS[:_sig_idx + 1] + ["SMS", "R"] + DISPLAY_COLS[_sig_idx + 1:]
 del _sig_idx
 
 # HTML row column specs: (header_label, display_df_field, flex_pct, align)
@@ -2270,6 +2339,8 @@ def main() -> None:
         st.session_state.last_fetched_universe = None
     if "structural_scores" not in st.session_state:
         st.session_state.structural_scores = load_structural_scores()
+    if "rate_scores" not in st.session_state:
+        st.session_state.rate_scores = load_rate_scores()
     if "raw_rows" not in st.session_state:
         st.session_state.raw_rows = None
     if "raw_rows_b" not in st.session_state:
@@ -2472,16 +2543,24 @@ def main() -> None:
             tier_mask = df_display_u["Tier"] == _tier_name
             tier_disp = df_display_u[tier_mask][DISPLAY_COLS + ["_signal"]].reset_index(drop=True)
 
-            # Inject SMS column (raw score for styling, formatted text for display).
+            # Inject SMS and R columns (raw values for styling, formatted text for display).
             _scores = st.session_state.structural_scores
+            _r_scores = st.session_state.rate_scores
             tier_disp["_sms_score"] = [
                 _scores.get(t) if t in _scores else None
                 for t in tier_disp["Ticker"]
             ]
-            tier_disp["SMS"] = [
-                _sms_display_text(s, sig)
-                for s, sig in zip(tier_disp["_sms_score"], tier_disp["_signal"])
+            tier_disp["_r_score"] = [
+                _r_scores.get(t) if t in _r_scores else None
+                for t in tier_disp["Ticker"]
             ]
+            tier_disp["SMS"] = [
+                _sms_display_text(s, sig, r)
+                for s, sig, r in zip(
+                    tier_disp["_sms_score"], tier_disp["_signal"], tier_disp["_r_score"]
+                )
+            ]
+            tier_disp["R"] = [_r_display_text(r) for r in tier_disp["_r_score"]]
 
             if sort_dream_first:
                 _signal_order = {"DREAM": 0, "FAIR": 1, "WAIT": 2, "N/A": 3}
@@ -2490,9 +2569,13 @@ def main() -> None:
 
             signals = tier_disp["_signal"].tolist()
             sms_scores_list = tier_disp["_sms_score"].tolist()
+            r_scores_list = tier_disp["_r_score"].tolist()
             tier_disp = tier_disp[UNIVERSE_DISPLAY_COLS].copy()
             styled = _style_df_universe(
-                tier_disp, pd.Series(signals), pd.Series(sms_scores_list, dtype=object)
+                tier_disp,
+                pd.Series(signals),
+                pd.Series(sms_scores_list, dtype=object),
+                pd.Series(r_scores_list, dtype=object),
             )
             st.dataframe(
                 styled,
@@ -2502,6 +2585,7 @@ def main() -> None:
                 column_config={
                     "Ticker": st.column_config.TextColumn("Ticker"),
                     "SMS": st.column_config.TextColumn("SMS", help="Structural Moat Score (1–30) — AI-era moat durability. Display only."),
+                    "R": st.column_config.TextColumn("R", help="Rate sensitivity (R1=low, R2=moderate, R3=high). Display only."),
                 },
             )
             st.markdown(_company_legend(tier_disp["Ticker"].tolist()), unsafe_allow_html=True)

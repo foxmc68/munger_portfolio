@@ -1,0 +1,17 @@
+{
+  "VRSN": "R1", "MSCI": "R3", "MCO": "R2", "SPGI": "R2",
+  "V": "R1", "MA": "R1", "CME": "R1", "FICO": "R3", "ASML": null,
+  "COST": "R2", "CSU.TO": "R3", "AZO": "R2", "IDXX": null,
+  "CNI": "R1", "WM": "R1", "PAYX": "R3", "TXN": null, "ITW": null,
+  "DHR": null, "CTAS": "R2", "ICE": "R1", "ROP": "R3", "BRK-B": "R1",
+  "PGR": "R1", "CB": "R1", "AXP": null, "KO": "R2", "AVGO": null,
+  "GOOGL": null, "RMS.PA": null, "TDG": null, "RELX": "R3",
+  "AMT": null, "BAM": null, "RACE": null,
+  "PG": "R2", "HSY": "R2", "JNJ": "R2", "BLK": null, "PM": "R1",
+  "NEE": "R1", "MDT": "R2", "TROW": "R3", "CHD": "R2", "CL": "R2",
+  "EMR": null, "PLD": null, "JPM": "R1", "SCHW": null, "WFC": "R1",
+  "ROL": "R2", "BKNG": "R3", "CSGP": "R3", "DPLM.L": null,
+  "TOI.V": "R3", "WTKWY": "R3", "ASR": "R1", "FNV": "R1",
+  "EPD": "R1", "CVX": "R1", "COP": "R1", "XOM": "R1",
+  "EOG": "R1", "KMI": "R1"
+}
