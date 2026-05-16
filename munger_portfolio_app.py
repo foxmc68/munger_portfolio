@@ -1951,23 +1951,15 @@ def _sms_colors(score) -> tuple[str, str]:
     return ("#c0c0c0", "#666666")
 
 
-def _sms_display_text(score, signal: str, r_score=None) -> str:
+def _sms_display_text(score, signal: str) -> str:
     """Cell text for SMS column: '—' if missing, '{score}' otherwise.
-    Append amber ⚠ when Signal is FAIR/DREAM and SMS < 15.
-    Append blue 🔵 when Signal is FAIR/DREAM and R == R3. Both can co-fire."""
+    Append amber ⚠ when Signal is FAIR/DREAM and SMS < 15."""
     if _sms_is_missing(score):
-        base = "—"
-        sms_warn = False
-    else:
-        base = str(int(score))
-        sms_warn = signal in ("DREAM", "FAIR") and score < 15
-    rate_warn = signal in ("DREAM", "FAIR") and r_score == "R3"
-    pips = ""
-    if sms_warn:
-        pips += " ⚠"
-    if rate_warn:
-        pips += " 🔵"
-    return f"{base}{pips}"
+        return "—"
+    base = str(int(score))
+    if signal in ("DREAM", "FAIR") and score < 15:
+        return f"{base} ⚠"
+    return base
 
 
 # ── Rate-sensitivity (R) display helpers ──────────────────────────────────────
@@ -1983,18 +1975,27 @@ _R_PILL_COLORS: dict[Optional[str], str] = {
 }
 
 
-def r_score_to_svg(r_score) -> str:
-    """Return a base64-encoded SVG data URL of a colored pill for the R score."""
+def r_score_to_svg(r_score, signal: Optional[str] = None) -> str:
+    """Return a base64-encoded SVG data URL of a colored pill for the R score.
+
+    When R == R3 AND Signal is FAIR/DREAM, render a wider pill with 'R3 ⚠' —
+    self-contained rate-sensitivity warning (no SMS-column blue pip)."""
     if r_score in _VALID_R_SCORES:
         color = _R_PILL_COLORS[r_score]
         text = r_score
     else:
         color = _R_PILL_COLORS[None]
         text = "?"
+    if r_score == "R3" and signal in ("DREAM", "FAIR"):
+        text = "R3 ⚠"
+        width = 56
+    else:
+        width = 48
+    mid = width // 2
     svg = (
-        '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="22">'
-        f'<rect width="48" height="22" rx="11" fill="{color}"/>'
-        '<text x="24" y="15" font-family="Arial" font-size="11" '
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="22">'
+        f'<rect width="{width}" height="22" rx="11" fill="{color}"/>'
+        f'<text x="{mid}" y="15" font-family="Arial" font-size="11" '
         f'font-weight="bold" fill="white" text-anchor="middle">{text}</text>'
         '</svg>'
     )
@@ -2561,12 +2562,13 @@ def main() -> None:
                 for t in tier_disp["Ticker"]
             ]
             tier_disp["SMS"] = [
-                _sms_display_text(s, sig, r)
-                for s, sig, r in zip(
-                    tier_disp["_sms_score"], tier_disp["_signal"], tier_disp["_r_score"]
-                )
+                _sms_display_text(s, sig)
+                for s, sig in zip(tier_disp["_sms_score"], tier_disp["_signal"])
             ]
-            tier_disp["R_img"] = [r_score_to_svg(r) for r in tier_disp["_r_score"]]
+            tier_disp["R_img"] = [
+                r_score_to_svg(r, sig)
+                for r, sig in zip(tier_disp["_r_score"], tier_disp["_signal"])
+            ]
 
             if sort_dream_first:
                 _signal_order = {"DREAM": 0, "FAIR": 1, "WAIT": 2, "N/A": 3}
