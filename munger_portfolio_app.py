@@ -10,6 +10,7 @@ Run:  streamlit run munger_portfolio_app.py
 Data: Yahoo Finance via yfinance — no API key required.
 """
 
+import base64
 import json
 import math
 import os
@@ -1970,11 +1971,10 @@ def _sms_display_text(score, signal: str, r_score=None) -> str:
 
 
 # ── Rate-sensitivity (R) display helpers ──────────────────────────────────────
-# Rendered as a small inline pill badge inside a white cell (distinct from SMS,
-# which uses full-cell shading). Streamlit's st.dataframe doesn't render HTML
-# inside cells, so the pill is faked via CSS: a white cell background with a
-# centered, hard-edged radial-gradient ellipse acting as the colored badge,
-# with white text rendered on top.
+# Rendered as a small SVG pill badge served via a base64 data URL inside an
+# st.column_config.ImageColumn — Streamlit's st.dataframe does not render HTML
+# in cells, so a raster/vector image is the only way to get a true rounded
+# badge. Independent of SMS, which keeps its full-cell shading.
 _R_PILL_COLORS: dict[Optional[str], str] = {
     "R1":   "#1E6B3C",
     "R2":   "#C8931A",
@@ -1983,30 +1983,31 @@ _R_PILL_COLORS: dict[Optional[str], str] = {
 }
 
 
-def _r_display_text(r_score) -> str:
+def r_score_to_svg(r_score) -> str:
+    """Return a base64-encoded SVG data URL of a colored pill for the R score."""
     if r_score in _VALID_R_SCORES:
-        return r_score
-    return "?"
-
-
-def _r_pill_css(r_score) -> str:
-    color = _R_PILL_COLORS.get(r_score if r_score in _VALID_R_SCORES else None)
-    return (
-        "background-color:white;"
-        f"background-image:radial-gradient(ellipse 14px 8px at center,"
-        f"{color} 100%,transparent 100%);"
-        "background-repeat:no-repeat;"
-        "color:white;font-weight:700;font-size:11px;text-align:center;"
+        color = _R_PILL_COLORS[r_score]
+        text = r_score
+    else:
+        color = _R_PILL_COLORS[None]
+        text = "?"
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="22">'
+        f'<rect width="48" height="22" rx="11" fill="{color}"/>'
+        '<text x="24" y="15" font-family="Arial" font-size="11" '
+        f'font-weight="bold" fill="white" text-anchor="middle">{text}</text>'
+        '</svg>'
     )
+    b64 = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+    return f"data:image/svg+xml;base64,{b64}"
 
 
 def _style_df_universe(display_df: pd.DataFrame,
                        signal_series: pd.Series,
-                       sms_score_series: pd.Series,
-                       r_score_series: Optional[pd.Series] = None) -> object:
+                       sms_score_series: pd.Series) -> object:
     """Like _style_df but overrides the SMS column with a per-cell pill color
-    driven by the raw score (not the row's Signal). Also styles the R column
-    when present using R1/R2/R3/UNSCORED pill colors."""
+    driven by the raw score (not the row's Signal). The R column is rendered
+    separately via st.column_config.ImageColumn and is not styled here."""
     styles = pd.DataFrame("", index=display_df.index, columns=display_df.columns)
     for i, idx in enumerate(display_df.index):
         sig_css = _SIGNAL_STYLE.get(signal_series.iloc[i], "")
@@ -2018,9 +2019,6 @@ def _style_df_universe(display_df: pd.DataFrame,
                 f"background-color:{bg};color:{fg};"
                 "font-weight:700;text-align:center"
             )
-        if "R" in display_df.columns and r_score_series is not None:
-            r_val = r_score_series.iloc[i]
-            styles.at[idx, "R"] = _r_pill_css(r_val)
     return display_df.style.apply(lambda _: styles, axis=None)
 
 
@@ -2033,9 +2031,10 @@ DISPLAY_COLS = [
     "Quality", "Fail Reasons", "Red Flags", "Active Flags", "Decision",
 ]
 
-# Universe tab uses the same columns plus SMS and R pills between Signal and ROIC%.
+# Universe tab uses the same columns plus SMS pill and an R_img column rendered
+# via st.column_config.ImageColumn between Signal and ROIC%.
 _sig_idx = DISPLAY_COLS.index("Signal")
-UNIVERSE_DISPLAY_COLS = DISPLAY_COLS[:_sig_idx + 1] + ["SMS", "R"] + DISPLAY_COLS[_sig_idx + 1:]
+UNIVERSE_DISPLAY_COLS = DISPLAY_COLS[:_sig_idx + 1] + ["SMS", "R_img"] + DISPLAY_COLS[_sig_idx + 1:]
 del _sig_idx
 
 # HTML row column specs: (header_label, display_df_field, flex_pct, align)
@@ -2550,7 +2549,7 @@ def main() -> None:
             tier_mask = df_display_u["Tier"] == _tier_name
             tier_disp = df_display_u[tier_mask][DISPLAY_COLS + ["_signal"]].reset_index(drop=True)
 
-            # Inject SMS and R columns (raw values for styling, formatted text for display).
+            # Inject SMS pill text and R_img SVG data URLs.
             _scores = st.session_state.structural_scores
             _r_scores = st.session_state.rate_scores
             tier_disp["_sms_score"] = [
@@ -2567,7 +2566,7 @@ def main() -> None:
                     tier_disp["_sms_score"], tier_disp["_signal"], tier_disp["_r_score"]
                 )
             ]
-            tier_disp["R"] = [_r_display_text(r) for r in tier_disp["_r_score"]]
+            tier_disp["R_img"] = [r_score_to_svg(r) for r in tier_disp["_r_score"]]
 
             if sort_dream_first:
                 _signal_order = {"DREAM": 0, "FAIR": 1, "WAIT": 2, "N/A": 3}
@@ -2576,13 +2575,11 @@ def main() -> None:
 
             signals = tier_disp["_signal"].tolist()
             sms_scores_list = tier_disp["_sms_score"].tolist()
-            r_scores_list = tier_disp["_r_score"].tolist()
             tier_disp = tier_disp[UNIVERSE_DISPLAY_COLS].copy()
             styled = _style_df_universe(
                 tier_disp,
                 pd.Series(signals),
                 pd.Series(sms_scores_list, dtype=object),
-                pd.Series(r_scores_list, dtype=object),
             )
             st.dataframe(
                 styled,
@@ -2592,7 +2589,11 @@ def main() -> None:
                 column_config={
                     "Ticker": st.column_config.TextColumn("Ticker"),
                     "SMS": st.column_config.TextColumn("SMS", help="Structural Moat Score (1–30) — AI-era moat durability. Display only."),
-                    "R": st.column_config.TextColumn("R", help="Rate sensitivity (R1=low, R2=moderate, R3=high). Display only."),
+                    "R_img": st.column_config.ImageColumn(
+                        "R",
+                        help="Rate sensitivity (R1=low, R2=moderate, R3=high). Display only.",
+                        width="small",
+                    ),
                 },
             )
             st.markdown(_company_legend(tier_disp["Ticker"].tolist()), unsafe_allow_html=True)
