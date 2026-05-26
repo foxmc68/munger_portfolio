@@ -2281,10 +2281,19 @@ def main() -> None:
         ".stTabs [data-baseweb='tab']:nth-child(11){background-color:#888888 !important;color:#dddddd !important}"
         ".stTabs [data-baseweb='tab']:nth-child(11):hover{background-color:#777777 !important;color:#eeeeee !important}"
         ".stTabs [data-baseweb='tab']:nth-child(11)[aria-selected='true']{background-color:#666666 !important;color:#ffffff !important;border-bottom:3px solid #666666 !important}"
-        # Satellite tab — OWNED row tint (light blue)
-        "[class*='st-key-sat_row_owned']{background-color:#dde8f2 !important;border-left:3px solid #4a7a9b !important;border-radius:4px;padding:4px 8px !important;margin-bottom:2px !important}"
-        "[class*='st-key-sat_row_watch']{padding:4px 8px !important;margin-bottom:2px !important}"
-        "[class*='st-key-sat_row_'] [data-testid='stNumberInput'] input{padding:4px 8px !important;font-size:0.9rem !important}"
+        # Satellite tab — OWNED row tint (light blue) + alternating watch rows
+        "[class*='st-key-sat_row_owned']{background-color:#dde8f2 !important;"
+        "border-left:3px solid #4a7a9b !important;border-bottom:1px solid #c4d2e0 !important;"
+        "border-radius:4px;padding:4px 8px !important;margin-bottom:2px !important}"
+        "[class*='st-key-sat_row_watch_alt0']{background-color:#F0F4F8 !important;"
+        "border-bottom:1px solid #d4d8dc !important;border-radius:4px;"
+        "padding:4px 8px !important;margin-bottom:2px !important}"
+        "[class*='st-key-sat_row_watch_alt1']{background-color:#ffffff !important;"
+        "border-bottom:1px solid #d4d8dc !important;border-radius:4px;"
+        "padding:4px 8px !important;margin-bottom:2px !important}"
+        "[class*='st-key-sat_row_'] [data-testid='stNumberInput'] input"
+        "{padding:4px 8px !important;font-size:0.9rem !important;"
+        "background-color:#ffffff !important}"
         # Satellite tab — column header tooltips (dark popover, dashboard-consistent)
         ".sat-th{position:relative;display:inline-block;cursor:help;border-bottom:1px dotted #6a6a6a}"
         ".sat-th::after{content:attr(data-tt);position:absolute;left:0;top:calc(100% + 8px);"
@@ -2491,13 +2500,16 @@ def main() -> None:
     # SATELLITE  (default landing tab — BRK/B anchor + 7-slot satellite + watch)
     # ══════════════════════════════════════════════════════════════════════════
     with tab_s:
-        _SAT_COL_RATIOS = [2.2, 0.9, 1.2, 1.0, 1.0, 1.1, 0.9, 1.0, 2.0, 3.5]
+        # 13 columns: Stock | Ticker | Current P/E | Dream | Fair | Signal |
+        # Quality | Red Flags | SMS | R | FCF% | Slot Status | K's Notes
+        _SAT_COL_RATIOS = [2.0, 0.7, 0.95, 0.75, 0.75, 1.0, 0.85, 0.85,
+                           0.7, 0.6, 0.85, 1.7, 2.8]
 
         _SAT_TOOLTIPS = {
             "Stock":       "Company name",
             "Ticker":      "Exchange symbol",
-            "Current P/E": "Enter today's P/E ratio. Update weekly. BRK/B uses P/B instead.",
-            "Current P/B": "Enter today's P/B ratio for Berkshire Hathaway. Update weekly.",
+            "Current P/E": "Auto-fetched trailing P/E from yfinance. Editable to override outliers. BRK/B uses P/B.",
+            "Current P/B": "Auto-fetched Price/Book from yfinance for Berkshire Hathaway. Editable to override outliers.",
             "Dream P/E":   "Crisis-level entry price. 2008-equivalent valuation. Maximum conviction buy.",
             "Dream P/B":   "Crisis-level P/B for BRK/B. 2008-equivalent valuation. Maximum conviction buy.",
             "Fair P/E":    "Normal Munger buying zone. Acceptable entry for wonderful businesses.",
@@ -2505,6 +2517,9 @@ def main() -> None:
             "Signal":      "Auto-calculated. DREAM = at or below Dream P/E. FAIR = at or below Fair P/E. WAIT = overpriced.",
             "Quality":     "PASS requires ROIC ≥15%, FCF Yield ≥3.5%, Debt within guidelines, Revenue Growth ≥0%. Update quarterly.",
             "Red Flags":   "Any YES = stop and investigate. Accounting issues, management turnover, regulatory threat, moat deterioration.",
+            "SMS":         "Structural Moat Score (out of 30). AI-era moat durability. Manually tracked, updated quarterly.",
+            "R Score":     "Rate-era moat durability. R1 = earns returns today (uphill). R2 = mixed. R3 = long-duration compounder (downhill in high-rate environment).",
+            "FCF%":        "Free Cash Flow Yield. Green if ≥3.5% (passes Gate 2 quality threshold), red if below.",
             "Slot Status": "● OWNED = active satellite position. ○ Watching = slot open, held as SGOV until entry criteria met.",
             "Status":      "BRK/B is the anchor holding — outside the 7 satellite slots.",
             "K's Notes":   "Klarman/Munger-style notes on thesis, conviction, and sizing.",
@@ -2519,17 +2534,19 @@ def main() -> None:
             ("Signal",      _SAT_TOOLTIPS["Signal"],      False),
             ("Quality",     _SAT_TOOLTIPS["Quality"],     False),
             ("Red Flags",   _SAT_TOOLTIPS["Red Flags"],   False),
+            ("SMS",         _SAT_TOOLTIPS["SMS"],         False),
+            ("R",           _SAT_TOOLTIPS["R Score"],     False),
+            ("FCF%",        _SAT_TOOLTIPS["FCF%"],        False),
             ("Slot Status", _SAT_TOOLTIPS["Slot Status"], False),
-            ("K's Notes",   _SAT_TOOLTIPS["K's Notes"],   True),   # right-anchor
+            ("K's Notes",   _SAT_TOOLTIPS["K's Notes"],   True),
         ]
 
         def _sat_signal(current: float, dream: float, fair: float) -> tuple[str, str, str]:
-            """Return (label, bg, fg) for the Signal pill."""
             if current <= dream:
-                return "DREAM", "#2e7d32", "#ffffff"   # dark green
+                return "DREAM", "#2e7d32", "#ffffff"
             if current <= fair:
-                return "FAIR",  "#e67e22", "#ffffff"   # orange
-            return "WAIT", "#c0392b", "#ffffff"        # red
+                return "FAIR",  "#e67e22", "#ffffff"
+            return "WAIT", "#c0392b", "#ffffff"
 
         def _pill(text: str, bg: str, fg: str, size: str = "0.85rem") -> str:
             return (
@@ -2538,15 +2555,23 @@ def main() -> None:
                 f"display:inline-block;white-space:nowrap'>{text}</span>"
             )
 
-        def _hdr_row(ratios: list, items: list) -> None:
-            """Render a header row.
+        def _r_pill(r: Optional[str]) -> str:
+            if r == "R1":
+                return _pill("R1", "#b7d4b0", "#1a3a1f", size="0.78rem")
+            if r == "R2":
+                return _pill("R2", "#f0d080", "#3d2800", size="0.78rem")
+            if r == "R3":
+                return _pill("R3", "#dfa898", "#3d0f00", size="0.78rem")
+            return _pill("—", "#d0d0d2", "#555555", size="0.78rem")
 
-            Each item is one of:
-              - a plain string (no tooltip)
-              - a 2-tuple ``(label, tooltip)``
-              - a 3-tuple ``(label, tooltip, right_anchor)`` — set ``right_anchor``
-                true for the rightmost columns so the popover doesn't run off-screen.
-            """
+        def _fcf_pill(fcf: Optional[float]) -> str:
+            if fcf is None:
+                return _pill("—", "#d0d0d2", "#555555", size="0.78rem")
+            if fcf >= 3.5:
+                return _pill(f"{fcf:.1f}%", "#2e7d32", "#ffffff", size="0.78rem")
+            return _pill(f"{fcf:.1f}%", "#c0392b", "#ffffff", size="0.78rem")
+
+        def _hdr_row(ratios: list, items: list) -> None:
             cols = st.columns(ratios)
             for c, item in zip(cols, items):
                 if isinstance(item, tuple):
@@ -2556,9 +2581,7 @@ def main() -> None:
                         label, tt = item
                         right = False
                     cls = "sat-th sat-th-right" if right else "sat-th"
-                    inner = (
-                        f'<span class="{cls}" data-tt="{tt}">{label}</span>'
-                    )
+                    inner = f'<span class="{cls}" data-tt="{tt}">{label}</span>'
                 else:
                     inner = item
                 c.markdown(
@@ -2568,17 +2591,87 @@ def main() -> None:
                     unsafe_allow_html=True,
                 )
 
-        def _render_sat_row(
-            section: str, name: str, ticker: str, dream: float, fair: float,
-            default_pe: float, owned: bool, slot_status: str, note: str,
-            on_notice: bool = False,
-        ) -> None:
-            key = f"sat_pe_{section}_{ticker}"
-            if key not in st.session_state:
-                st.session_state[key] = float(default_pe)
+        # ── Auto-fetch P/E (and BRK-B P/B) via yfinance ───────────────────
+        # Tickers and the metric to pull for each.
+        _SAT_FETCH_TICKERS: list[tuple[str, bool]] = [
+            ("V",     False), ("MA",    False), ("MCO",   False),
+            ("SPGI",  False), ("FICO",  False), ("WTKWY", False),
+            ("RELX",  False), ("BRK-B", True),
+            ("ASR",   False), ("VRSK",  False), ("CME",   False),
+        ]
 
-            row_kind = "owned" if owned else "watch"
-            row_key = f"sat_row_{row_kind}_{section}_{ticker}"
+        def _sat_fetch_metric(yf_ticker: str, use_pb: bool) -> Optional[float]:
+            info = fetch_info(yf_ticker)
+            if use_pb:
+                return _pos_float(info, "priceToBook")
+            return _pos_float(info, "trailingPE")
+
+        # ── Top bar: Refresh + Last Updated ──────────────────────────────
+        _ref_col, _ts_col = st.columns([1.3, 6])
+        with _ref_col:
+            if st.button("↻ Refresh Data", key="sat_refresh",
+                         type="primary", use_container_width=True):
+                fetch_info.clear()
+                # Drop session-state overrides so values re-init from fresh fetch
+                for _k in list(st.session_state.keys()):
+                    if _k.startswith("sat_pe_") or _k == "sat_brk_pb":
+                        del st.session_state[_k]
+                st.session_state.sat_fetched_values = None
+                st.session_state.sat_last_fetched = datetime.now()
+                st.rerun()
+
+        if "sat_fetched_values" not in st.session_state or \
+                st.session_state.get("sat_fetched_values") is None:
+            _prog = st.progress(0, text="Fetching market data…")
+            _fetched: dict[str, Optional[float]] = {}
+            for _i, (_tk, _pb) in enumerate(_SAT_FETCH_TICKERS):
+                _fetched[_tk] = _sat_fetch_metric(_tk, _pb)
+                _prog.progress((_i + 1) / len(_SAT_FETCH_TICKERS),
+                               text=f"Fetching {_tk}…")
+            _prog.empty()
+            st.session_state.sat_fetched_values = _fetched
+            if "sat_last_fetched" not in st.session_state:
+                st.session_state.sat_last_fetched = datetime.now()
+
+        _fetched_values: dict[str, Optional[float]] = \
+            st.session_state.sat_fetched_values
+
+        with _ts_col:
+            _ts = st.session_state.get("sat_last_fetched")
+            _ts_str = _ts.strftime("%Y-%m-%d %H:%M:%S") if _ts else "—"
+            _missing = [t for t, v in _fetched_values.items() if v is None]
+            _missing_str = (
+                f" &nbsp;·&nbsp; <span style='color:#c0392b'>"
+                f"Fetch failed: {', '.join(_missing)} — using defaults</span>"
+                if _missing else ""
+            )
+            st.markdown(
+                f"<div style='padding-top:8px;font-size:0.82rem;color:#555;"
+                f"font-style:italic'>Last fetched: <span style='font-family:monospace;"
+                f"color:#2c3e50;font-style:normal;font-weight:600'>{_ts_str}</span>"
+                f"{_missing_str}</div>",
+                unsafe_allow_html=True,
+            )
+
+        def _render_sat_row(
+            section: str, row_idx: int, name: str, yf_ticker: str,
+            display_ticker: str, dream: float, fair: float, default_pe: float,
+            owned: bool, slot_status: str, note: str, on_notice: bool,
+            sms: int, r_score: str, fcf: Optional[float],
+        ) -> None:
+            key = f"sat_pe_{section}_{display_ticker}"
+            if key not in st.session_state:
+                _fv = _fetched_values.get(yf_ticker)
+                st.session_state[key] = float(_fv) if _fv is not None \
+                    else float(default_pe)
+
+            # Row container key drives styling (owned-blue or alternating watch)
+            if owned:
+                row_key = f"sat_row_owned_{section}_{display_ticker}"
+            else:
+                alt = "alt0" if row_idx % 2 == 0 else "alt1"
+                row_key = f"sat_row_watch_{alt}_{section}_{display_ticker}"
+
             with st.container(key=row_key):
                 c = st.columns(_SAT_COL_RATIOS)
                 c[0].markdown(
@@ -2587,7 +2680,7 @@ def main() -> None:
                 )
                 c[1].markdown(
                     f"<div style='padding-top:6px;font-family:monospace;"
-                    f"font-weight:600;color:#2c3e50'>{ticker}</div>",
+                    f"font-weight:600;color:#2c3e50'>{display_ticker}</div>",
                     unsafe_allow_html=True,
                 )
                 c[2].number_input(
@@ -2621,18 +2714,37 @@ def main() -> None:
                     unsafe_allow_html=True,
                 )
 
+                # SMS — colored pill from existing bucket palette
+                _sms_bg, _sms_fg = _sms_colors(sms)
+                c[8].markdown(
+                    f"<div style='padding-top:6px'>"
+                    f"{_pill(str(sms), _sms_bg, _sms_fg, size='0.78rem')}</div>",
+                    unsafe_allow_html=True,
+                )
+                # R — green/amber/red pill
+                c[9].markdown(
+                    f"<div style='padding-top:6px'>{_r_pill(r_score)}</div>",
+                    unsafe_allow_html=True,
+                )
+                # FCF% — green ≥3.5, red below
+                c[10].markdown(
+                    f"<div style='padding-top:6px'>{_fcf_pill(fcf)}</div>",
+                    unsafe_allow_html=True,
+                )
+
                 if on_notice:
                     status_html = (
-                        f"<span style='font-weight:600'>{slot_status.split('⚠')[0].strip()}</span> "
+                        f"<span style='font-weight:600'>"
+                        f"{slot_status.split('⚠')[0].strip()}</span> "
                         f"{_pill('⚠ On Notice', '#f0d080', '#3d2800', size='0.72rem')}"
                     )
                 else:
                     status_html = f"<span style='font-weight:600'>{slot_status}</span>"
-                c[8].markdown(
+                c[11].markdown(
                     f"<div style='padding-top:6px;font-size:0.85rem'>{status_html}</div>",
                     unsafe_allow_html=True,
                 )
-                c[9].markdown(
+                c[12].markdown(
                     f"<div style='padding-top:6px;font-size:0.85rem;color:#3a3a3a;"
                     f"font-style:italic'>{note}</div>",
                     unsafe_allow_html=True,
@@ -2641,7 +2753,7 @@ def main() -> None:
         # ── Section 1: BRK/B Anchor ───────────────────────────────────────
         st.markdown(
             "<div style='background:linear-gradient(90deg,#b8923f,#d4a960);"
-            "color:#fff;padding:12px 16px;border-radius:6px;margin-bottom:10px;"
+            "color:#fff;padding:12px 16px;border-radius:6px;margin:10px 0;"
             "box-shadow:0 1px 3px rgba(0,0,0,0.15)'>"
             "<strong>BRK/B ANCHOR</strong> &nbsp;—&nbsp; 25% Allocation "
             "&nbsp;—&nbsp; Separate from Satellite Slots"
@@ -2652,7 +2764,8 @@ def main() -> None:
         _BRK_DREAM_PB = 1.15
         _BRK_FAIR_PB = 1.35
         if "sat_brk_pb" not in st.session_state:
-            st.session_state.sat_brk_pb = 1.50
+            _brk_fv = _fetched_values.get("BRK-B")
+            st.session_state.sat_brk_pb = float(_brk_fv) if _brk_fv is not None else 1.50
 
         _brk_hdr = [
             ("Stock",       _SAT_TOOLTIPS["Stock"]),
@@ -2663,9 +2776,14 @@ def main() -> None:
             ("Signal",      _SAT_TOOLTIPS["Signal"]),
             ("Quality",     _SAT_TOOLTIPS["Quality"]),
             ("Red Flags",   _SAT_TOOLTIPS["Red Flags"]),
+            ("SMS",         _SAT_TOOLTIPS["SMS"]),
+            ("R",           _SAT_TOOLTIPS["R Score"]),
+            ("FCF%",        _SAT_TOOLTIPS["FCF%"]),
             ("Status",      _SAT_TOOLTIPS["Status"], True),
         ]
-        _brk_ratios = [2.2, 0.9, 1.2, 1.0, 1.0, 1.1, 0.9, 1.0, 5.5]
+        # 12 columns (no K's Notes for BRK/B row — Status column carries the label)
+        _brk_ratios = [2.0, 0.7, 0.95, 0.75, 0.75, 1.0, 0.85, 0.85,
+                       0.7, 0.6, 0.85, 4.5]
         _hdr_row(_brk_ratios, _brk_hdr)
 
         with st.container(key="sat_row_owned_brk_anchor"):
@@ -2709,7 +2827,21 @@ def main() -> None:
                 f"{_pill('NO', '#d0d0d2', '#555555', size='0.78rem')}</div>",
                 unsafe_allow_html=True,
             )
+            _brk_sms_bg, _brk_sms_fg = _sms_colors(28)
             bc[8].markdown(
+                f"<div style='padding-top:6px'>"
+                f"{_pill('28', _brk_sms_bg, _brk_sms_fg, size='0.78rem')}</div>",
+                unsafe_allow_html=True,
+            )
+            bc[9].markdown(
+                f"<div style='padding-top:6px'>{_r_pill('R1')}</div>",
+                unsafe_allow_html=True,
+            )
+            bc[10].markdown(
+                f"<div style='padding-top:6px'>{_fcf_pill(None)}</div>",
+                unsafe_allow_html=True,
+            )
+            bc[11].markdown(
                 "<div style='padding-top:6px;font-size:0.85rem;font-weight:600'>"
                 "ANCHOR — outside 7 slots</div>",
                 unsafe_allow_html=True,
@@ -2718,30 +2850,46 @@ def main() -> None:
         st.markdown(
             "<div style='font-size:0.78rem;color:#555;font-style:italic;"
             "margin:6px 0 22px 4px'>"
-            "Note: BRK/B uses P/B not P/E. Dream ≤ 1.15 · Fair ≤ 1.35."
+            "Note: BRK/B uses P/B not P/E. Dream ≤ 1.15 · Fair ≤ 1.35. "
+            "FCF Yield n/a for Berkshire (holding-company structure)."
             "</div>",
             unsafe_allow_html=True,
         )
 
         # ── Section 2: Munger Satellite (7 slots) ─────────────────────────
+        # Each row: (name, yf_ticker, display_ticker, dream, fair, default_pe,
+        #            owned, slot_status, note, on_notice, sms, r_score, fcf)
         _SAT_TIER1 = [
-            # name, ticker, current_pe, dream, fair, owned, slot_status, note, on_notice
-            ("Visa",           "V",     28.4, 15, 20, False, "○ Watching",
-             "Greatest legal monopoly. Klarman principle: buy at Fair.", False),
-            ("Mastercard",     "MA",    35.8, 16, 22, False, "○ Watching",
-             "Network duopoly. Fair value entry acceptable.", False),
-            ("Moody's",        "MCO",   37.6, 16, 23, False, "○ Watching",
-             "Rating oligopoly. Dream entry preferred.", False),
-            ("S&P Global",     "SPGI",  30.8, 16, 23, False, "○ Watching",
-             "$16T index licensing + rating duopoly.", False),
-            ("FICO",           "FICO",  51.6, 30, 45, False, "○ Watching ⚠ On Notice",
-             "VantageScore/FHFA transition risk. Size accordingly.", True),
-            ("Wolters Kluwer", "WTKWY", 11.0, 20, 30, True,  "● OWNED",
-             "AI selloff overblown. Business unchanged. 7% organic growth.", False),
-            ("RELX",           "RELX",  15.8, 14, 20, True,  "● OWNED",
-             "Starter position. Strong AI product execution. ~5.9% FCF yield.", False),
+            ("Visa",           "V",     "V",     15, 20, 28.4, False,
+             "○ Watching",
+             "Greatest legal monopoly. Klarman principle: buy at Fair.",
+             False, 26, "R1", 3.5),
+            ("Mastercard",     "MA",    "MA",    16, 22, 35.8, False,
+             "○ Watching",
+             "Network duopoly. Fair value entry acceptable.",
+             False, 25, "R1", 3.2),
+            ("Moody's",        "MCO",   "MCO",   16, 23, 37.6, False,
+             "○ Watching",
+             "Rating oligopoly. Dream entry preferred.",
+             False, 24, "R2", 2.5),
+            ("S&P Global",     "SPGI",  "SPGI",  16, 23, 30.8, False,
+             "○ Watching",
+             "$16T index licensing + rating duopoly.",
+             False, 24, "R2", 3.3),
+            ("FICO",           "FICO",  "FICO",  30, 45, 51.6, False,
+             "○ Watching ⚠ On Notice",
+             "VantageScore/FHFA transition risk. Size accordingly.",
+             True,  22, "R2", 1.9),
+            ("Wolters Kluwer", "WTKWY", "WTKWY", 20, 30, 11.0, True,
+             "● OWNED",
+             "AI selloff overblown. Business unchanged. 7% organic growth.",
+             False, 19, "R3", 7.5),
+            ("RELX",           "RELX",  "RELX",  14, 20, 15.8, True,
+             "● OWNED",
+             "Starter position. Strong AI product execution. ~5.9% FCF yield.",
+             False, 21, "R3", 5.9),
         ]
-        _filled = sum(1 for r in _SAT_TIER1 if r[5])
+        _filled = sum(1 for r in _SAT_TIER1 if r[6])
         _slots_max = 7
         _empty_slots = _slots_max - _filled
 
@@ -2759,17 +2907,30 @@ def main() -> None:
         )
 
         _hdr_row(_SAT_COL_RATIOS, _SAT_HDR_LABELS)
+        _watch_idx = 0
         for row in _SAT_TIER1:
-            _render_sat_row("tier1", *row)
+            (_n, _yf, _disp, _d, _f, _dpe, _ow, _slot, _note, _onn,
+             _sms, _r, _fcf) = row
+            _idx = -1 if _ow else _watch_idx
+            if not _ow:
+                _watch_idx += 1
+            _render_sat_row("tier1", _idx, _n, _yf, _disp, _d, _f, _dpe,
+                            _ow, _slot, _note, _onn, _sms, _r, _fcf)
 
         # ── Section 3: Best of Rest ───────────────────────────────────────
         _SAT_BEST = [
-            ("ASR",              "ASR",  17.9, 15, 20, True,  "● OWNED — Best of Rest",
-             "Mexican airport concession. FAIR signal. Situational/value hold.", False),
-            ("Verisk Analytics", "VRSK", 24.2, 18, 24, False, "○ Watch",
-             "ISO actuarial moat. 34% ROIC. Needs FCF yield >5% to enter.", False),
-            ("CME Group",        "CME",  25.8, 13, 18, False, "○ Watch",
-             "Futures exchange monopoly. Watch for fair entry.", False),
+            ("ASR",              "ASR",  "ASR",  15, 20, 17.9, True,
+             "● OWNED — Best of Rest",
+             "Mexican airport concession. FAIR signal. Situational/value hold.",
+             False, 26, "R1", 5.0),
+            ("Verisk Analytics", "VRSK", "VRSK", 18, 24, 24.2, False,
+             "○ Watch",
+             "ISO actuarial moat. 34% ROIC. Needs FCF yield >5% to enter.",
+             False, 25, "R1", 4.2),
+            ("CME Group",        "CME",  "CME",  13, 18, 25.8, False,
+             "○ Watch",
+             "Futures exchange monopoly. Watch for fair entry.",
+             False, 23, "R1", 4.0),
         ]
 
         st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
@@ -2782,8 +2943,15 @@ def main() -> None:
             unsafe_allow_html=True,
         )
         _hdr_row(_SAT_COL_RATIOS, _SAT_HDR_LABELS)
+        _watch_idx_b = 0
         for row in _SAT_BEST:
-            _render_sat_row("best", *row)
+            (_n, _yf, _disp, _d, _f, _dpe, _ow, _slot, _note, _onn,
+             _sms, _r, _fcf) = row
+            _idx = -1 if _ow else _watch_idx_b
+            if not _ow:
+                _watch_idx_b += 1
+            _render_sat_row("best", _idx, _n, _yf, _disp, _d, _f, _dpe,
+                            _ow, _slot, _note, _onn, _sms, _r, _fcf)
 
         # ── Footer ────────────────────────────────────────────────────────
         st.markdown(

@@ -20,7 +20,14 @@
       "Bash(ls:*)",
       "Bash(git -C /Users/mfox/munger-portfolio add -A)",
       "Bash(git -C /Users/mfox/munger-portfolio commit -m ' *)",
-      "Bash(git -C /Users/mfox/munger-portfolio push)"
+      "Bash(git -C /Users/mfox/munger-portfolio push)",
+      "Bash(git *)",
+      "Bash(timeout 12 streamlit run munger_portfolio_app.py --server.headless true --server.port 8765)",
+      "Bash(streamlit run *)",
+      "Bash(echo \"PID=$!\")",
+      "Bash(curl -s -o /tmp/page.html -w \"HTTP %{http_code}\\\\n\" http://localhost:8765/)",
+      "Read(//tmp/**)",
+      "Bash(kill %1)"
     ]
   }
 }
