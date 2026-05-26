@@ -2237,42 +2237,84 @@ def main() -> None:
         "[data-testid='metric-container']{background-color:#c8c9cb;border-radius:6px;padding:8px}"
         ".stTabs [data-baseweb='tab-list']{gap:6px;border-bottom:2px solid #8a8b8d;margin-top:0}"
         ".stTabs [data-baseweb='tab']{font-size:1.15rem;font-weight:700;padding:6px 28px;border-radius:8px 8px 0 0;color:#ffffff;background-color:#b0b1b3;border:none;letter-spacing:0.02em}"
-        # 1. Universe — deep navy
-        ".stTabs [data-baseweb='tab']:nth-child(1){background-color:#2c3e50 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(1):hover{background-color:#22303d !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(1)[aria-selected='true']{background-color:#1a2530 !important;color:#ffffff !important;border-bottom:3px solid #1a2530 !important}"
-        # 2. Wait List — olive
-        ".stTabs [data-baseweb='tab']:nth-child(2){background-color:#8a9a6e !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(2):hover{background-color:#7a8a5e !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(2)[aria-selected='true']{background-color:#6a7a4e !important;color:#ffffff !important;border-bottom:3px solid #6a7a4e !important}"
-        # 3. Macro Signals — rust
-        ".stTabs [data-baseweb='tab']:nth-child(3){background-color:#b88070 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(3):hover{background-color:#a87060 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(3)[aria-selected='true']{background-color:#a07060 !important;color:#ffffff !important;border-bottom:3px solid #a07060 !important}"
-        # 4. Market Signals — slate
-        ".stTabs [data-baseweb='tab']:nth-child(4){background-color:#7a7a8a !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(4):hover{background-color:#6a6a7a !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(4)[aria-selected='true']{background-color:#5a5a6a !important;color:#ffffff !important;border-bottom:3px solid #5a5a6a !important}"
-        # 5. Deployment — teal
-        ".stTabs [data-baseweb='tab']:nth-child(5){background-color:#6e9b9b !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(5):hover{background-color:#5d8888 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(5)[aria-selected='true']{background-color:#4d7878 !important;color:#ffffff !important;border-bottom:3px solid #4d7878 !important}"
-        # 6. Retired — purple
-        ".stTabs [data-baseweb='tab']:nth-child(6){background-color:#8e8eaa !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(6):hover{background-color:#7a7a98 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(6)[aria-selected='true']{background-color:#5a5a7f !important;color:#ffffff !important;border-bottom:3px solid #5a5a7f !important}"
-        # 7. News — muted teal
-        ".stTabs [data-baseweb='tab']:nth-child(7){background-color:#7a9b95 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(7):hover{background-color:#688883 !important;color:#ffffff !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(7)[aria-selected='true']{background-color:#557572 !important;color:#ffffff !important;border-bottom:3px solid #557572 !important}"
-        # 8. Portfolio A (archived) — grey
-        ".stTabs [data-baseweb='tab']:nth-child(8){background-color:#888888 !important;color:#dddddd !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(8):hover{background-color:#777777 !important;color:#eeeeee !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(8)[aria-selected='true']{background-color:#666666 !important;color:#ffffff !important;border-bottom:3px solid #666666 !important}"
-        # 9. Portfolio B (archived) — grey
-        ".stTabs [data-baseweb='tab']:nth-child(9){background-color:#888888 !important;color:#dddddd !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(9):hover{background-color:#777777 !important;color:#eeeeee !important}"
-        ".stTabs [data-baseweb='tab']:nth-child(9)[aria-selected='true']{background-color:#666666 !important;color:#ffffff !important;border-bottom:3px solid #666666 !important}"
+        # 1. Satellite — gold / amber (default landing tab)
+        ".stTabs [data-baseweb='tab']:nth-child(1){background-color:#b8923f !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(1):hover{background-color:#a07a2c !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(1)[aria-selected='true']{background-color:#8a6520 !important;color:#ffffff !important;border-bottom:3px solid #8a6520 !important}"
+        # 2. Universe — deep navy
+        ".stTabs [data-baseweb='tab']:nth-child(2){background-color:#2c3e50 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(2):hover{background-color:#22303d !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(2)[aria-selected='true']{background-color:#1a2530 !important;color:#ffffff !important;border-bottom:3px solid #1a2530 !important}"
+        # 3. Crisis Proximity — deep crimson (warning system)
+        ".stTabs [data-baseweb='tab']:nth-child(3){background-color:#6e2c2c !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(3):hover{background-color:#5a1c1c !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(3)[aria-selected='true']{background-color:#451010 !important;color:#ffffff !important;border-bottom:3px solid #451010 !important}"
+        # 4. Wait List — olive
+        ".stTabs [data-baseweb='tab']:nth-child(4){background-color:#8a9a6e !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4):hover{background-color:#7a8a5e !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(4)[aria-selected='true']{background-color:#6a7a4e !important;color:#ffffff !important;border-bottom:3px solid #6a7a4e !important}"
+        # 5. Macro Signals — rust
+        ".stTabs [data-baseweb='tab']:nth-child(5){background-color:#b88070 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(5):hover{background-color:#a87060 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(5)[aria-selected='true']{background-color:#a07060 !important;color:#ffffff !important;border-bottom:3px solid #a07060 !important}"
+        # 6. Market Signals — slate
+        ".stTabs [data-baseweb='tab']:nth-child(6){background-color:#7a7a8a !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(6):hover{background-color:#6a6a7a !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(6)[aria-selected='true']{background-color:#5a5a6a !important;color:#ffffff !important;border-bottom:3px solid #5a5a6a !important}"
+        # 7. Deployment — teal
+        ".stTabs [data-baseweb='tab']:nth-child(7){background-color:#6e9b9b !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(7):hover{background-color:#5d8888 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(7)[aria-selected='true']{background-color:#4d7878 !important;color:#ffffff !important;border-bottom:3px solid #4d7878 !important}"
+        # 8. Retired — purple
+        ".stTabs [data-baseweb='tab']:nth-child(8){background-color:#8e8eaa !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(8):hover{background-color:#7a7a98 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(8)[aria-selected='true']{background-color:#5a5a7f !important;color:#ffffff !important;border-bottom:3px solid #5a5a7f !important}"
+        # 9. News — muted teal
+        ".stTabs [data-baseweb='tab']:nth-child(9){background-color:#7a9b95 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(9):hover{background-color:#688883 !important;color:#ffffff !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(9)[aria-selected='true']{background-color:#557572 !important;color:#ffffff !important;border-bottom:3px solid #557572 !important}"
+        # 10. Portfolio A (archived) — grey
+        ".stTabs [data-baseweb='tab']:nth-child(10){background-color:#888888 !important;color:#dddddd !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(10):hover{background-color:#777777 !important;color:#eeeeee !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(10)[aria-selected='true']{background-color:#666666 !important;color:#ffffff !important;border-bottom:3px solid #666666 !important}"
+        # 11. Portfolio B (archived) — grey
+        ".stTabs [data-baseweb='tab']:nth-child(11){background-color:#888888 !important;color:#dddddd !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(11):hover{background-color:#777777 !important;color:#eeeeee !important}"
+        ".stTabs [data-baseweb='tab']:nth-child(11)[aria-selected='true']{background-color:#666666 !important;color:#ffffff !important;border-bottom:3px solid #666666 !important}"
+        # Satellite tab — OWNED row tint (light blue)
+        "[class*='st-key-sat_row_owned']{background-color:#dde8f2 !important;border-left:3px solid #4a7a9b !important;border-radius:4px;padding:4px 8px !important;margin-bottom:2px !important}"
+        "[class*='st-key-sat_row_watch']{padding:4px 8px !important;margin-bottom:2px !important}"
+        "[class*='st-key-sat_row_'] [data-testid='stNumberInput'] input{padding:4px 8px !important;font-size:0.9rem !important}"
+        # Satellite tab — column header tooltips (dark popover, dashboard-consistent)
+        ".sat-th{position:relative;display:inline-block;cursor:help;border-bottom:1px dotted #6a6a6a}"
+        ".sat-th::after{content:attr(data-tt);position:absolute;left:0;top:calc(100% + 8px);"
+        "z-index:9999;background:#1a2530;color:#ffffff;padding:8px 12px;border-radius:6px;"
+        "font-size:0.78rem;font-weight:500;line-height:1.45;letter-spacing:0.01em;"
+        "width:max-content;max-width:280px;white-space:normal;text-align:left;"
+        "box-shadow:0 4px 14px rgba(0,0,0,0.35);opacity:0;visibility:hidden;"
+        "transition:opacity 0.12s ease, visibility 0.12s ease;pointer-events:none}"
+        ".sat-th::before{content:'';position:absolute;left:14px;top:100%;z-index:10000;"
+        "border:6px solid transparent;border-bottom-color:#1a2530;margin-top:-4px;"
+        "opacity:0;visibility:hidden;transition:opacity 0.12s ease, visibility 0.12s ease;"
+        "pointer-events:none}"
+        ".sat-th:hover::after,.sat-th:hover::before{opacity:1;visibility:visible}"
+        # Right-anchor for headers near the right edge so the popover doesn't run off-screen
+        ".sat-th.sat-th-right::after{left:auto;right:0}"
+        ".sat-th.sat-th-right::before{left:auto;right:14px}"
+        # Ensure Streamlit column containers don't clip the tooltip popover
+        "[data-testid='stColumn']{overflow:visible !important}"
+        "[data-testid='stHorizontalBlock']{overflow:visible !important}"
+        # Crisis Proximity tab — row tint + input styling
+        "[class*='st-key-cp_row_']{background-color:#e8d8d8 !important;"
+        "border-left:3px solid #6e2c2c !important;border-radius:4px;"
+        "padding:4px 8px !important;margin-bottom:3px !important}"
+        "[class*='st-key-cp_tranche_row_']{background-color:#e8d8d8 !important;"
+        "border-left:3px solid #8b2c2c !important;border-radius:4px;"
+        "padding:4px 8px !important;margin-bottom:3px !important}"
+        "[class*='st-key-cp_row_'] [data-testid='stNumberInput'] input,"
+        "[class*='st-key-cp_tranche_row_'] [data-testid='stNumberInput'] input"
+        "{padding:4px 8px !important;font-size:0.9rem !important;"
+        "background-color:#ffffff !important}"
         ".stTabs [data-baseweb='tab-highlight']{display:none}"
         ".block-container{padding-top:0.75rem !important;padding-bottom:1rem !important}"
         "h1{margin-bottom:0.25rem !important;margin-top:0 !important}"
@@ -2431,8 +2473,10 @@ def main() -> None:
     # ── Tabs ──────────────────────────────────────────────────────────────────
     # New order: Universe is the primary monitoring tab. Portfolio A and B are
     # archived (greyed) at the end pending eventual removal.
-    tab_u, tab_w, tab_m, tab_ms, tab_d, tab_r, tab_n, tab_a, tab_b = st.tabs([
+    tab_s, tab_u, tab_c, tab_w, tab_m, tab_ms, tab_d, tab_r, tab_n, tab_a, tab_b = st.tabs([
+        "Satellite",
         "Universe",
+        "Crisis Proximity",
         "Wait List",
         "Macro Signals",
         "Market Signals",
@@ -2442,6 +2486,317 @@ def main() -> None:
         "Portfolio A",
         "Portfolio B",
     ])
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # SATELLITE  (default landing tab — BRK/B anchor + 7-slot satellite + watch)
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_s:
+        _SAT_COL_RATIOS = [2.2, 0.9, 1.2, 1.0, 1.0, 1.1, 0.9, 1.0, 2.0, 3.5]
+
+        _SAT_TOOLTIPS = {
+            "Stock":       "Company name",
+            "Ticker":      "Exchange symbol",
+            "Current P/E": "Enter today's P/E ratio. Update weekly. BRK/B uses P/B instead.",
+            "Current P/B": "Enter today's P/B ratio for Berkshire Hathaway. Update weekly.",
+            "Dream P/E":   "Crisis-level entry price. 2008-equivalent valuation. Maximum conviction buy.",
+            "Dream P/B":   "Crisis-level P/B for BRK/B. 2008-equivalent valuation. Maximum conviction buy.",
+            "Fair P/E":    "Normal Munger buying zone. Acceptable entry for wonderful businesses.",
+            "Fair P/B":    "Normal Munger buying zone for BRK/B.",
+            "Signal":      "Auto-calculated. DREAM = at or below Dream P/E. FAIR = at or below Fair P/E. WAIT = overpriced.",
+            "Quality":     "PASS requires ROIC ≥15%, FCF Yield ≥3.5%, Debt within guidelines, Revenue Growth ≥0%. Update quarterly.",
+            "Red Flags":   "Any YES = stop and investigate. Accounting issues, management turnover, regulatory threat, moat deterioration.",
+            "Slot Status": "● OWNED = active satellite position. ○ Watching = slot open, held as SGOV until entry criteria met.",
+            "Status":      "BRK/B is the anchor holding — outside the 7 satellite slots.",
+            "K's Notes":   "Klarman/Munger-style notes on thesis, conviction, and sizing.",
+        }
+
+        _SAT_HDR_LABELS = [
+            ("Stock",       _SAT_TOOLTIPS["Stock"],       False),
+            ("Ticker",      _SAT_TOOLTIPS["Ticker"],      False),
+            ("Current P/E", _SAT_TOOLTIPS["Current P/E"], False),
+            ("Dream P/E",   _SAT_TOOLTIPS["Dream P/E"],   False),
+            ("Fair P/E",    _SAT_TOOLTIPS["Fair P/E"],    False),
+            ("Signal",      _SAT_TOOLTIPS["Signal"],      False),
+            ("Quality",     _SAT_TOOLTIPS["Quality"],     False),
+            ("Red Flags",   _SAT_TOOLTIPS["Red Flags"],   False),
+            ("Slot Status", _SAT_TOOLTIPS["Slot Status"], False),
+            ("K's Notes",   _SAT_TOOLTIPS["K's Notes"],   True),   # right-anchor
+        ]
+
+        def _sat_signal(current: float, dream: float, fair: float) -> tuple[str, str, str]:
+            """Return (label, bg, fg) for the Signal pill."""
+            if current <= dream:
+                return "DREAM", "#2e7d32", "#ffffff"   # dark green
+            if current <= fair:
+                return "FAIR",  "#e67e22", "#ffffff"   # orange
+            return "WAIT", "#c0392b", "#ffffff"        # red
+
+        def _pill(text: str, bg: str, fg: str, size: str = "0.85rem") -> str:
+            return (
+                f"<span style='background:{bg};color:{fg};padding:3px 10px;"
+                f"border-radius:12px;font-weight:700;font-size:{size};"
+                f"display:inline-block;white-space:nowrap'>{text}</span>"
+            )
+
+        def _hdr_row(ratios: list, items: list) -> None:
+            """Render a header row.
+
+            Each item is one of:
+              - a plain string (no tooltip)
+              - a 2-tuple ``(label, tooltip)``
+              - a 3-tuple ``(label, tooltip, right_anchor)`` — set ``right_anchor``
+                true for the rightmost columns so the popover doesn't run off-screen.
+            """
+            cols = st.columns(ratios)
+            for c, item in zip(cols, items):
+                if isinstance(item, tuple):
+                    if len(item) == 3:
+                        label, tt, right = item
+                    else:
+                        label, tt = item
+                        right = False
+                    cls = "sat-th sat-th-right" if right else "sat-th"
+                    inner = (
+                        f'<span class="{cls}" data-tt="{tt}">{label}</span>'
+                    )
+                else:
+                    inner = item
+                c.markdown(
+                    f'<div style="font-weight:700;font-size:0.82rem;color:#2c3e50;'
+                    f'padding:6px 0 4px 0;border-bottom:1px solid #8a8b8d;'
+                    f'overflow:visible">{inner}</div>',
+                    unsafe_allow_html=True,
+                )
+
+        def _render_sat_row(
+            section: str, name: str, ticker: str, dream: float, fair: float,
+            default_pe: float, owned: bool, slot_status: str, note: str,
+            on_notice: bool = False,
+        ) -> None:
+            key = f"sat_pe_{section}_{ticker}"
+            if key not in st.session_state:
+                st.session_state[key] = float(default_pe)
+
+            row_kind = "owned" if owned else "watch"
+            row_key = f"sat_row_{row_kind}_{section}_{ticker}"
+            with st.container(key=row_key):
+                c = st.columns(_SAT_COL_RATIOS)
+                c[0].markdown(
+                    f"<div style='padding-top:6px;font-weight:600'>{name}</div>",
+                    unsafe_allow_html=True,
+                )
+                c[1].markdown(
+                    f"<div style='padding-top:6px;font-family:monospace;"
+                    f"font-weight:600;color:#2c3e50'>{ticker}</div>",
+                    unsafe_allow_html=True,
+                )
+                c[2].number_input(
+                    "current_pe", value=float(st.session_state[key]),
+                    step=0.1, key=key, label_visibility="collapsed",
+                    format="%.1f",
+                )
+                c[3].markdown(
+                    f"<div style='padding-top:6px'>{dream:g}</div>",
+                    unsafe_allow_html=True,
+                )
+                c[4].markdown(
+                    f"<div style='padding-top:6px'>{fair:g}</div>",
+                    unsafe_allow_html=True,
+                )
+
+                cur_pe = float(st.session_state[key])
+                sig, bg, fg = _sat_signal(cur_pe, dream, fair)
+                c[5].markdown(
+                    f"<div style='padding-top:6px'>{_pill(sig, bg, fg)}</div>",
+                    unsafe_allow_html=True,
+                )
+                c[6].markdown(
+                    f"<div style='padding-top:6px'>"
+                    f"{_pill('PASS', '#b7d4b0', '#1a3a1f', size='0.78rem')}</div>",
+                    unsafe_allow_html=True,
+                )
+                c[7].markdown(
+                    f"<div style='padding-top:6px'>"
+                    f"{_pill('NO', '#d0d0d2', '#555555', size='0.78rem')}</div>",
+                    unsafe_allow_html=True,
+                )
+
+                if on_notice:
+                    status_html = (
+                        f"<span style='font-weight:600'>{slot_status.split('⚠')[0].strip()}</span> "
+                        f"{_pill('⚠ On Notice', '#f0d080', '#3d2800', size='0.72rem')}"
+                    )
+                else:
+                    status_html = f"<span style='font-weight:600'>{slot_status}</span>"
+                c[8].markdown(
+                    f"<div style='padding-top:6px;font-size:0.85rem'>{status_html}</div>",
+                    unsafe_allow_html=True,
+                )
+                c[9].markdown(
+                    f"<div style='padding-top:6px;font-size:0.85rem;color:#3a3a3a;"
+                    f"font-style:italic'>{note}</div>",
+                    unsafe_allow_html=True,
+                )
+
+        # ── Section 1: BRK/B Anchor ───────────────────────────────────────
+        st.markdown(
+            "<div style='background:linear-gradient(90deg,#b8923f,#d4a960);"
+            "color:#fff;padding:12px 16px;border-radius:6px;margin-bottom:10px;"
+            "box-shadow:0 1px 3px rgba(0,0,0,0.15)'>"
+            "<strong>BRK/B ANCHOR</strong> &nbsp;—&nbsp; 25% Allocation "
+            "&nbsp;—&nbsp; Separate from Satellite Slots"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        _BRK_DREAM_PB = 1.15
+        _BRK_FAIR_PB = 1.35
+        if "sat_brk_pb" not in st.session_state:
+            st.session_state.sat_brk_pb = 1.50
+
+        _brk_hdr = [
+            ("Stock",       _SAT_TOOLTIPS["Stock"]),
+            ("Ticker",      _SAT_TOOLTIPS["Ticker"]),
+            ("Current P/B", _SAT_TOOLTIPS["Current P/B"]),
+            ("Dream P/B",   _SAT_TOOLTIPS["Dream P/B"]),
+            ("Fair P/B",    _SAT_TOOLTIPS["Fair P/B"]),
+            ("Signal",      _SAT_TOOLTIPS["Signal"]),
+            ("Quality",     _SAT_TOOLTIPS["Quality"]),
+            ("Red Flags",   _SAT_TOOLTIPS["Red Flags"]),
+            ("Status",      _SAT_TOOLTIPS["Status"], True),
+        ]
+        _brk_ratios = [2.2, 0.9, 1.2, 1.0, 1.0, 1.1, 0.9, 1.0, 5.5]
+        _hdr_row(_brk_ratios, _brk_hdr)
+
+        with st.container(key="sat_row_owned_brk_anchor"):
+            bc = st.columns(_brk_ratios)
+            bc[0].markdown(
+                "<div style='padding-top:6px;font-weight:600'>Berkshire Hathaway</div>",
+                unsafe_allow_html=True,
+            )
+            bc[1].markdown(
+                "<div style='padding-top:6px;font-family:monospace;font-weight:600;"
+                "color:#2c3e50'>BRK/B</div>",
+                unsafe_allow_html=True,
+            )
+            bc[2].number_input(
+                "current_pb", value=float(st.session_state.sat_brk_pb),
+                step=0.01, key="sat_brk_pb", label_visibility="collapsed",
+                format="%.2f",
+            )
+            bc[3].markdown(
+                f"<div style='padding-top:6px'>{_BRK_DREAM_PB:.2f}</div>",
+                unsafe_allow_html=True,
+            )
+            bc[4].markdown(
+                f"<div style='padding-top:6px'>{_BRK_FAIR_PB:.2f}</div>",
+                unsafe_allow_html=True,
+            )
+            _brk_sig, _brk_bg, _brk_fg = _sat_signal(
+                float(st.session_state.sat_brk_pb), _BRK_DREAM_PB, _BRK_FAIR_PB,
+            )
+            bc[5].markdown(
+                f"<div style='padding-top:6px'>{_pill(_brk_sig, _brk_bg, _brk_fg)}</div>",
+                unsafe_allow_html=True,
+            )
+            bc[6].markdown(
+                f"<div style='padding-top:6px'>"
+                f"{_pill('PASS', '#b7d4b0', '#1a3a1f', size='0.78rem')}</div>",
+                unsafe_allow_html=True,
+            )
+            bc[7].markdown(
+                f"<div style='padding-top:6px'>"
+                f"{_pill('NO', '#d0d0d2', '#555555', size='0.78rem')}</div>",
+                unsafe_allow_html=True,
+            )
+            bc[8].markdown(
+                "<div style='padding-top:6px;font-size:0.85rem;font-weight:600'>"
+                "ANCHOR — outside 7 slots</div>",
+                unsafe_allow_html=True,
+            )
+
+        st.markdown(
+            "<div style='font-size:0.78rem;color:#555;font-style:italic;"
+            "margin:6px 0 22px 4px'>"
+            "Note: BRK/B uses P/B not P/E. Dream ≤ 1.15 · Fair ≤ 1.35."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        # ── Section 2: Munger Satellite (7 slots) ─────────────────────────
+        _SAT_TIER1 = [
+            # name, ticker, current_pe, dream, fair, owned, slot_status, note, on_notice
+            ("Visa",           "V",     28.4, 15, 20, False, "○ Watching",
+             "Greatest legal monopoly. Klarman principle: buy at Fair.", False),
+            ("Mastercard",     "MA",    35.8, 16, 22, False, "○ Watching",
+             "Network duopoly. Fair value entry acceptable.", False),
+            ("Moody's",        "MCO",   37.6, 16, 23, False, "○ Watching",
+             "Rating oligopoly. Dream entry preferred.", False),
+            ("S&P Global",     "SPGI",  30.8, 16, 23, False, "○ Watching",
+             "$16T index licensing + rating duopoly.", False),
+            ("FICO",           "FICO",  51.6, 30, 45, False, "○ Watching ⚠ On Notice",
+             "VantageScore/FHFA transition risk. Size accordingly.", True),
+            ("Wolters Kluwer", "WTKWY", 11.0, 20, 30, True,  "● OWNED",
+             "AI selloff overblown. Business unchanged. 7% organic growth.", False),
+            ("RELX",           "RELX",  15.8, 14, 20, True,  "● OWNED",
+             "Starter position. Strong AI product execution. ~5.9% FCF yield.", False),
+        ]
+        _filled = sum(1 for r in _SAT_TIER1 if r[5])
+        _slots_max = 7
+        _empty_slots = _slots_max - _filled
+
+        st.markdown(
+            f"<div style='background:#2c3e50;color:#fff;padding:12px 16px;"
+            f"border-radius:6px;margin-bottom:10px;display:flex;"
+            f"justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px'>"
+            f"<span><strong>Munger Satellite</strong> &nbsp;—&nbsp; 7 Slots Max / "
+            f"20% Total &nbsp;—&nbsp; Tier 1 Oligopolies Only</span>"
+            f"<span style='background:#5a7a9b;padding:4px 12px;border-radius:14px;"
+            f"font-size:0.85rem;font-weight:600;letter-spacing:0.02em'>"
+            f"{_filled} of {_slots_max} Filled &nbsp;—&nbsp; {_empty_slots} slots held as SGOV"
+            f"</span></div>",
+            unsafe_allow_html=True,
+        )
+
+        _hdr_row(_SAT_COL_RATIOS, _SAT_HDR_LABELS)
+        for row in _SAT_TIER1:
+            _render_sat_row("tier1", *row)
+
+        # ── Section 3: Best of Rest ───────────────────────────────────────
+        _SAT_BEST = [
+            ("ASR",              "ASR",  17.9, 15, 20, True,  "● OWNED — Best of Rest",
+             "Mexican airport concession. FAIR signal. Situational/value hold.", False),
+            ("Verisk Analytics", "VRSK", 24.2, 18, 24, False, "○ Watch",
+             "ISO actuarial moat. 34% ROIC. Needs FCF yield >5% to enter.", False),
+            ("CME Group",        "CME",  25.8, 13, 18, False, "○ Watch",
+             "Futures exchange monopoly. Watch for fair entry.", False),
+        ]
+
+        st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div style='background:#5a4a7a;color:#fff;padding:12px 16px;"
+            "border-radius:6px;margin-bottom:10px'>"
+            "<strong>Best of Rest</strong> &nbsp;—&nbsp; Watch List &nbsp;—&nbsp; "
+            "Quality businesses below Tier 1 threshold"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        _hdr_row(_SAT_COL_RATIOS, _SAT_HDR_LABELS)
+        for row in _SAT_BEST:
+            _render_sat_row("best", *row)
+
+        # ── Footer ────────────────────────────────────────────────────────
+        st.markdown(
+            "<div style='margin:26px 0 8px 0;padding:10px 16px;"
+            "background:#cfd0d2;border-left:3px solid #8a6520;border-radius:4px;"
+            "font-style:italic;color:#333;font-size:0.88rem;text-align:center'>"
+            "Tier 1 (V, MA) → Fair value is enough. &nbsp;·&nbsp; "
+            "Others → judgment-based. &nbsp;·&nbsp; "
+            "Best of Rest → SGOV beats compromise. &nbsp;·&nbsp; "
+            "<strong>The dashboard signals; K decides.</strong>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
     # ══════════════════════════════════════════════════════════════════════════
     # UNIVERSE  (primary monitoring tab — replaces Portfolio A and B)
@@ -2589,21 +2944,21 @@ def main() -> None:
                 hide_index=True,
                 height=(len(tier_disp) + 1) * 35 + 10,
                 column_config={
-                    "Ticker": st.column_config.TextColumn("Ticker", help="Stock symbol"),
+                    "Ticker": st.column_config.TextColumn("Ticker", help="Exchange symbol"),
                     "#": st.column_config.TextColumn("#", help="Rank within Universe by Munger quality (fixed, never changes)"),
                     "Price": st.column_config.TextColumn("Price", help="Current market price"),
                     "Metric": st.column_config.TextColumn("Metric", help="Valuation metric used (P/E or P/B)"),
-                    "Current": st.column_config.TextColumn("Current", help="Current metric value (e.g. current P/E)"),
-                    "Fair": st.column_config.TextColumn("Fair", help="Fair value threshold for this stock"),
-                    "Dream": st.column_config.TextColumn("Dream", help="Dream price threshold (Fair × margin of safety)"),
+                    "Current": st.column_config.TextColumn("Current", help="Enter today's P/E ratio. Update weekly. BRK/B uses P/B instead."),
+                    "Fair": st.column_config.TextColumn("Fair", help="Normal Munger buying zone. Acceptable entry for wonderful businesses."),
+                    "Dream": st.column_config.TextColumn("Dream", help="Crisis-level entry price. 2008-equivalent valuation. Maximum conviction buy."),
                     "Fair Price $": st.column_config.TextColumn("Fair Price $", help="Dollar price at Fair metric value"),
                     "Dream Price $": st.column_config.TextColumn("Dream Price $", help="Dollar price at Dream metric value"),
                     "Discount": st.column_config.TextColumn("Discount", help="% above or below Fair Price. Positive = below fair (cheap). Negative = above fair (expensive)."),
-                    "Signal": st.column_config.TextColumn("Signal", help="DREAM (deeply undervalued), FAIR (at fair value), WAIT (overvalued)"),
-                    "SMS": st.column_config.TextColumn("SMS", help="Structural Moat Score (1–30). AI-era moat durability. Display only."),
+                    "Signal": st.column_config.TextColumn("Signal", help="Auto-calculated. DREAM = at or below Dream P/E. FAIR = at or below Fair P/E. WAIT = overpriced."),
+                    "SMS": st.column_config.TextColumn("SMS", help="AI-era moat durability score out of 30. Measures resilience to AI disruption across six dimensions."),
                     "R_img": st.column_config.ImageColumn(
                         "R",
-                        help="Rate Sensitivity. R1 = benefits from high rates. R2 = rate neutral. R3 = vulnerable to rate compression. Display only.",
+                        help="Rate-era moat durability. R1 = earns returns today (uphill). R2 = mixed. R3 = long-duration compounder (downhill in high-rate environment).",
                         width="small",
                     ),
                     "ROIC%": st.column_config.TextColumn("ROIC%", help="Return on Invested Capital. Gate 2 quality threshold varies by category."),
@@ -2612,8 +2967,11 @@ def main() -> None:
                     "GM%": st.column_config.TextColumn("GM%", help="Gross Margin %. Context metric, not a gate."),
                     "Insider%": st.column_config.TextColumn("Insider%", help="Insider ownership %. Higher = management has skin in the game."),
                     "D/E": st.column_config.TextColumn("D/E", help="Debt to Equity ratio. Gate 2 quality threshold varies by category."),
-                    "Quality": st.column_config.TextColumn("Quality", help="PASS or FAIL on all Gate 2 quality metrics simultaneously."),
+                    "Quality": st.column_config.TextColumn("Quality", help="PASS requires ROIC ≥15%, FCF Yield ≥3.5%, Debt within guidelines, Revenue Growth ≥0%. Update quarterly."),
                     "Fail Reasons": st.column_config.TextColumn("Fail Reasons", help="Specific Gate 2 metrics that caused a FAIL result."),
+                    "Red Flags": st.column_config.TextColumn("Red Flags", help="Any YES = stop and investigate. Accounting issues, management turnover, regulatory threat, moat deterioration."),
+                    "Active Flags": st.column_config.TextColumn("Active Flags", help="Named red flags currently raised on this stock."),
+                    "Decision": st.column_config.TextColumn("Decision", help="BUY when Signal is DREAM/FAIR, Quality is PASS, and no Red Flags are raised. Otherwise WAIT."),
                 },
             )
             st.markdown(_company_legend(tier_disp["Ticker"].tolist()), unsafe_allow_html=True)
@@ -2682,6 +3040,288 @@ BRK-B uses Price/Book (Fair P/B = 1.35) instead of P/E.
         )
 
         st.caption("Data: Yahoo Finance via yfinance.  Not financial advice.")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # CRISIS PROXIMITY  (Cembalest macro early-warning system)
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_c:
+        # ── Indicator configuration ───────────────────────────────────────
+        # (key, label, default, unit, warn_thresh, crit_thresh, direction,
+        #  threshold_label, note)
+        _CP_INDICATORS: list[tuple] = [
+            ("intrev",   "Federal Interest / Tax Revenue Ratio",
+             25.0, "%",  75.0,  90.0, "above",
+             "Warning: >75%  ·  Critical: >90%",
+             "Cembalest crisis trigger: 100%. Current trajectory: 2030-2031."),
+            ("debtgdp",  "Debt / GDP",
+             122.0, "%", 120.0, 140.0, "above",
+             "Warning: >120%  ·  Critical: >140%",
+             "Currently ~122%. Unsustainable without financial repression."),
+            ("realrate", "10yr Treasury Yield vs CPI (Real Rate)",
+             -0.5, "%",   0.0,  -2.0, "below",
+             "Warning: Real rate <0%  ·  Critical: <-2%",
+             "Negative real rates = financial repression in progress."),
+            ("deficit",  "Federal Deficit / GDP",
+             6.5, "%",    6.0,   8.0, "above",
+             "Warning: >6%  ·  Critical: >8%",
+             "Currently ~6-7%. No political will to reduce."),
+            ("cape",     "Shiller CAPE",
+             34.0, "",   30.0,  35.0, "above",
+             "Warning: >30  ·  Critical: >35",
+             "Currently ~34. Implies 4-6% 10yr nominal returns."),
+            ("passconc", "S&P 500 Passive Flow Concentration",
+             30.0, "%",  25.0,  35.0, "above",
+             "Warning: Mag7 >25% of index  ·  Critical: >35%",
+             "Passive flow momentum amplifier. Unwind will be violent."),
+        ]
+
+        # Initialize session state
+        for _ind in _CP_INDICATORS:
+            _key, _, _default, *_ = _ind
+            _sk = f"cp_ind_{_key}"
+            _uk = f"cp_updated_{_key}"
+            if _sk not in st.session_state:
+                st.session_state[_sk] = float(_default)
+            if _uk not in st.session_state:
+                st.session_state[_uk] = "—"
+        for _tk in ("cp_tranche_1", "cp_tranche_2", "cp_tranche_3"):
+            if _tk not in st.session_state:
+                st.session_state[_tk] = 0
+
+        def _cp_status(val: float, warn: float, crit: float, direction: str) -> str:
+            if direction == "above":
+                if val > crit:  return "RED"
+                if val > warn:  return "AMBER"
+                return "GREEN"
+            else:  # below — lower is worse
+                if val < crit:  return "RED"
+                if val < warn:  return "AMBER"
+                return "GREEN"
+
+        _CP_STATUS_COLORS: dict[str, tuple[str, str]] = {
+            "GREEN":  ("#2e5b34", "#ffffff"),  # deep evergreen
+            "AMBER":  ("#b07028", "#ffffff"),  # burnt orange
+            "RED":    ("#8b2c2c", "#ffffff"),  # oxblood
+        }
+
+        # Compute all statuses up front (used by both the gauge and the table)
+        _cp_statuses: list[str] = []
+        for _ind in _CP_INDICATORS:
+            _key, _, _, _, _warn, _crit, _dir, *_ = _ind
+            _val = float(st.session_state[f"cp_ind_{_key}"])
+            _cp_statuses.append(_cp_status(_val, _warn, _crit, _dir))
+
+        _cp_red_count = sum(1 for s in _cp_statuses if s == "RED")
+
+        if _cp_red_count <= 2:
+            _gauge_label = "EARLY"
+            _gauge_bg = "#2e5b34"
+            _gauge_sub = "0-2 RED · vigilance, not action"
+        elif _cp_red_count <= 4:
+            _gauge_label = "ELEVATED"
+            _gauge_bg = "#b07028"
+            _gauge_sub = "3-4 RED · pre-position tranches"
+        else:
+            _gauge_label = "CRITICAL"
+            _gauge_bg = "#8b2c2c"
+            _gauge_sub = "5-6 RED · deploy on drawdown"
+
+        # ── Header: title block + proximity gauge ─────────────────────────
+        _hc_left, _hc_right = st.columns([3, 1.4])
+        with _hc_left:
+            st.markdown(
+                "<div style='background:linear-gradient(90deg,#3a1f1f,#5a2a2a);"
+                "color:#fff;padding:14px 18px;border-radius:6px;"
+                "box-shadow:0 2px 6px rgba(0,0,0,0.2)'>"
+                "<div style='font-size:1.3rem;font-weight:800;letter-spacing:0.04em'>"
+                "CRISIS PROXIMITY &nbsp;—&nbsp; Cembalest Framework</div>"
+                "<div style='font-size:0.82rem;opacity:0.85;margin-top:4px'>"
+                "Macro early warning system. Update quarterly. "
+                "Source: Michael Cembalest, JP Morgan CIO.</div>"
+                "<div style='margin-top:10px;padding:8px 12px;"
+                "background:rgba(0,0,0,0.25);border-left:3px solid #d4a960;"
+                "border-radius:3px;font-style:italic;font-size:0.86rem'>"
+                "&ldquo;Markets bottom when 20% of bad news has materialized. "
+                "Do not wait for clouds to clear.&rdquo;"
+                "</div></div>",
+                unsafe_allow_html=True,
+            )
+        with _hc_right:
+            st.markdown(
+                f"<div style='background:{_gauge_bg};color:#fff;padding:14px;"
+                f"border-radius:6px;text-align:center;height:100%;"
+                f"box-shadow:0 2px 6px rgba(0,0,0,0.2);"
+                f"display:flex;flex-direction:column;justify-content:center'>"
+                f"<div style='font-size:0.72rem;letter-spacing:0.12em;"
+                f"opacity:0.85;font-weight:600'>CRISIS PROXIMITY</div>"
+                f"<div style='font-size:2rem;font-weight:800;margin:6px 0;"
+                f"letter-spacing:0.04em'>{_gauge_label}</div>"
+                f"<div style='font-size:0.72rem;opacity:0.82'>"
+                f"{_cp_red_count} of 6 RED · {_gauge_sub}</div>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+
+        # ── Indicator table ───────────────────────────────────────────────
+        _cp_ratios = [3.2, 1.4, 2.4, 1.0, 1.3, 4.2]
+        _cp_hdr_tooltips = {
+            "Indicator":      "The six macro variables Cembalest tracks for crisis proximity.",
+            "Current":        "Editable. Enter the latest reading. Updated date auto-stamps on change.",
+            "Threshold":      "Warning level triggers AMBER. Critical level triggers RED.",
+            "Status":         "GREEN below warning · AMBER above warning · RED above critical.",
+            "Last Updated":   "Auto-stamps when Current Reading is edited. Update quarterly.",
+            "Notes":          "Cembalest's framing and current market state for this indicator.",
+        }
+
+        def _cp_hdr_row() -> None:
+            cols = st.columns(_cp_ratios)
+            # (display label, tooltip key, right-anchor)
+            header_specs = [
+                ("Indicator",           "Indicator",     False),
+                ("Current Reading",     "Current",       False),
+                ("Threshold / Warning", "Threshold",     False),
+                ("Status",              "Status",        False),
+                ("Last Updated",        "Last Updated",  False),
+                ("Notes",               "Notes",         True),
+            ]
+            for c, (lbl, tt_key, right) in zip(cols, header_specs):
+                tt = _cp_hdr_tooltips.get(tt_key, "")
+                cls = "sat-th sat-th-right" if right else "sat-th"
+                c.markdown(
+                    f'<div style="font-weight:700;font-size:0.82rem;color:#2a1818;'
+                    f'padding:6px 0 4px 0;border-bottom:2px solid #6e2c2c;'
+                    f'overflow:visible">'
+                    f'<span class="{cls}" data-tt="{tt}">{lbl}</span></div>',
+                    unsafe_allow_html=True,
+                )
+
+        _cp_hdr_row()
+
+        def _cp_stamp(key: str) -> None:
+            st.session_state[f"cp_updated_{key}"] = datetime.now().strftime("%Y-%m-%d")
+
+        for (_key, _label, _default, _unit, _warn, _crit,
+             _direction, _thr_label, _note) in _CP_INDICATORS:
+            _sk = f"cp_ind_{_key}"
+            _uk = f"cp_updated_{_key}"
+            _val = float(st.session_state[_sk])
+            _status = _cp_status(_val, _warn, _crit, _direction)
+            _bg, _fg = _CP_STATUS_COLORS[_status]
+
+            with st.container(key=f"cp_row_{_key}"):
+                rc = st.columns(_cp_ratios)
+                rc[0].markdown(
+                    f"<div style='padding-top:6px;font-weight:600;color:#2a1818'>"
+                    f"{_label}</div>",
+                    unsafe_allow_html=True,
+                )
+                rc[1].number_input(
+                    f"cp_input_{_key}",
+                    value=float(st.session_state[_sk]),
+                    step=0.1,
+                    key=_sk,
+                    label_visibility="collapsed",
+                    format="%.2f" if _key == "realrate" else "%.1f",
+                    on_change=_cp_stamp,
+                    args=(_key,),
+                )
+                rc[2].markdown(
+                    f"<div style='padding-top:6px;font-size:0.82rem;"
+                    f"color:#4a3838'>{_thr_label}</div>",
+                    unsafe_allow_html=True,
+                )
+                rc[3].markdown(
+                    f"<div style='padding-top:4px'>"
+                    f"<span style='background:{_bg};color:{_fg};"
+                    f"padding:4px 12px;border-radius:12px;font-weight:700;"
+                    f"font-size:0.78rem;letter-spacing:0.04em;"
+                    f"display:inline-block;min-width:60px;text-align:center'>"
+                    f"{_status}</span></div>",
+                    unsafe_allow_html=True,
+                )
+                rc[4].markdown(
+                    f"<div style='padding-top:6px;font-size:0.82rem;"
+                    f"color:#4a3838;font-family:monospace'>"
+                    f"{st.session_state[_uk]}</div>",
+                    unsafe_allow_html=True,
+                )
+                rc[5].markdown(
+                    f"<div style='padding-top:6px;font-size:0.82rem;"
+                    f"color:#3a2828;font-style:italic'>{_note}</div>",
+                    unsafe_allow_html=True,
+                )
+
+        # ── Tranche deployment trigger table ──────────────────────────────
+        st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div style='background:#3a1f1f;color:#fff;padding:10px 16px;"
+            "border-radius:6px;margin-bottom:8px;font-weight:700;"
+            "letter-spacing:0.03em'>"
+            "SGOV DEPLOYMENT TRIGGERS &nbsp;—&nbsp; Pre-Committed"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        _tr_ratios = [2.0, 3.2, 2.0, 5.5]
+        _tr_hdr = st.columns(_tr_ratios)
+        for _c, _lbl in zip(_tr_hdr,
+                            ["S&P 500 Drawdown", "Action", "Amount ($)", ""]):
+            _c.markdown(
+                f"<div style='font-weight:700;font-size:0.82rem;color:#2a1818;"
+                f"padding:6px 0 4px 0;border-bottom:1px solid #6e2c2c'>"
+                f"{_lbl}</div>",
+                unsafe_allow_html=True,
+            )
+
+        _TRANCHES = [
+            (1, "-10%", "Deploy Tranche 1",  "First leg of the staircase. Conviction names only."),
+            (2, "-20%", "Deploy Tranche 2",  "Cembalest's '20% of bad news realized' inflection."),
+            (3, "-35%", "Deploy Tranche 3",  "Deep-crisis tranche. All-in on Tier 1 oligopolies at Dream."),
+        ]
+        for _n, _dd, _act, _ctx in _TRANCHES:
+            with st.container(key=f"cp_tranche_row_{_n}"):
+                tc = st.columns(_tr_ratios)
+                tc[0].markdown(
+                    f"<div style='padding-top:6px;font-weight:700;"
+                    f"color:#8b2c2c;font-size:0.95rem'>{_dd}</div>",
+                    unsafe_allow_html=True,
+                )
+                tc[1].markdown(
+                    f"<div style='padding-top:6px;font-weight:600;"
+                    f"color:#2a1818'>{_act}</div>",
+                    unsafe_allow_html=True,
+                )
+                tc[2].number_input(
+                    f"cp_tranche_input_{_n}",
+                    value=int(st.session_state[f"cp_tranche_{_n}"]),
+                    step=1000,
+                    key=f"cp_tranche_{_n}",
+                    label_visibility="collapsed",
+                    format="%d",
+                    min_value=0,
+                )
+                tc[3].markdown(
+                    f"<div style='padding-top:6px;font-size:0.82rem;"
+                    f"color:#3a2828;font-style:italic'>{_ctx}</div>",
+                    unsafe_allow_html=True,
+                )
+
+        st.markdown(
+            "<div style='margin:14px 0 6px 0;padding:10px 14px;"
+            "background:#cfd0d2;border-left:3px solid #6e2c2c;border-radius:4px;"
+            "font-style:italic;color:#2a1818;font-size:0.86rem'>"
+            "Cembalest: markets bottom at 20% of bad news realized. "
+            "Tranches deploy <strong>before</strong> certainty — that is the point."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+
+        st.caption(
+            "Manual input. Update quarterly. This is K's early warning system, "
+            "not a trading signal."
+        )
 
     # ══════════════════════════════════════════════════════════════════════════
     # PORTFOLIO A  (ARCHIVED — superseded by Universe)
