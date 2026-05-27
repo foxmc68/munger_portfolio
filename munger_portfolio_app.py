@@ -1306,10 +1306,34 @@ def fetch_info(ticker: str) -> dict:
     Fetch the full yfinance .info dict for a ticker.
     Cached indefinitely — cleared only by the Refresh button.
     """
+    import sys
+    import traceback
     try:
         data = yf.Ticker(ticker).info
-        return data if isinstance(data, dict) else {}
-    except Exception:
+        if not isinstance(data, dict):
+            print(
+                f"[fetch_info] {ticker}: non-dict result "
+                f"(type={type(data).__name__})",
+                file=sys.stderr, flush=True,
+            )
+            return {}
+        if len(data) == 0:
+            print(
+                f"[fetch_info] {ticker}: yfinance returned EMPTY dict",
+                file=sys.stderr, flush=True,
+            )
+        else:
+            print(
+                f"[fetch_info] {ticker}: OK ({len(data)} keys)",
+                file=sys.stderr, flush=True,
+            )
+        return data
+    except Exception as e:
+        print(
+            f"[fetch_info] {ticker}: EXCEPTION {type(e).__name__}: {e}",
+            file=sys.stderr, flush=True,
+        )
+        traceback.print_exc(file=sys.stderr)
         return {}
 
 
@@ -2497,23 +2521,23 @@ def main() -> None:
     ])
 
     # ══════════════════════════════════════════════════════════════════════════
-    # SATELLITE  (default landing tab — BRK/B anchor + 7-slot satellite + watch)
+    # SATELLITE  (default landing tab — BRK.B anchor + 7-slot satellite + watch)
     # ══════════════════════════════════════════════════════════════════════════
     with tab_s:
         # 13 columns: Stock | Ticker | Current P/E | Dream | Fair | Signal |
         # Quality | Red Flags | SMS | R | FCF% | Slot Status | K's Notes
-        _SAT_COL_RATIOS = [2.0, 0.7, 0.95, 0.75, 0.75, 1.0, 0.85, 0.85,
-                           0.7, 0.6, 0.85, 1.7, 2.8]
+        _SAT_COL_RATIOS = [1.9, 1.2, 0.95, 0.75, 0.75, 1.0, 0.85, 0.85,
+                           0.7, 0.6, 0.85, 1.7, 2.5]
 
         _SAT_TOOLTIPS = {
             "Stock":       "Company name",
             "Ticker":      "Exchange symbol",
-            "Current P/E": "Auto-fetched trailing P/E from yfinance. Editable to override outliers. BRK/B uses P/B.",
+            "Current P/E": "Auto-fetched trailing P/E from yfinance. Editable to override outliers. BRK.B uses P/B.",
             "Current P/B": "Auto-fetched Price/Book from yfinance for Berkshire Hathaway. Editable to override outliers.",
             "Dream P/E":   "Crisis-level entry price. 2008-equivalent valuation. Maximum conviction buy.",
-            "Dream P/B":   "Crisis-level P/B for BRK/B. 2008-equivalent valuation. Maximum conviction buy.",
+            "Dream P/B":   "Crisis-level P/B for BRK.B. 2008-equivalent valuation. Maximum conviction buy.",
             "Fair P/E":    "Normal Munger buying zone. Acceptable entry for wonderful businesses.",
-            "Fair P/B":    "Normal Munger buying zone for BRK/B.",
+            "Fair P/B":    "Normal Munger buying zone for BRK.B.",
             "Signal":      "Auto-calculated. DREAM = at or below Dream P/E. FAIR = at or below Fair P/E. WAIT = overpriced.",
             "Quality":     "PASS requires ROIC ≥15%, FCF Yield ≥3.5%, Debt within guidelines, Revenue Growth ≥0%. Update quarterly.",
             "Red Flags":   "Any YES = stop and investigate. Accounting issues, management turnover, regulatory threat, moat deterioration.",
@@ -2521,7 +2545,7 @@ def main() -> None:
             "R Score":     "Rate-era moat durability. R1 = earns returns today (uphill). R2 = mixed. R3 = long-duration compounder (downhill in high-rate environment).",
             "FCF%":        "Free Cash Flow Yield. Green if ≥3.5% (passes Gate 2 quality threshold), red if below.",
             "Slot Status": "● OWNED = active satellite position. ○ Watching = slot open, held as SGOV until entry criteria met.",
-            "Status":      "BRK/B is the anchor holding — outside the 7 satellite slots.",
+            "Status":      "BRK.B is the anchor holding — outside the 7 satellite slots.",
             "K's Notes":   "Klarman/Munger-style notes on thesis, conviction, and sizing.",
         }
 
@@ -2601,10 +2625,67 @@ def main() -> None:
         ]
 
         def _sat_fetch_metric(yf_ticker: str, use_pb: bool) -> Optional[float]:
-            info = fetch_info(yf_ticker)
-            if use_pb:
-                return _pos_float(info, "priceToBook")
-            return _pos_float(info, "trailingPE")
+            import sys
+            import traceback
+            try:
+                info = fetch_info(yf_ticker)
+                if not info:
+                    print(
+                        f"[sat_fetch] {yf_ticker}: info dict is empty — "
+                        f"see [fetch_info] logs above for the underlying error",
+                        file=sys.stderr, flush=True,
+                    )
+                    return None
+                if use_pb:
+                    if yf_ticker == "BRK-B":
+                        price = (_pos_float(info, "currentPrice")
+                                 or _pos_float(info, "regularMarketPrice"))
+                        book_a = _pos_float(info, "bookValue")
+                        print(
+                            f"[sat_fetch] BRK-B: price={price}, "
+                            f"bookValue(A)={book_a}",
+                            file=sys.stderr, flush=True,
+                        )
+                        if price and book_a:
+                            book_b = book_a / 1500.0
+                            pb = price / book_b if book_b > 0 else None
+                            print(
+                                f"[sat_fetch] BRK-B: computed P/B={pb}",
+                                file=sys.stderr, flush=True,
+                            )
+                            # Reject outliers: yfinance occasionally returns
+                            # bookValue per-B-share, which would give P/B ≈ 1500x.
+                            # A real BRK.B P/B has historically lived in
+                            # ~0.95-2.00 — anything outside [1.0, 3.0] is bad data.
+                            if pb is None or pb < 1.0 or pb > 3.0:
+                                print(
+                                    f"[sat_fetch] BRK-B: outlier P/B={pb} "
+                                    f"— falling back to default",
+                                    file=sys.stderr, flush=True,
+                                )
+                                return None
+                            return pb
+                        return None
+                    pb = _pos_float(info, "priceToBook")
+                    print(
+                        f"[sat_fetch] {yf_ticker}: priceToBook={pb}",
+                        file=sys.stderr, flush=True,
+                    )
+                    return pb
+                pe = _pos_float(info, "trailingPE")
+                print(
+                    f"[sat_fetch] {yf_ticker}: trailingPE={pe}",
+                    file=sys.stderr, flush=True,
+                )
+                return pe
+            except Exception as e:
+                print(
+                    f"[sat_fetch] {yf_ticker}: EXCEPTION "
+                    f"{type(e).__name__}: {e}",
+                    file=sys.stderr, flush=True,
+                )
+                traceback.print_exc(file=sys.stderr)
+                return None
 
         # ── Top bar: Refresh + Last Updated ──────────────────────────────
         _ref_col, _ts_col = st.columns([1.3, 6])
@@ -2675,12 +2756,15 @@ def main() -> None:
             with st.container(key=row_key):
                 c = st.columns(_SAT_COL_RATIOS)
                 c[0].markdown(
-                    f"<div style='padding-top:6px;font-weight:600'>{name}</div>",
+                    f"<div style='padding-top:6px;font-weight:600;"
+                    f"white-space:nowrap'>{name}</div>",
                     unsafe_allow_html=True,
                 )
                 c[1].markdown(
                     f"<div style='padding-top:6px;font-family:monospace;"
-                    f"font-weight:600;color:#2c3e50'>{display_ticker}</div>",
+                    f"font-weight:600;color:#2c3e50;white-space:nowrap;"
+                    f"font-size:0.88rem;overflow:hidden;text-overflow:ellipsis'>"
+                    f"{display_ticker}</div>",
                     unsafe_allow_html=True,
                 )
                 c[2].number_input(
@@ -2750,12 +2834,12 @@ def main() -> None:
                     unsafe_allow_html=True,
                 )
 
-        # ── Section 1: BRK/B Anchor ───────────────────────────────────────
+        # ── Section 1: BRK.B Anchor ───────────────────────────────────────
         st.markdown(
             "<div style='background:linear-gradient(90deg,#b8923f,#d4a960);"
             "color:#fff;padding:12px 16px;border-radius:6px;margin:10px 0;"
             "box-shadow:0 1px 3px rgba(0,0,0,0.15)'>"
-            "<strong>BRK/B ANCHOR</strong> &nbsp;—&nbsp; 25% Allocation "
+            "<strong>BRK.B ANCHOR</strong> &nbsp;—&nbsp; 25% Allocation "
             "&nbsp;—&nbsp; Separate from Satellite Slots"
             "</div>",
             unsafe_allow_html=True,
@@ -2763,9 +2847,15 @@ def main() -> None:
 
         _BRK_DREAM_PB = 1.15
         _BRK_FAIR_PB = 1.35
+        _BRK_FALLBACK_PB = 1.44   # used when yfinance returns 0.0 / outlier
         if "sat_brk_pb" not in st.session_state:
             _brk_fv = _fetched_values.get("BRK-B")
-            st.session_state.sat_brk_pb = float(_brk_fv) if _brk_fv is not None else 1.50
+            if _brk_fv is not None and 1.0 <= _brk_fv <= 3.0:
+                st.session_state.sat_brk_pb = float(_brk_fv)
+                st.session_state.sat_brk_pb_fallback = False
+            else:
+                st.session_state.sat_brk_pb = _BRK_FALLBACK_PB
+                st.session_state.sat_brk_pb_fallback = True
 
         _brk_hdr = [
             ("Stock",       _SAT_TOOLTIPS["Stock"]),
@@ -2781,20 +2871,22 @@ def main() -> None:
             ("FCF%",        _SAT_TOOLTIPS["FCF%"]),
             ("Status",      _SAT_TOOLTIPS["Status"], True),
         ]
-        # 12 columns (no K's Notes for BRK/B row — Status column carries the label)
-        _brk_ratios = [2.0, 0.7, 0.95, 0.75, 0.75, 1.0, 0.85, 0.85,
-                       0.7, 0.6, 0.85, 4.5]
+        # 12 columns (no K's Notes for BRK.B row — Status column carries the label)
+        _brk_ratios = [1.9, 1.2, 0.95, 0.75, 0.75, 1.0, 0.85, 0.85,
+                       0.7, 0.6, 0.85, 4.2]
         _hdr_row(_brk_ratios, _brk_hdr)
 
         with st.container(key="sat_row_owned_brk_anchor"):
             bc = st.columns(_brk_ratios)
             bc[0].markdown(
-                "<div style='padding-top:6px;font-weight:600'>Berkshire Hathaway</div>",
+                "<div style='padding-top:6px;font-weight:600;"
+                "white-space:nowrap'>Berkshire Hathaway</div>",
                 unsafe_allow_html=True,
             )
             bc[1].markdown(
                 "<div style='padding-top:6px;font-family:monospace;font-weight:600;"
-                "color:#2c3e50'>BRK/B</div>",
+                "color:#2c3e50;white-space:nowrap;font-size:0.88rem;"
+                "overflow:hidden;text-overflow:ellipsis'>BRK.B</div>",
                 unsafe_allow_html=True,
             )
             bc[2].number_input(
@@ -2802,6 +2894,15 @@ def main() -> None:
                 step=0.01, key="sat_brk_pb", label_visibility="collapsed",
                 format="%.2f",
             )
+            if st.session_state.get("sat_brk_pb_fallback"):
+                bc[2].markdown(
+                    "<div style='margin-top:-4px;font-size:0.68rem;"
+                    "color:#a04020;font-weight:700;letter-spacing:0.02em' "
+                    "title='yfinance returned an outlier P/B — using "
+                    "fallback default of 1.44. Manual override available "
+                    "in the input above.'>⚠ FALLBACK 1.44</div>",
+                    unsafe_allow_html=True,
+                )
             bc[3].markdown(
                 f"<div style='padding-top:6px'>{_BRK_DREAM_PB:.2f}</div>",
                 unsafe_allow_html=True,
@@ -2850,7 +2951,7 @@ def main() -> None:
         st.markdown(
             "<div style='font-size:0.78rem;color:#555;font-style:italic;"
             "margin:6px 0 22px 4px'>"
-            "Note: BRK/B uses P/B not P/E. Dream ≤ 1.15 · Fair ≤ 1.35. "
+            "Note: BRK.B uses P/B not P/E. Dream ≤ 1.15 · Fair ≤ 1.35. "
             "FCF Yield n/a for Berkshire (holding-company structure)."
             "</div>",
             unsafe_allow_html=True,
@@ -3116,7 +3217,7 @@ def main() -> None:
                     "#": st.column_config.TextColumn("#", help="Rank within Universe by Munger quality (fixed, never changes)"),
                     "Price": st.column_config.TextColumn("Price", help="Current market price"),
                     "Metric": st.column_config.TextColumn("Metric", help="Valuation metric used (P/E or P/B)"),
-                    "Current": st.column_config.TextColumn("Current", help="Enter today's P/E ratio. Update weekly. BRK/B uses P/B instead."),
+                    "Current": st.column_config.TextColumn("Current", help="Enter today's P/E ratio. Update weekly. BRK.B uses P/B instead."),
                     "Fair": st.column_config.TextColumn("Fair", help="Normal Munger buying zone. Acceptable entry for wonderful businesses."),
                     "Dream": st.column_config.TextColumn("Dream", help="Crisis-level entry price. 2008-equivalent valuation. Maximum conviction buy."),
                     "Fair Price $": st.column_config.TextColumn("Fair Price $", help="Dollar price at Fair metric value"),
