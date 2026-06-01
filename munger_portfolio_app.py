@@ -2349,11 +2349,11 @@ def _build_debate_prompt(
     )
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
 def _generate_debate_cached(
     cache_key: str, system_prompt: str, user_prompt: str,
 ) -> tuple[bool, str]:
-    """Returns (ok, text_or_error). Cached by cache_key so repeat opens are free."""
+    """Returns (ok, text_or_error). Pre-flight checks happen outside the cache
+    so missing-key / missing-package failures never get baked in."""
     api_key = _anthropic_api_key()
     if not api_key:
         return False, (
@@ -2361,12 +2361,21 @@ def _generate_debate_cached(
             "(or `.streamlit/secrets.toml`) and retry."
         )
     try:
-        import anthropic
+        import anthropic  # noqa: F401
     except ImportError:
         return False, (
             "The `anthropic` package is not installed. Run "
             "`pip install anthropic` and retry."
         )
+    return _generate_debate_api_call(cache_key, api_key, system_prompt, user_prompt)
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _generate_debate_api_call(
+    cache_key: str, api_key: str, system_prompt: str, user_prompt: str,
+) -> tuple[bool, str]:
+    # api_key in the cache key means rotating it invalidates stale entries.
+    import anthropic
     try:
         client = anthropic.Anthropic(api_key=api_key)
         resp = client.messages.create(
