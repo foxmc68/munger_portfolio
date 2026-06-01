@@ -27,7 +27,10 @@
       "Bash(echo \"PID=$!\")",
       "Bash(curl -s -o /tmp/page.html -w \"HTTP %{http_code}\\\\n\" http://localhost:8765/)",
       "Read(//tmp/**)",
-      "Bash(kill %1)"
+      "Bash(kill %1)",
+      "Read(//Users/mfox/**)",
+      "Bash(curl -s -o /tmp/sat_page.html -w \"HTTP %{http_code}\\\\n\" http://localhost:8765/)",
+      "Bash(env)"
     ]
   }
 }

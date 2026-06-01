@@ -2252,6 +2252,188 @@ def render_table(df_display: pd.DataFrame, df_raw: pd.DataFrame, tier_name: str,
     st.markdown(_company_legend(tier_disp["Ticker"].tolist()), unsafe_allow_html=True)
 
 
+# ── Bull/Bear debate (Anthropic API + st.dialog modal) ───────────────────────
+
+_DEBATE_MACRO_CONTEXT = (
+    "Managed stagflation decade. US debt 120% GDP. Financial repression likely. "
+    "Average S&P returns 3-5%. Quality businesses with pricing power earn 1-3% "
+    "more. Capital preservation priority."
+)
+
+_DEBATE_SYSTEM_PROMPT = (
+    "You are a Munger-framework investment analyst. Generate a structured "
+    "bull/bear debate for the stock provided. Be direct, specific, and "
+    "intellectually honest. Do not hedge every statement. The bear case "
+    "should be as strong as the bull case. Reference the specific data "
+    "points provided."
+)
+
+_DEBATE_SIGNAL_FRAMING = {
+    "DREAM": ("This stock is at crisis-level pricing. The debate is whether "
+              "to act now or wait for confirmation."),
+    "FAIR":  ("This stock is in the Munger buying zone. The debate is whether "
+              "this is a Klarman-principle buy or needs more margin of safety."),
+    "WAIT":  ("This stock is above fair value. The debate is what would need "
+              "to change to make this actionable."),
+}
+
+
+def _anthropic_api_key() -> Optional[str]:
+    try:
+        if "ANTHROPIC_API_KEY" in st.secrets:
+            return st.secrets["ANTHROPIC_API_KEY"]
+    except Exception:
+        pass
+    return os.environ.get("ANTHROPIC_API_KEY")
+
+
+def _build_debate_prompt(
+    name: str, ticker: str, current_pe: float, dream: float, fair: float,
+    signal: str, sms: Optional[int], r_score: Optional[str],
+    fcf: Optional[float], k_notes: str, pe_label: str = "P/E",
+) -> str:
+    sms_line = (
+        f"- SMS: {sms}/30 (AI-era moat durability — higher = more resilient "
+        "to AI disruption across six dimensions)"
+        if sms is not None else "- SMS: not scored"
+    )
+    r_line = {
+        "R1": "- R Score: R1 (earns returns today — uphill in high-rate regime)",
+        "R2": "- R Score: R2 (mixed rate sensitivity)",
+        "R3": ("- R Score: R3 (long-duration compounder — downhill in "
+               "high-rate environment, vulnerable to multiple compression)"),
+    }.get(r_score or "", "- R Score: not scored")
+    fcf_line = (
+        f"- FCF Yield: {fcf:.1f}% "
+        f"({'passes 3.5% quality gate' if fcf >= 3.5 else 'below 3.5% quality gate'})"
+        if fcf is not None else "- FCF Yield: not available"
+    )
+    framing = _DEBATE_SIGNAL_FRAMING.get(signal, "")
+    return (
+        f"Stock: {name} ({ticker})\n"
+        f"Current {pe_label}: {current_pe:g}\n"
+        f"Dream {pe_label}: {dream:g}\n"
+        f"Fair {pe_label}: {fair:g}\n"
+        f"Current Signal: {signal}\n"
+        f"{sms_line}\n"
+        f"{r_line}\n"
+        f"{fcf_line}\n"
+        f"K's Notes from dashboard: \"{k_notes}\"\n\n"
+        f"Macro thesis context: {_DEBATE_MACRO_CONTEXT}\n\n"
+        f"Signal framing: {framing}\n\n"
+        "Produce a structured debate using exactly these four markdown "
+        "sections in this order:\n\n"
+        "## 1. BULL CASE\n"
+        "*Why this business wins in K's stagflationary decade*\n"
+        "- Why the moat is durable\n"
+        "- Why pricing power holds under inflation\n"
+        "- Why the SMS score reflects a real structural advantage\n"
+        "- Why the current valuation is compelling or worth monitoring\n\n"
+        "## 2. BEAR CASE\n"
+        "*What has to go wrong for this to be a mistake*\n"
+        "- The most credible threat to the moat\n"
+        "- Why the R score matters here (rate sensitivity, multiple compression)\n"
+        "- Regulatory, AI disruption, or cyclicality risks specific to this business\n"
+        "- What the market may be seeing that the bull case ignores\n\n"
+        "## 3. MUNGER TEST\n"
+        "*Would Munger hold this with no news for 10 years?*\n"
+        "One paragraph. Direct yes or no with reasoning. Reference the "
+        "specific moat type (network, regulatory, physical, cognitive).\n\n"
+        "## 4. SIGNAL VERDICT\n"
+        "*What does the dashboard say to do right now?*\n"
+        "Synthesize the debate against the three gates. "
+        f"Signal is {signal} — address it directly:\n"
+        "- If DREAM: what has to go wrong for this to be a mistake at this price\n"
+        "- If FAIR: is this a Klarman-principle buy or wait for better margin of safety\n"
+        "- If WAIT: what price would make this actionable and why\n"
+    )
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _generate_debate_cached(
+    cache_key: str, system_prompt: str, user_prompt: str,
+) -> tuple[bool, str]:
+    """Returns (ok, text_or_error). Cached by cache_key so repeat opens are free."""
+    api_key = _anthropic_api_key()
+    if not api_key:
+        return False, (
+            "ANTHROPIC_API_KEY not set. Add it to your environment "
+            "(or `.streamlit/secrets.toml`) and retry."
+        )
+    try:
+        import anthropic
+    except ImportError:
+        return False, (
+            "The `anthropic` package is not installed. Run "
+            "`pip install anthropic` and retry."
+        )
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        resp = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1000,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        text = "".join(
+            block.text for block in resp.content if getattr(block, "type", "") == "text"
+        )
+        return True, text
+    except Exception as e:
+        return False, f"API error: {type(e).__name__}: {e}"
+
+
+@st.dialog("⚖ Bull/Bear Debate", width="large")
+def _debate_modal(ctx: dict) -> None:
+    name = ctx["name"]
+    ticker = ctx["ticker"]
+    current_pe = ctx["current_pe"]
+    signal = ctx["signal"]
+    pe_label = ctx.get("pe_label", "P/E")
+
+    signal_bg = {"DREAM": "#2e7d32", "FAIR": "#e67e22", "WAIT": "#c0392b"}.get(signal, "#555")
+    framing = _DEBATE_SIGNAL_FRAMING.get(signal, "")
+
+    st.markdown(
+        f"<div style='display:flex;justify-content:space-between;align-items:center;"
+        f"flex-wrap:wrap;gap:10px;margin-bottom:6px'>"
+        f"<div><span style='font-size:1.05rem;font-weight:700;color:#1a1a1a'>{name}</span>"
+        f" &nbsp;<span style='font-family:monospace;font-weight:600;color:#2c3e50;"
+        f"font-size:0.95rem'>{ticker}</span></div>"
+        f"<div><span style='background:{signal_bg};color:#fff;padding:3px 10px;"
+        f"border-radius:12px;font-weight:700;font-size:0.85rem'>{signal}</span>"
+        f" &nbsp;<span style='font-size:0.85rem;color:#3a3a3a'>"
+        f"Current {pe_label}: <strong>{current_pe:g}</strong></span></div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+    if framing:
+        st.markdown(
+            f"<div style='background:#f4f1e8;border-left:3px solid {signal_bg};"
+            f"padding:8px 12px;border-radius:3px;margin:6px 0 14px 0;"
+            f"font-size:0.88rem;font-style:italic;color:#3a3a3a'>{framing}</div>",
+            unsafe_allow_html=True,
+        )
+
+    user_prompt = _build_debate_prompt(
+        name=name, ticker=ticker, current_pe=current_pe,
+        dream=ctx["dream"], fair=ctx["fair"], signal=signal,
+        sms=ctx.get("sms"), r_score=ctx.get("r_score"),
+        fcf=ctx.get("fcf"), k_notes=ctx.get("k_notes", ""),
+        pe_label=pe_label,
+    )
+    cache_key = f"{ticker}|{signal}|{current_pe:.2f}|{ctx['dream']:g}|{ctx['fair']:g}"
+
+    with st.spinner("Generating debate via Claude…"):
+        ok, text = _generate_debate_cached(
+            cache_key, _DEBATE_SYSTEM_PROMPT, user_prompt,
+        )
+    if ok:
+        st.markdown(text)
+    else:
+        st.error(text)
+
+
 # ── Streamlit app ─────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -2326,6 +2508,16 @@ def main() -> None:
         "[class*='st-key-sat_row_'] [data-testid='stNumberInput'] input"
         "{padding:4px 8px !important;font-size:0.9rem !important;"
         "background-color:#ffffff !important}"
+        # Satellite tab — Debate button (subtle, doesn't dominate row)
+        "[class*='st-key-sat_debate_'] .stButton>button{"
+        "font-size:0.72rem !important;padding:3px 8px !important;"
+        "height:auto !important;min-height:0 !important;line-height:1.3 !important;"
+        "background-color:#e6e2d4 !important;color:#3a3a3a !important;"
+        "border:1px solid #b9b3a0 !important;border-radius:14px !important;"
+        "font-weight:600 !important;letter-spacing:0.01em !important;"
+        "margin-top:2px !important;white-space:nowrap !important}"
+        "[class*='st-key-sat_debate_'] .stButton>button:hover{"
+        "background-color:#d6d0bd !important;border-color:#8a8266 !important}"
         # Satellite tab — column header tooltips (dark popover, dashboard-consistent)
         ".sat-th{position:relative;display:inline-block;cursor:help;border-bottom:1px dotted #6a6a6a}"
         ".sat-th::after{content:attr(data-tt);position:absolute;left:0;top:calc(100% + 8px);"
@@ -2532,10 +2724,10 @@ def main() -> None:
     # SATELLITE  (default landing tab — BRK.B anchor + 7-slot satellite + watch)
     # ══════════════════════════════════════════════════════════════════════════
     with tab_s:
-        # 13 columns: Stock | Ticker | Current P/E | Dream | Fair | Signal |
-        # Quality | Red Flags | SMS | R | FCF% | Slot Status | K's Notes
+        # 14 columns: Stock | Ticker | Current P/E | Dream | Fair | Signal |
+        # Quality | Red Flags | SMS | R | FCF% | Slot Status | K's Notes | Debate
         _SAT_COL_RATIOS = [1.9, 1.2, 0.95, 0.75, 0.75, 1.0, 0.85, 0.85,
-                           0.7, 0.6, 0.85, 1.7, 2.5]
+                           0.7, 0.6, 0.85, 1.7, 2.1, 0.75]
 
         _SAT_TOOLTIPS = {
             "Stock":       "Company name",
@@ -2553,8 +2745,9 @@ def main() -> None:
             "R Score":     "Rate-era moat durability. R1 = earns returns today (uphill). R2 = mixed. R3 = long-duration compounder (downhill in high-rate environment).",
             "FCF%":        "Free Cash Flow Yield. Green if ≥3.5% (passes Gate 2 quality threshold), red if below.",
             "Slot Status": "● OWNED = active satellite position. ○ Watching = slot open, held as SGOV until entry criteria met.",
-            "Status":      "BRK.B is the anchor holding — outside the 7 satellite slots.",
+            "Status":      "BRK.B is the anchor holding — outside the 6 satellite slots.",
             "K's Notes":   "Klarman/Munger-style notes on thesis, conviction, and sizing.",
+            "Debate":      "Opens a Bull/Bear debate generated by Claude using this row's data and K's macro thesis.",
         }
 
         _SAT_HDR_LABELS = [
@@ -2570,7 +2763,8 @@ def main() -> None:
             ("R",           _SAT_TOOLTIPS["R Score"],     False),
             ("FCF%",        _SAT_TOOLTIPS["FCF%"],        False),
             ("Slot Status", _SAT_TOOLTIPS["Slot Status"], False),
-            ("K's Notes",   _SAT_TOOLTIPS["K's Notes"],   True),
+            ("K's Notes",   _SAT_TOOLTIPS["K's Notes"],   False),
+            ("Debate",      _SAT_TOOLTIPS["Debate"],      True),
         ]
 
         def _sat_signal(current: float, dream: float, fair: float) -> tuple[str, str, str]:
@@ -2841,6 +3035,26 @@ def main() -> None:
                     f"font-style:italic'>{note}</div>",
                     unsafe_allow_html=True,
                 )
+                with c[13]:
+                    if st.button(
+                        "⚖ Debate",
+                        key=f"sat_debate_{section}_{display_ticker}",
+                        help="Open Bull/Bear debate generated by Claude",
+                        use_container_width=True,
+                    ):
+                        _debate_modal({
+                            "name": name,
+                            "ticker": display_ticker,
+                            "current_pe": cur_pe,
+                            "dream": dream,
+                            "fair": fair,
+                            "signal": sig,
+                            "sms": sms,
+                            "r_score": r_score,
+                            "fcf": fcf,
+                            "k_notes": note,
+                            "pe_label": "P/E",
+                        })
 
         # ── Section 1: BRK.B Anchor ───────────────────────────────────────
         st.markdown(
@@ -2877,11 +3091,13 @@ def main() -> None:
             ("SMS",         _SAT_TOOLTIPS["SMS"]),
             ("R",           _SAT_TOOLTIPS["R Score"]),
             ("FCF%",        _SAT_TOOLTIPS["FCF%"]),
-            ("Status",      _SAT_TOOLTIPS["Status"], True),
+            ("Status",      _SAT_TOOLTIPS["Status"], False),
+            ("Debate",      _SAT_TOOLTIPS["Debate"], True),
         ]
-        # 12 columns (no K's Notes for BRK.B row — Status column carries the label)
+        # 13 columns (no K's Notes for BRK.B row — Status column carries the label).
+        # Trailing column reserved for the ⚖ Debate button.
         _brk_ratios = [1.9, 1.2, 0.95, 0.75, 0.75, 1.0, 0.85, 0.85,
-                       0.7, 0.6, 0.85, 4.2]
+                       0.7, 0.6, 0.85, 3.5, 0.75]
         _hdr_row(_brk_ratios, _brk_hdr)
 
         with st.container(key="sat_row_owned_brk_anchor"):
@@ -2955,6 +3171,30 @@ def main() -> None:
                 "ANCHOR — outside 6 slots</div>",
                 unsafe_allow_html=True,
             )
+            with bc[12]:
+                if st.button(
+                    "⚖ Debate",
+                    key="sat_debate_brk_anchor",
+                    help="Open Bull/Bear debate generated by Claude",
+                    use_container_width=True,
+                ):
+                    _debate_modal({
+                        "name": "Berkshire Hathaway",
+                        "ticker": "BRK.B",
+                        "current_pe": float(st.session_state.sat_brk_pb),
+                        "dream": _BRK_DREAM_PB,
+                        "fair": _BRK_FAIR_PB,
+                        "signal": _brk_sig,
+                        "sms": 28,
+                        "r_score": "R1",
+                        "fcf": None,
+                        "k_notes": (
+                            "BRK.B is the 25% anchor — outside the 6 satellite "
+                            "slots. Uses P/B not P/E. FCF Yield n/a (holding "
+                            "company structure)."
+                        ),
+                        "pe_label": "P/B",
+                    })
 
         st.markdown(
             "<div style='font-size:0.78rem;color:#555;font-style:italic;"
