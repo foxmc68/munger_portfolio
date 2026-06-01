@@ -133,7 +133,6 @@ UNIVERSE_TIERS: dict[str, dict] = {
             ("V",     25.0),
             ("MA",    25.0),
             ("CME",   25.0),
-            ("FICO",  25.0),
             ("ASML",  25.0),
         ],
     },
@@ -155,6 +154,7 @@ UNIVERSE_TIERS: dict[str, dict] = {
             ("CTAS",   20.0),
             ("ICE",    20.0),
             ("ROP",    20.0),
+            ("FICO",   20.0),
             ("BRK-B",   1.35),  # P/B
         ],
     },
@@ -225,6 +225,14 @@ UNIVERSE_TIERS: dict[str, dict] = {
 ALL_TICKERS_UNIVERSE: list[str] = [
     tk for td in UNIVERSE_TIERS.values() for tk, _ in td["stocks"]
 ]
+
+# Optional per-stock notes shown under their tier header in the Universe tab.
+# Use for tier moves, watch-list flags, or other context that doesn't fit the
+# tabular data. Keyed by ticker; value is a short note rendered as italic text.
+UNIVERSE_NOTES: dict[str, str] = {
+    "FICO": "Demoted Chat #4 — VantageScore/FHFA transition active.",
+}
+
 
 UNIVERSE_EXCLUDED: list[dict] = [
     {"ticker": "PSX",  "reason": "No moat — refining cyclicality"},
@@ -2944,7 +2952,7 @@ def main() -> None:
             )
             bc[11].markdown(
                 "<div style='padding-top:6px;font-size:0.85rem;font-weight:600'>"
-                "ANCHOR — outside 7 slots</div>",
+                "ANCHOR — outside 6 slots</div>",
                 unsafe_allow_html=True,
             )
 
@@ -2977,28 +2985,24 @@ def main() -> None:
              "○ Watching",
              "$16T index licensing + rating duopoly.",
              False, 24, "R2", 3.3),
-            ("FICO",           "FICO",  "FICO",  30, 45, 51.6, False,
-             "○ Watching ⚠ On Notice",
-             "VantageScore/FHFA transition risk. Size accordingly.",
-             True,  22, "R2", 1.9),
             ("Wolters Kluwer", "WTKWY", "WTKWY", 20, 30, 11.0, True,
              "● OWNED",
              "AI selloff overblown. Business unchanged. 7% organic growth.",
              False, 19, "R3", 7.5),
-            ("RELX",           "RELX",  "RELX",  14, 20, 15.8, True,
-             "● OWNED",
+            ("RELX",           "RELX",  "RELX",  14, 20, 15.8, False,
+             "○ Watching",
              "Starter position. Strong AI product execution. ~5.9% FCF yield.",
              False, 21, "R3", 5.9),
         ]
         _filled = sum(1 for r in _SAT_TIER1 if r[6])
-        _slots_max = 7
+        _slots_max = 6
         _empty_slots = _slots_max - _filled
 
         st.markdown(
             f"<div style='background:#2c3e50;color:#fff;padding:12px 16px;"
             f"border-radius:6px;margin-bottom:10px;display:flex;"
             f"justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px'>"
-            f"<span><strong>Munger Satellite</strong> &nbsp;—&nbsp; 7 Slots Max / "
+            f"<span><strong>Munger Satellite</strong> &nbsp;—&nbsp; 6 Slots Max / "
             f"20% Total &nbsp;—&nbsp; Tier 1 Oligopolies Only</span>"
             f"<span style='background:#5a7a9b;padding:4px 12px;border-radius:14px;"
             f"font-size:0.85rem;font-weight:600;letter-spacing:0.02em'>"
@@ -3020,8 +3024,13 @@ def main() -> None:
 
         # ── Section 3: Best of Rest ───────────────────────────────────────
         _SAT_BEST = [
-            ("ASR",              "ASR",  "ASR",  15, 20, 17.9, True,
-             "● OWNED — Best of Rest",
+            ("FICO",             "FICO", "FICO", 30, 45, 51.6, False,
+             "○ Watch — Demoted to Tier 2",
+             "Demoted from Tier 1. VantageScore/FHFA transition is active — "
+             "regulatory moat being dismantled in real time. Monitor but do not initiate.",
+             False, 22, "R2", 1.9),
+            ("ASR",              "ASR",  "ASR",  15, 20, 17.9, False,
+             "○ Watch — Best of Rest",
              "Mexican airport concession. FAIR signal. Situational/value hold.",
              False, 26, "R1", 5.0),
             ("Verisk Analytics", "VRSK", "VRSK", 18, 24, 24.2, False,
@@ -3170,6 +3179,24 @@ def main() -> None:
                 f"</div>",
                 unsafe_allow_html=True,
             )
+
+            _tier_notes = [
+                (_tk, UNIVERSE_NOTES[_tk])
+                for _tk, _ in _td["stocks"]
+                if _tk in UNIVERSE_NOTES
+            ]
+            if _tier_notes:
+                _notes_html = "".join(
+                    f"<div><strong>{_tk}</strong> &nbsp;—&nbsp; {_msg}</div>"
+                    for _tk, _msg in _tier_notes
+                )
+                st.markdown(
+                    f"<div style='font-size:0.82rem;color:#3a3a3a;font-style:italic;"
+                    f"margin:-2px 0 8px 4px;padding:6px 10px;background:#f4f1e8;"
+                    f"border-left:3px solid {_tier_color};border-radius:3px'>"
+                    f"{_notes_html}</div>",
+                    unsafe_allow_html=True,
+                )
 
             tier_mask = df_display_u["Tier"] == _tier_name
             tier_disp = df_display_u[tier_mask][DISPLAY_COLS + ["_signal"]].reset_index(drop=True)
