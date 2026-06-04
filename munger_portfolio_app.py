@@ -2926,12 +2926,13 @@ def main() -> None:
             ("SPGI",  False), ("VRSN",  False), ("WTKWY", False),
             ("RELX",  False), ("VRSK",  False), ("MSCI",  False),
             ("CME",   False), ("ASR",   False), ("ICE",   False),
-            ("LSEG",  False), ("BV",    False), ("BRK-B", True),
+            ("LSEG.L", False), ("BV",   False), ("BRK-B", True),
         ]
 
-        # Map a yfinance symbol to the key used in the last-known store /
-        # row tuples. Identity for all current tickers; kept for flexibility.
-        _SAT_STORE_KEY: dict[str, str] = {}
+        # Map a yfinance symbol to the key used in the last-known store / row
+        # tuples. "LSEG.L" (London listing) fetches under the display/store
+        # key "LSEG" so the tab still shows "LSEG" to the user.
+        _SAT_STORE_KEY: dict[str, str] = {"LSEG.L": "LSEG"}
 
         def _sat_fetch_all(yf_ticker: str, use_pb: bool) -> dict:
             """Fetch the full Satellite metric bundle from yfinance .info.
