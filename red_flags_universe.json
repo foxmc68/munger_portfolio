@@ -1,0 +1,392 @@
+{
+  "VRSN": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "MSCI": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "MCO": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "SPGI": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "V": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "MA": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "CME": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "ASML": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "COST": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "CSU.TO": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "AZO": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "IDXX": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "CNI": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "WM": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "PAYX": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "TXN": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "ITW": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "DHR": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "CTAS": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "ICE": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "ROP": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "FICO": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "LSEG": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "BRK-B": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "PGR": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "CB": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "AXP": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "KO": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "AVGO": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "GOOGL": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "RMS.PA": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "TDG": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "RELX": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "AMT": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "BAM": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "RACE": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "PG": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "HSY": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "JNJ": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "BLK": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "PM": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "NEE": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "MDT": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "TROW": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "CHD": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "CL": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "EMR": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "PLD": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "JPM": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "SCHW": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "WFC": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "ROL": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "BKNG": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "CSGP": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "DPLM.L": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "TOI.V": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "WTKWY": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "ASR": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "FNV": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "EPD": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "CVX": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "COP": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "XOM": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "EOG": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  },
+  "KMI": {
+    "Accounting Issues": false,
+    "Mgmt Turnover": false,
+    "Regulatory Threat": false,
+    "Moat Deteriorating": false
+  }
+}

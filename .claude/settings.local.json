@@ -30,7 +30,12 @@
       "Bash(kill %1)",
       "Read(//Users/mfox/**)",
       "Bash(curl -s -o /tmp/sat_page.html -w \"HTTP %{http_code}\\\\n\" http://localhost:8765/)",
-      "Bash(env)"
+      "Bash(env)",
+      "Bash(grep -E \"\\\\.env$|secrets\\\\.toml\")",
+      "Bash(lsof -ti:8501)",
+      "Bash(xargs kill)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:8501/)",
+      "Bash(pkill -f streamlit)"
     ]
   }
 }

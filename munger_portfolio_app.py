@@ -33,6 +33,7 @@ MANUAL_METRICS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "
 MARKET_INDICATORS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "market_indicators.json")
 STRUCTURAL_SCORES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "structural_scores.json")
 RATE_SCORES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rate_scores.json")
+SAT_METRICS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sat_metrics.json")
 FRED_API_KEY = "f3c2c99c5652b7acc8617d439d7a803e"
 
 FLAG_NAMES = [
@@ -127,7 +128,7 @@ UNIVERSE_TIERS: dict[str, dict] = {
         "description": "Wide-moat compounders with extraordinary economics and durable mandatory-use advantages.",
         "stocks": [
             ("VRSN",  25.0),
-            ("MSCI",  25.0),
+            ("MSCI",  35.0),
             ("MCO",   25.0),
             ("SPGI",  25.0),
             ("V",     25.0),
@@ -155,6 +156,7 @@ UNIVERSE_TIERS: dict[str, dict] = {
             ("ICE",    20.0),
             ("ROP",    20.0),
             ("FICO",   20.0),
+            ("LSEG",   22.0),
             ("BRK-B",   1.35),  # P/B
         ],
     },
@@ -409,6 +411,9 @@ COMPANY_NAMES: dict[str, str] = {
     # Universe additions
     "MA":       "Mastercard (Payment Networks)",
     "MSCI":     "MSCI (Index Provider)",
+    "LSEG":     "London Stock Exchange Group (Exchange/Data)",
+    "BV":       "BV (Best of Rest — under ethics review)",
+    "VRSK":     "Verisk Analytics (Insurance Data/Analytics)",
     "CTAS":     "Cintas (Uniform Services)",
     "ICE":      "Intercontinental Exchange (Exchange/Mortgage Tech)",
     "ROP":      "Roper Technologies (Diversified Software)",
@@ -440,6 +445,59 @@ def _company_legend(tickers: list[str]) -> str:
         f'<p style="font-size:12px;color:#444444;margin:4px 0 0 0;line-height:1.6">'
         f"{inner}</p>"
     )
+
+
+# ── Satellite last-known metric store ─────────────────────────────────────────
+# The Satellite tab auto-fetches per-ticker quality metrics from yfinance on
+# load / Refresh. When a fetch fails for a given metric, the cell falls back to
+# the last value that *did* fetch successfully (flagged with a small ⚠) so a
+# cell is never blank. These seed values are conservative placeholders used only
+# when no successful fetch has ever populated the persisted store. Keys per
+# ticker: price, pe, eps, roic, fcfy, revgr, gm, ins, de.
+_SAT_METRIC_SEED: dict[str, dict[str, float]] = {
+    "V":     {"price": 310.0, "pe": 28.4, "eps": 10.5, "roic": 28.0, "fcfy": 3.5, "revgr": 10.0, "gm": 98.0, "ins": 0.1,  "de": 0.50},
+    "MA":    {"price": 530.0, "pe": 35.8, "eps": 14.0, "roic": 28.0, "fcfy": 3.0, "revgr": 12.0, "gm": 100.0,"ins": 0.4,  "de": 2.00},
+    "MCO":   {"price": 480.0, "pe": 37.6, "eps": 12.0, "roic": 13.0, "fcfy": 2.5, "revgr": 9.0,  "gm": 72.0, "ins": 0.1,  "de": 1.80},
+    "SPGI":  {"price": 500.0, "pe": 30.8, "eps": 13.0, "roic": 7.0,  "fcfy": 3.3, "revgr": 8.0,  "gm": 68.0, "ins": 0.05, "de": 0.70},
+    "VRSN":  {"price": 270.0, "pe": 28.0, "eps": 8.5,  "roic": 35.0, "fcfy": 4.5, "revgr": 5.0,  "gm": 88.0, "ins": 0.2,  "de": 0.00},
+    "WTKWY": {"price": 150.0, "pe": 11.0, "eps": 6.0,  "roic": 12.0, "fcfy": 4.5, "revgr": 6.0,  "gm": 70.0, "ins": 0.5,  "de": 0.80},
+    "RELX":  {"price": 45.0,  "pe": 15.8, "eps": 1.6,  "roic": 13.0, "fcfy": 5.9, "revgr": 7.0,  "gm": 64.0, "ins": 0.1,  "de": 1.50},
+    "VRSK":  {"price": 280.0, "pe": 24.2, "eps": 6.5,  "roic": 20.0, "fcfy": 4.2, "revgr": 7.0,  "gm": 68.0, "ins": 0.1,  "de": 3.00},
+    "MSCI":  {"price": 560.0, "pe": 35.0, "eps": 15.0, "roic": 25.0, "fcfy": 3.2, "revgr": 13.0, "gm": 82.0, "ins": 0.3,  "de": 0.00},
+    "CME":   {"price": 230.0, "pe": 25.8, "eps": 9.5,  "roic": 3.0,  "fcfy": 4.0, "revgr": 8.0,  "gm": 85.0, "ins": 0.1,  "de": 0.20},
+    "ASR":   {"price": 310.0, "pe": 17.9, "eps": 17.0, "roic": 15.0, "fcfy": 5.0, "revgr": 12.0, "gm": 65.0, "ins": 0.05, "de": 0.40},
+    "ICE":   {"price": 160.0, "pe": 21.0, "eps": 6.0,  "roic": 4.0,  "fcfy": 3.8, "revgr": 10.0, "gm": 58.0, "ins": 1.3,  "de": 0.70},
+    "LSEG":  {"price": 110.0, "pe": 16.0, "eps": 3.0,  "roic": 5.0,  "fcfy": 3.5, "revgr": 7.0,  "gm": 60.0, "ins": 0.1,  "de": 0.50},
+    "BV":    {"price": 16.0,  "pe": 12.0, "eps": 0.5,  "roic": 3.0,  "fcfy": 5.0, "revgr": 2.0,  "gm": 25.0, "ins": 10.0, "de": 1.00},
+}
+
+
+def load_sat_metrics() -> dict:
+    """Load the persisted last-known Satellite metric store, merged over the
+    seed defaults so every ticker/metric always has a fallback value."""
+    store: dict[str, dict] = {tk: dict(vals) for tk, vals in _SAT_METRIC_SEED.items()}
+    try:
+        if os.path.exists(SAT_METRICS_FILE):
+            with open(SAT_METRICS_FILE, "r") as f:
+                saved = json.load(f)
+            if isinstance(saved, dict):
+                for tk, vals in saved.items():
+                    if isinstance(vals, dict):
+                        store.setdefault(tk, {}).update(
+                            {k: v for k, v in vals.items() if v is not None}
+                        )
+    except Exception:
+        pass
+    return store
+
+
+def save_sat_metrics(store: dict) -> None:
+    """Persist the last-known Satellite metric store to disk."""
+    try:
+        with open(SAT_METRICS_FILE, "w") as f:
+            json.dump(store, f, indent=2)
+    except Exception:
+        pass
 
 
 # ── Wait List ─────────────────────────────────────────────────────────────────
@@ -823,6 +881,7 @@ STOCK_CATEGORY: dict[str, str] = {
     "MA": "payment_network",
     "MSCI": "toll_financial",
     "ICE": "toll_financial",
+    "LSEG": "toll_financial",
     "CSU.TO": "asset_light", "PAYX": "asset_light", "CTAS": "asset_light",
     "ROP": "asset_light", "ROL": "asset_light", "BKNG": "asset_light",
     "CSGP": "asset_light", "TOI.V": "asset_light",
@@ -2278,13 +2337,24 @@ _DEBATE_SIGNAL_FRAMING = {
 }
 
 
-def _anthropic_api_key() -> Optional[str]:
+def _anthropic_api_key() -> tuple[Optional[str], str]:
+    """Returns (key_or_None, debug_trace) so failures surface the real reason."""
+    trace = []
     try:
-        if "ANTHROPIC_API_KEY" in st.secrets:
-            return st.secrets["ANTHROPIC_API_KEY"]
-    except Exception:
-        pass
-    return os.environ.get("ANTHROPIC_API_KEY")
+        in_secrets = "ANTHROPIC_API_KEY" in st.secrets
+        trace.append(f"st.secrets has key: {in_secrets}")
+        if in_secrets:
+            v = st.secrets["ANTHROPIC_API_KEY"]
+            trace.append(f"st.secrets value len: {len(v) if v else 0}")
+            if v:
+                return v, " | ".join(trace)
+    except Exception as e:
+        trace.append(f"st.secrets error: {type(e).__name__}: {e}")
+    env_v = os.environ.get("ANTHROPIC_API_KEY")
+    trace.append(f"os.environ has key: {bool(env_v)}")
+    if env_v:
+        return env_v, " | ".join(trace)
+    return None, " | ".join(trace)
 
 
 def _build_debate_prompt(
@@ -2354,11 +2424,12 @@ def _generate_debate_cached(
 ) -> tuple[bool, str]:
     """Returns (ok, text_or_error). Pre-flight checks happen outside the cache
     so missing-key / missing-package failures never get baked in."""
-    api_key = _anthropic_api_key()
+    api_key, trace = _anthropic_api_key()
     if not api_key:
         return False, (
             "ANTHROPIC_API_KEY not set. Add it to your environment "
-            "(or `.streamlit/secrets.toml`) and retry."
+            "(or `.streamlit/secrets.toml`) and retry.\n\n"
+            f"Diagnostic: {trace}"
         )
     try:
         import anthropic  # noqa: F401
@@ -2733,26 +2804,38 @@ def main() -> None:
     # SATELLITE  (default landing tab — BRK.B anchor + 7-slot satellite + watch)
     # ══════════════════════════════════════════════════════════════════════════
     with tab_s:
-        # 14 columns: Stock | Ticker | Current P/E | Dream | Fair | Signal |
-        # Quality | Red Flags | SMS | R | FCF% | Slot Status | K's Notes | Debate
-        _SAT_COL_RATIOS = [1.9, 1.2, 0.95, 0.75, 0.75, 1.0, 0.85, 0.85,
-                           0.7, 0.6, 0.85, 1.7, 2.1, 0.75]
+        # 22 columns: Ticker | Price | Current P/E | Dream P/E | Fair P/E |
+        # Fair$ | Dream$ | Discount | Signal | SMS | R | ROIC | FCFy | RevGr |
+        # GM | Ins% | D/E | Quality | Red Flags | Slot Status | K's Notes | Debate
+        _SAT_COL_RATIOS = [0.9, 0.85, 1.05, 0.7, 0.7, 0.85, 0.85, 0.85,
+                           0.95, 0.6, 0.55, 0.7, 0.7, 0.7, 0.65, 0.65, 0.6,
+                           0.85, 0.85, 1.5, 2.0, 0.85]
 
         _SAT_TOOLTIPS = {
             "Stock":       "Company name",
             "Ticker":      "Exchange symbol",
+            "Price":       "Auto-fetched current stock price from yfinance. Falls back to last known value (⚠) on fetch failure.",
             "Current P/E": "Auto-fetched trailing P/E from yfinance. Editable to override outliers. BRK.B uses P/B.",
             "Current P/B": "Auto-fetched Price/Book from yfinance for Berkshire Hathaway. Editable to override outliers.",
             "Dream P/E":   "Crisis-level entry price. 2008-equivalent valuation. Maximum conviction buy.",
             "Dream P/B":   "Crisis-level P/B for BRK.B. 2008-equivalent valuation. Maximum conviction buy.",
             "Fair P/E":    "Normal Munger buying zone. Acceptable entry for wonderful businesses.",
             "Fair P/B":    "Normal Munger buying zone for BRK.B.",
+            "Fair$":       "Auto-calculated: Fair P/E × trailing EPS. The price at which the stock trades at its Fair multiple.",
+            "Dream$":      "Auto-calculated: Dream P/E × trailing EPS. The crisis-level entry price.",
+            "Discount":    "(Fair$ − Price) / Fair$. Green = trading below fair value (cheap). Red = above fair value (expensive).",
             "Signal":      "Auto-calculated. DREAM = at or below Dream P/E. FAIR = at or below Fair P/E. WAIT = overpriced.",
             "Quality":     "PASS requires ROIC ≥15%, FCF Yield ≥3.5%, Debt within guidelines, Revenue Growth ≥0%. Update quarterly.",
             "Red Flags":   "Any YES = stop and investigate. Accounting issues, management turnover, regulatory threat, moat deterioration.",
             "SMS":         "Structural Moat Score (out of 30). AI-era moat durability. Manually tracked, updated quarterly.",
             "R Score":     "Rate-era moat durability. R1 = earns returns today (uphill). R2 = mixed. R3 = long-duration compounder (downhill in high-rate environment).",
+            "ROIC":        "Auto-fetched return on assets (returnOnAssets); ⚠ⁿ marks an estimate from return on equity when ROA is unavailable.",
+            "FCFy":        "Free Cash Flow Yield (freeCashflow / marketCap). Green if ≥3.5% (passes Gate 2 quality threshold), red if below.",
             "FCF%":        "Free Cash Flow Yield. Green if ≥3.5% (passes Gate 2 quality threshold), red if below.",
+            "RevGr":       "Auto-fetched trailing revenue growth (revenueGrowth).",
+            "GM":          "Auto-fetched gross margin (grossMargins).",
+            "Ins%":        "Auto-fetched insider ownership (heldPercentInsiders).",
+            "D/E":         "Auto-fetched debt-to-equity ratio (debtToEquity).",
             "Slot Status": "● OWNED = active satellite position. ○ Watching = slot open, held as SGOV until entry criteria met.",
             "Status":      "BRK.B is the anchor holding — outside the 6 satellite slots.",
             "K's Notes":   "Klarman/Munger-style notes on thesis, conviction, and sizing.",
@@ -2760,17 +2843,25 @@ def main() -> None:
         }
 
         _SAT_HDR_LABELS = [
-            ("Stock",       _SAT_TOOLTIPS["Stock"],       False),
             ("Ticker",      _SAT_TOOLTIPS["Ticker"],      False),
+            ("Price",       _SAT_TOOLTIPS["Price"],       True),
             ("Current P/E", _SAT_TOOLTIPS["Current P/E"], False),
             ("Dream P/E",   _SAT_TOOLTIPS["Dream P/E"],   False),
             ("Fair P/E",    _SAT_TOOLTIPS["Fair P/E"],    False),
+            ("Fair$",       _SAT_TOOLTIPS["Fair$"],       True),
+            ("Dream$",      _SAT_TOOLTIPS["Dream$"],      True),
+            ("Discount",    _SAT_TOOLTIPS["Discount"],    True),
             ("Signal",      _SAT_TOOLTIPS["Signal"],      False),
-            ("Quality",     _SAT_TOOLTIPS["Quality"],     False),
-            ("Red Flags",   _SAT_TOOLTIPS["Red Flags"],   False),
             ("SMS",         _SAT_TOOLTIPS["SMS"],         False),
             ("R",           _SAT_TOOLTIPS["R Score"],     False),
-            ("FCF%",        _SAT_TOOLTIPS["FCF%"],        False),
+            ("ROIC",        _SAT_TOOLTIPS["ROIC"],        False),
+            ("FCFy",        _SAT_TOOLTIPS["FCFy"],        False),
+            ("RevGr",       _SAT_TOOLTIPS["RevGr"],       False),
+            ("GM",          _SAT_TOOLTIPS["GM"],          False),
+            ("Ins%",        _SAT_TOOLTIPS["Ins%"],        False),
+            ("D/E",         _SAT_TOOLTIPS["D/E"],         False),
+            ("Quality",     _SAT_TOOLTIPS["Quality"],     False),
+            ("Red Flags",   _SAT_TOOLTIPS["Red Flags"],   False),
             ("Slot Status", _SAT_TOOLTIPS["Slot Status"], False),
             ("K's Notes",   _SAT_TOOLTIPS["K's Notes"],   False),
             ("Debate",      _SAT_TOOLTIPS["Debate"],      True),
@@ -2826,18 +2917,33 @@ def main() -> None:
                     unsafe_allow_html=True,
                 )
 
-        # ── Auto-fetch P/E (and BRK-B P/B) via yfinance ───────────────────
-        # Tickers and the metric to pull for each.
+        # ── Auto-fetch quality metrics (and BRK-B P/B) via yfinance ───────
+        # Each ticker pulls a full metric bundle: price, pe (or pb), eps,
+        # roic, fcfy, revgr, gm, ins, de. use_pb=True swaps trailing P/E for
+        # the BRK-B book-value-derived P/B.
         _SAT_FETCH_TICKERS: list[tuple[str, bool]] = [
             ("V",     False), ("MA",    False), ("MCO",   False),
-            ("SPGI",  False), ("FICO",  False), ("WTKWY", False),
-            ("RELX",  False), ("BRK-B", True),
-            ("ASR",   False), ("VRSK",  False), ("CME",   False),
+            ("SPGI",  False), ("VRSN",  False), ("WTKWY", False),
+            ("RELX",  False), ("VRSK",  False), ("MSCI",  False),
+            ("CME",   False), ("ASR",   False), ("ICE",   False),
+            ("LSEG",  False), ("BV",    False), ("BRK-B", True),
         ]
 
-        def _sat_fetch_metric(yf_ticker: str, use_pb: bool) -> Optional[float]:
+        # Map a yfinance symbol to the key used in the last-known store /
+        # row tuples. Identity for all current tickers; kept for flexibility.
+        _SAT_STORE_KEY: dict[str, str] = {}
+
+        def _sat_fetch_all(yf_ticker: str, use_pb: bool) -> dict:
+            """Fetch the full Satellite metric bundle from yfinance .info.
+            Returns a dict with keys price, pe, eps, roic, roic_est, fcfy,
+            revgr, gm, ins, de. Any unavailable metric is None."""
             import sys
             import traceback
+            out: dict = {
+                "price": None, "pe": None, "eps": None, "roic": None,
+                "roic_est": False, "fcfy": None, "revgr": None, "gm": None,
+                "ins": None, "de": None,
+            }
             try:
                 info = fetch_info(yf_ticker)
                 if not info:
@@ -2846,49 +2952,70 @@ def main() -> None:
                         f"see [fetch_info] logs above for the underlying error",
                         file=sys.stderr, flush=True,
                     )
-                    return None
-                if use_pb:
-                    if yf_ticker == "BRK-B":
-                        price = (_pos_float(info, "currentPrice")
-                                 or _pos_float(info, "regularMarketPrice"))
-                        book_a = _pos_float(info, "bookValue")
-                        print(
-                            f"[sat_fetch] BRK-B: price={price}, "
-                            f"bookValue(A)={book_a}",
-                            file=sys.stderr, flush=True,
-                        )
-                        if price and book_a:
-                            book_b = book_a / 1500.0
-                            pb = price / book_b if book_b > 0 else None
-                            print(
-                                f"[sat_fetch] BRK-B: computed P/B={pb}",
-                                file=sys.stderr, flush=True,
-                            )
-                            # Reject outliers: yfinance occasionally returns
-                            # bookValue per-B-share, which would give P/B ≈ 1500x.
-                            # A real BRK.B P/B has historically lived in
-                            # ~0.95-2.00 — anything outside [1.0, 3.0] is bad data.
-                            if pb is None or pb < 1.0 or pb > 3.0:
-                                print(
-                                    f"[sat_fetch] BRK-B: outlier P/B={pb} "
-                                    f"— falling back to default",
-                                    file=sys.stderr, flush=True,
-                                )
-                                return None
-                            return pb
-                        return None
-                    pb = _pos_float(info, "priceToBook")
-                    print(
-                        f"[sat_fetch] {yf_ticker}: priceToBook={pb}",
-                        file=sys.stderr, flush=True,
-                    )
-                    return pb
-                pe = _pos_float(info, "trailingPE")
+                    return out
+
+                out["price"] = _price_from_info(info)
+
+                if use_pb and yf_ticker == "BRK-B":
+                    price = (_pos_float(info, "currentPrice")
+                             or _pos_float(info, "regularMarketPrice"))
+                    book_a = _pos_float(info, "bookValue")
+                    if price and book_a:
+                        book_b = book_a / 1500.0
+                        pb = price / book_b if book_b > 0 else None
+                        # Reject outliers: yfinance occasionally returns
+                        # bookValue per-B-share (P/B ≈ 1500x). A real BRK.B
+                        # P/B lives in ~0.95-2.00 — outside [1.0, 3.0] is bad.
+                        if pb is not None and 1.0 <= pb <= 3.0:
+                            out["pe"] = pb
+                elif use_pb:
+                    out["pe"] = _pos_float(info, "priceToBook")
+                else:
+                    out["pe"] = _pos_float(info, "trailingPE")
+
+                out["eps"] = _float(info, "trailingEps")
+
+                # ROIC — prefer returnOnAssets; fall back to returnOnEquity
+                # (flag as an estimate) when ROA is unavailable.
+                roa = _pos_float(info, "returnOnAssets")
+                if roa is not None:
+                    out["roic"] = roa * 100.0
+                    out["roic_est"] = False
+                else:
+                    roe = _pos_float(info, "returnOnEquity")
+                    if roe is not None:
+                        out["roic"] = roe * 100.0
+                        out["roic_est"] = True
+
+                fcf = _float(info, "freeCashflow")
+                mktcap = _float(info, "marketCap")
+                if fcf and mktcap and mktcap > 0:
+                    out["fcfy"] = fcf / mktcap * 100.0
+
+                rg = _float(info, "revenueGrowth")
+                if rg is not None:
+                    out["revgr"] = rg * 100.0
+
+                gm = _float(info, "grossMargins")
+                if gm is not None:
+                    out["gm"] = gm * 100.0
+
+                ins = _float(info, "heldPercentInsiders")
+                if ins is not None:
+                    out["ins"] = ins * 100.0
+
+                de = _float(info, "debtToEquity")
+                if de is not None:
+                    out["de"] = de / 100.0
+
                 print(
-                    f"[sat_fetch] {yf_ticker}: trailingPE={pe}",
+                    f"[sat_fetch] {yf_ticker}: price={out['price']} "
+                    f"pe={out['pe']} eps={out['eps']} roic={out['roic']} "
+                    f"fcfy={out['fcfy']} revgr={out['revgr']} gm={out['gm']} "
+                    f"ins={out['ins']} de={out['de']}",
                     file=sys.stderr, flush=True,
                 )
-                return pe
+                return out
             except Exception as e:
                 print(
                     f"[sat_fetch] {yf_ticker}: EXCEPTION "
@@ -2896,7 +3023,10 @@ def main() -> None:
                     file=sys.stderr, flush=True,
                 )
                 traceback.print_exc(file=sys.stderr)
-                return None
+                return out
+
+        if "sat_last_known" not in st.session_state:
+            st.session_state.sat_last_known = load_sat_metrics()
 
         # ── Top bar: Refresh + Last Updated ──────────────────────────────
         _ref_col, _ts_col = st.columns([1.3, 6])
@@ -2912,29 +3042,56 @@ def main() -> None:
                 st.session_state.sat_last_fetched = datetime.now()
                 st.rerun()
 
+        # Metrics persisted to the last-known store on a successful fetch.
+        _SAT_PERSIST_KEYS = ("price", "pe", "eps", "roic", "fcfy",
+                             "revgr", "gm", "ins", "de")
+
         if "sat_fetched_values" not in st.session_state or \
                 st.session_state.get("sat_fetched_values") is None:
             _prog = st.progress(0, text="Fetching market data…")
-            _fetched: dict[str, Optional[float]] = {}
+            _fetched: dict[str, dict] = {}
+            _lk = st.session_state.sat_last_known
             for _i, (_tk, _pb) in enumerate(_SAT_FETCH_TICKERS):
-                _fetched[_tk] = _sat_fetch_metric(_tk, _pb)
+                _store_tk = _SAT_STORE_KEY.get(_tk, _tk)
+                _bundle = _sat_fetch_all(_tk, _pb)
+                _fetched[_store_tk] = _bundle
+                # Update last-known store with any metric that fetched OK.
+                _slot = _lk.setdefault(_store_tk, {})
+                for _mk in _SAT_PERSIST_KEYS:
+                    if _bundle.get(_mk) is not None:
+                        _slot[_mk] = _bundle[_mk]
                 _prog.progress((_i + 1) / len(_SAT_FETCH_TICKERS),
                                text=f"Fetching {_tk}…")
             _prog.empty()
+            save_sat_metrics(_lk)
             st.session_state.sat_fetched_values = _fetched
             if "sat_last_fetched" not in st.session_state:
                 st.session_state.sat_last_fetched = datetime.now()
 
-        _fetched_values: dict[str, Optional[float]] = \
-            st.session_state.sat_fetched_values
+        _fetched_values: dict[str, dict] = st.session_state.sat_fetched_values
+
+        def _sat_val(store_ticker: str, key: str) -> tuple[Optional[float], bool]:
+            """Resolve a metric for display. Returns (value, stale). A fresh
+            fetch → stale=False. On fetch failure, falls back to the last-known
+            store → stale=True. Returns (None, False) only if nothing exists."""
+            bundle = _fetched_values.get(store_ticker) or {}
+            v = bundle.get(key)
+            if v is not None:
+                return v, False
+            lk = st.session_state.sat_last_known.get(store_ticker, {}).get(key)
+            return lk, (lk is not None)
 
         with _ts_col:
             _ts = st.session_state.get("sat_last_fetched")
             _ts_str = _ts.strftime("%Y-%m-%d %H:%M:%S") if _ts else "—"
-            _missing = [t for t, v in _fetched_values.items() if v is None]
+            # "Stale" = price failed and we fell back to last-known.
+            _missing = [
+                t for t, b in _fetched_values.items()
+                if (b or {}).get("price") is None
+            ]
             _missing_str = (
                 f" &nbsp;·&nbsp; <span style='color:#c0392b'>"
-                f"Fetch failed: {', '.join(_missing)} — using defaults</span>"
+                f"Fetch failed: {', '.join(_missing)} — showing last known (⚠)</span>"
                 if _missing else ""
             )
             st.markdown(
@@ -2945,17 +3102,45 @@ def main() -> None:
                 unsafe_allow_html=True,
             )
 
+        def _warn(stale: bool) -> str:
+            """Small ⚠ marker appended to a cell that fell back to last-known."""
+            return (
+                " <span style='color:#a04020;font-weight:700;font-size:0.7rem' "
+                "title='Last known value — live fetch failed'>⚠</span>"
+            ) if stale else ""
+
         def _render_sat_row(
-            section: str, row_idx: int, name: str, yf_ticker: str,
+            section: str, row_idx: int, name: str,
             display_ticker: str, dream: float, fair: float, default_pe: float,
             owned: bool, slot_status: str, note: str, on_notice: bool,
-            sms: int, r_score: str, fcf: Optional[float],
+            sms: int, r_score: str,
         ) -> None:
+            is_bv = display_ticker == "BV"
+            # Base text colour for numeric cells (BV shown entirely in red).
+            txt = "#c0392b" if is_bv else "#2c3e50"
+
+            # ── Resolve auto-fetched metrics (fresh fetch or last-known ⚠) ──
+            price, price_stale = _sat_val(display_ticker, "price")
+            eps,   eps_stale   = _sat_val(display_ticker, "eps")
+            roic,  roic_stale  = _sat_val(display_ticker, "roic")
+            fcfy,  fcfy_stale  = _sat_val(display_ticker, "fcfy")
+            revgr, revgr_stale = _sat_val(display_ticker, "revgr")
+            gm,    gm_stale    = _sat_val(display_ticker, "gm")
+            ins,   ins_stale   = _sat_val(display_ticker, "ins")
+            de,    de_stale    = _sat_val(display_ticker, "de")
+            roic_est = (_fetched_values.get(display_ticker) or {}).get("roic_est", False)
+
+            # Editable Current P/E — seed from fetched P/E, then last-known, then default.
             key = f"sat_pe_{section}_{display_ticker}"
             if key not in st.session_state:
-                _fv = _fetched_values.get(yf_ticker)
-                st.session_state[key] = float(_fv) if _fv is not None \
+                _pe, _ = _sat_val(display_ticker, "pe")
+                st.session_state[key] = float(_pe) if _pe is not None \
                     else float(default_pe)
+
+            # Fair$ / Dream$ derive from EPS × the respective multiple.
+            fair_dollar  = fair * eps if eps is not None else None
+            dream_dollar = dream * eps if eps is not None else None
+            dollar_stale = eps_stale
 
             # Row container key drives styling (owned-blue or alternating watch)
             if owned:
@@ -2966,68 +3151,152 @@ def main() -> None:
 
             with st.container(key=row_key):
                 c = st.columns(_SAT_COL_RATIOS)
+
+                # 0 — Ticker
                 c[0].markdown(
-                    f"<div style='padding-top:6px;font-weight:600;"
-                    f"white-space:nowrap'>{name}</div>",
-                    unsafe_allow_html=True,
-                )
-                c[1].markdown(
                     f"<div style='padding-top:6px;font-family:monospace;"
-                    f"font-weight:600;color:#2c3e50;white-space:nowrap;"
+                    f"font-weight:700;color:{txt};white-space:nowrap;"
                     f"font-size:0.88rem;overflow:hidden;text-overflow:ellipsis'>"
                     f"{display_ticker}</div>",
                     unsafe_allow_html=True,
                 )
+                # 1 — Price
+                _price_txt = fmt_price(price) if price is not None else "—"
+                c[1].markdown(
+                    f"<div style='padding-top:6px;font-weight:600;color:{txt};"
+                    f"white-space:nowrap'>{_price_txt}{_warn(price_stale)}</div>",
+                    unsafe_allow_html=True,
+                )
+                # 2 — Current P/E (editable)
                 c[2].number_input(
                     "current_pe", value=float(st.session_state[key]),
                     step=0.1, key=key, label_visibility="collapsed",
                     format="%.1f",
                 )
+                # 3 — Dream P/E
                 c[3].markdown(
-                    f"<div style='padding-top:6px'>{dream:g}</div>",
+                    f"<div style='padding-top:6px;color:{txt}'>{dream:g}</div>",
                     unsafe_allow_html=True,
                 )
+                # 4 — Fair P/E
                 c[4].markdown(
-                    f"<div style='padding-top:6px'>{fair:g}</div>",
+                    f"<div style='padding-top:6px;color:{txt}'>{fair:g}</div>",
+                    unsafe_allow_html=True,
+                )
+                # 5 — Fair$
+                _fd_txt = fmt_price(fair_dollar) if fair_dollar is not None else "—"
+                c[5].markdown(
+                    f"<div style='padding-top:6px;color:{txt};white-space:nowrap'>"
+                    f"{_fd_txt}{_warn(dollar_stale)}</div>",
+                    unsafe_allow_html=True,
+                )
+                # 6 — Dream$
+                _dd_txt = fmt_price(dream_dollar) if dream_dollar is not None else "—"
+                c[6].markdown(
+                    f"<div style='padding-top:6px;color:{txt};white-space:nowrap'>"
+                    f"{_dd_txt}{_warn(dollar_stale)}</div>",
+                    unsafe_allow_html=True,
+                )
+                # 7 — Discount = (Fair$ − Price) / Fair$
+                if fair_dollar and price is not None and fair_dollar > 0:
+                    _disc = (fair_dollar - price) / fair_dollar * 100.0
+                    _disc_txt = f"{_disc:+.0f}%"
+                    _disc_col = "#c0392b" if is_bv else (
+                        "#1a7a1f" if _disc >= 0 else "#c0392b")
+                else:
+                    _disc_txt = "—"
+                    _disc_col = txt
+                c[7].markdown(
+                    f"<div style='padding-top:6px;font-weight:700;color:{_disc_col};"
+                    f"white-space:nowrap'>{_disc_txt}"
+                    f"{_warn(price_stale or dollar_stale)}</div>",
                     unsafe_allow_html=True,
                 )
 
+                # 8 — Signal
                 cur_pe = float(st.session_state[key])
                 sig, bg, fg = _sat_signal(cur_pe, dream, fair)
-                c[5].markdown(
+                c[8].markdown(
                     f"<div style='padding-top:6px'>{_pill(sig, bg, fg)}</div>",
                     unsafe_allow_html=True,
                 )
-                c[6].markdown(
-                    f"<div style='padding-top:6px'>"
-                    f"{_pill('PASS', '#b7d4b0', '#1a3a1f', size='0.78rem')}</div>",
-                    unsafe_allow_html=True,
-                )
-                c[7].markdown(
-                    f"<div style='padding-top:6px'>"
-                    f"{_pill('NO', '#d0d0d2', '#555555', size='0.78rem')}</div>",
-                    unsafe_allow_html=True,
-                )
-
-                # SMS — colored pill from existing bucket palette
+                # 9 — SMS
                 _sms_bg, _sms_fg = _sms_colors(sms)
-                c[8].markdown(
+                c[9].markdown(
                     f"<div style='padding-top:6px'>"
                     f"{_pill(str(sms), _sms_bg, _sms_fg, size='0.78rem')}</div>",
                     unsafe_allow_html=True,
                 )
-                # R — green/amber/red pill
-                c[9].markdown(
+                # 10 — R
+                c[10].markdown(
                     f"<div style='padding-top:6px'>{_r_pill(r_score)}</div>",
                     unsafe_allow_html=True,
                 )
-                # FCF% — green ≥3.5, red below
-                c[10].markdown(
-                    f"<div style='padding-top:6px'>{_fcf_pill(fcf)}</div>",
+                # 11 — ROIC (green ≥15%, else amber; ᵉ = estimated from ROE)
+                if roic is not None:
+                    _roic_txt = f"{roic:.1f}%"
+                    _roic_col = "#c0392b" if is_bv else (
+                        "#1a7a1f" if roic >= 15 else "#a04020")
+                else:
+                    _roic_txt = "—"
+                    _roic_col = txt
+                _roic_est_mark = (
+                    " <sup style='color:#a06020;font-weight:700' "
+                    "title='Estimated from return on equity (ROA unavailable)'>ᵉ</sup>"
+                ) if roic_est else ""
+                c[11].markdown(
+                    f"<div style='padding-top:6px;font-weight:600;color:{_roic_col}'>"
+                    f"{_roic_txt}{_roic_est_mark}{_warn(roic_stale)}</div>",
                     unsafe_allow_html=True,
                 )
-
-                if on_notice:
+                # 12 — FCFy (green ≥3.5%, red below)
+                c[12].markdown(
+                    f"<div style='padding-top:6px'>{_fcf_pill(fcfy)}{_warn(fcfy_stale)}</div>",
+                    unsafe_allow_html=True,
+                )
+                # 13 — RevGr
+                _rg_txt = f"{revgr:.1f}%" if revgr is not None else "—"
+                c[13].markdown(
+                    f"<div style='padding-top:6px;color:{txt}'>{_rg_txt}{_warn(revgr_stale)}</div>",
+                    unsafe_allow_html=True,
+                )
+                # 14 — GM
+                _gm_txt = f"{gm:.0f}%" if gm is not None else "—"
+                c[14].markdown(
+                    f"<div style='padding-top:6px;color:{txt}'>{_gm_txt}{_warn(gm_stale)}</div>",
+                    unsafe_allow_html=True,
+                )
+                # 15 — Ins%
+                _ins_txt = f"{ins:.1f}%" if ins is not None else "—"
+                c[15].markdown(
+                    f"<div style='padding-top:6px;color:{txt}'>{_ins_txt}{_warn(ins_stale)}</div>",
+                    unsafe_allow_html=True,
+                )
+                # 16 — D/E
+                _de_txt = f"{de:.2f}" if de is not None else "—"
+                c[16].markdown(
+                    f"<div style='padding-top:6px;color:{txt}'>{_de_txt}{_warn(de_stale)}</div>",
+                    unsafe_allow_html=True,
+                )
+                # 17 — Quality
+                c[17].markdown(
+                    f"<div style='padding-top:6px'>"
+                    f"{_pill('PASS', '#b7d4b0', '#1a3a1f', size='0.78rem')}</div>",
+                    unsafe_allow_html=True,
+                )
+                # 18 — Red Flags
+                c[18].markdown(
+                    f"<div style='padding-top:6px'>"
+                    f"{_pill('NO', '#d0d0d2', '#555555', size='0.78rem')}</div>",
+                    unsafe_allow_html=True,
+                )
+                # 19 — Slot Status (BV gets a red ⚠; others may be On Notice)
+                if is_bv:
+                    status_html = (
+                        f"<span style='font-weight:600;color:#c0392b'>{slot_status}</span> "
+                        f"{_pill('⚠', '#c0392b', '#ffffff', size='0.72rem')}"
+                    )
+                elif on_notice:
                     status_html = (
                         f"<span style='font-weight:600'>"
                         f"{slot_status.split('⚠')[0].strip()}</span> "
@@ -3035,16 +3304,19 @@ def main() -> None:
                     )
                 else:
                     status_html = f"<span style='font-weight:600'>{slot_status}</span>"
-                c[11].markdown(
+                c[19].markdown(
                     f"<div style='padding-top:6px;font-size:0.85rem'>{status_html}</div>",
                     unsafe_allow_html=True,
                 )
-                c[12].markdown(
-                    f"<div style='padding-top:6px;font-size:0.85rem;color:#3a3a3a;"
+                # 20 — K's Notes
+                _note_col = "#c0392b" if is_bv else "#3a3a3a"
+                c[20].markdown(
+                    f"<div style='padding-top:6px;font-size:0.85rem;color:{_note_col};"
                     f"font-style:italic'>{note}</div>",
                     unsafe_allow_html=True,
                 )
-                with c[13]:
+                # 21 — Debate
+                with c[21]:
                     if st.button(
                         "⚖ Debate",
                         key=f"sat_debate_{section}_{display_ticker}",
@@ -3060,7 +3332,7 @@ def main() -> None:
                             "signal": sig,
                             "sms": sms,
                             "r_score": r_score,
-                            "fcf": fcf,
+                            "fcf": fcfy,
                             "k_notes": note,
                             "pe_label": "P/E",
                         })
@@ -3080,7 +3352,7 @@ def main() -> None:
         _BRK_FAIR_PB = 1.35
         _BRK_FALLBACK_PB = 1.44   # used when yfinance returns 0.0 / outlier
         if "sat_brk_pb" not in st.session_state:
-            _brk_fv = _fetched_values.get("BRK-B")
+            _brk_fv = (_fetched_values.get("BRK-B") or {}).get("pe")
             if _brk_fv is not None and 1.0 <= _brk_fv <= 3.0:
                 st.session_state.sat_brk_pb = float(_brk_fv)
                 st.session_state.sat_brk_pb_fallback = False
@@ -3091,7 +3363,7 @@ def main() -> None:
         _brk_hdr = [
             ("Stock",       _SAT_TOOLTIPS["Stock"]),
             ("Ticker",      _SAT_TOOLTIPS["Ticker"]),
-            ("Current P/B", _SAT_TOOLTIPS["Current P/B"]),
+            ("Current P/E", _SAT_TOOLTIPS["Current P/B"]),
             ("Dream P/B",   _SAT_TOOLTIPS["Dream P/B"]),
             ("Fair P/B",    _SAT_TOOLTIPS["Fair P/B"]),
             ("Signal",      _SAT_TOOLTIPS["Signal"]),
@@ -3217,33 +3489,36 @@ def main() -> None:
         # ── Section 2: Munger Satellite (7 slots) ─────────────────────────
         # Each row: (name, yf_ticker, display_ticker, dream, fair, default_pe,
         #            owned, slot_status, note, on_notice, sms, r_score, fcf)
+        # Each row: (name, display_ticker, dream, fair, default_pe, owned,
+        #            slot_status, note, on_notice, sms, r_score)
         _SAT_TIER1 = [
-            ("Visa",           "V",     "V",     15, 20, 28.4, False,
-             "○ Watching",
+            ("Visa",           "V",     15, 20, 28.4, False,
+             "○ Watching — Slot Open",
              "Greatest legal monopoly. Klarman principle: buy at Fair.",
-             False, 26, "R1", 3.5),
-            ("Mastercard",     "MA",    "MA",    16, 22, 35.8, False,
-             "○ Watching",
+             False, 26, "R1"),
+            ("Mastercard",     "MA",    16, 22, 35.8, False,
+             "○ Watching — Slot Open",
              "Network duopoly. Fair value entry acceptable.",
-             False, 25, "R1", 3.2),
-            ("Moody's",        "MCO",   "MCO",   16, 23, 37.6, False,
-             "○ Watching",
+             False, 25, "R1"),
+            ("Moody's",        "MCO",   16, 23, 37.6, False,
+             "○ Watching — Slot Open",
              "Rating oligopoly. Dream entry preferred.",
-             False, 24, "R2", 2.5),
-            ("S&P Global",     "SPGI",  "SPGI",  16, 23, 30.8, False,
-             "○ Watching",
+             False, 24, "R2"),
+            ("S&P Global",     "SPGI",  16, 23, 30.8, False,
+             "○ Watching — Slot Open",
              "$16T index licensing + rating duopoly.",
-             False, 24, "R2", 3.3),
-            ("Wolters Kluwer", "WTKWY", "WTKWY", 20, 30, 11.0, True,
-             "● OWNED",
+             False, 24, "R2"),
+            ("VeriSign",       "VRSN",  17, 25, 28.0, False,
+             "○ Watching — Slot Open",
+             "Domain-registry monopoly (.com/.net). ICANN-sanctioned price "
+             "increases. Long-duration compounder.",
+             False, 27, "R3"),
+            ("Wolters Kluwer", "WTKWY", 20, 30, 11.0, True,
+             "● OWNED — Active Slot",
              "AI selloff overblown. Business unchanged. 7% organic growth.",
-             False, 19, "R3", 7.5),
-            ("RELX",           "RELX",  "RELX",  14, 20, 15.8, False,
-             "○ Watching",
-             "Starter position. Strong AI product execution. ~5.9% FCF yield.",
-             False, 21, "R3", 5.9),
+             False, 19, "R3"),
         ]
-        _filled = sum(1 for r in _SAT_TIER1 if r[6])
+        _filled = sum(1 for r in _SAT_TIER1 if r[5])
         _slots_max = 6
         _empty_slots = _slots_max - _filled
 
@@ -3263,33 +3538,52 @@ def main() -> None:
         _hdr_row(_SAT_COL_RATIOS, _SAT_HDR_LABELS)
         _watch_idx = 0
         for row in _SAT_TIER1:
-            (_n, _yf, _disp, _d, _f, _dpe, _ow, _slot, _note, _onn,
-             _sms, _r, _fcf) = row
+            (_n, _disp, _d, _f, _dpe, _ow, _slot, _note, _onn,
+             _sms, _r) = row
             _idx = -1 if _ow else _watch_idx
             if not _ow:
                 _watch_idx += 1
-            _render_sat_row("tier1", _idx, _n, _yf, _disp, _d, _f, _dpe,
-                            _ow, _slot, _note, _onn, _sms, _r, _fcf)
+            _render_sat_row("tier1", _idx, _n, _disp, _d, _f, _dpe,
+                            _ow, _slot, _note, _onn, _sms, _r)
 
         # ── Section 3: Best of Rest ───────────────────────────────────────
         _SAT_BEST = [
-            ("FICO",             "FICO", "FICO", 30, 45, 51.6, False,
-             "○ Watch — Demoted to Tier 2",
-             "Demoted from Tier 1. VantageScore/FHFA transition is active — "
-             "regulatory moat being dismantled in real time. Monitor but do not initiate.",
-             False, 22, "R2", 1.9),
-            ("ASR",              "ASR",  "ASR",  15, 20, 17.9, False,
-             "○ Watch — Best of Rest",
-             "Mexican airport concession. FAIR signal. Situational/value hold.",
-             False, 26, "R1", 5.0),
-            ("Verisk Analytics", "VRSK", "VRSK", 18, 24, 24.2, False,
+            ("RELX",             "RELX", 14, 20, 15.8, False,
+             "○ Watch",
+             "Strong AI product execution. ~5.9% FCF yield. Professional "
+             "information compounder.",
+             False, 21, "R3"),
+            ("Verisk Analytics", "VRSK", 18, 24, 24.2, False,
              "○ Watch",
              "ISO actuarial moat. 34% ROIC. Needs FCF yield >5% to enter.",
-             False, 25, "R1", 4.2),
-            ("CME Group",        "CME",  "CME",  13, 18, 25.8, False,
+             False, 25, "R1"),
+            ("MSCI",             "MSCI", 25, 35, 35.0, False,
+             "○ Watch",
+             "Index / ESG data oligopoly. Negative equity from buybacks. "
+             "Premium multiple — wait for a drawdown.",
+             False, 25, "R3"),
+            ("CME Group",        "CME",  13, 18, 25.8, False,
              "○ Watch",
              "Futures exchange monopoly. Watch for fair entry.",
-             False, 23, "R1", 4.0),
+             False, 23, "R1"),
+            ("ASR",              "ASR",  15, 20, 17.9, False,
+             "○ Watch — Best of Rest",
+             "Mexican airport concession. FAIR signal. Situational/value hold.",
+             False, 26, "R1"),
+            ("Intercontinental Exchange", "ICE", 15, 21, 21.0, False,
+             "○ Watch",
+             "Exchange + mortgage-tech roll-up. Watch for fair entry.",
+             False, 24, "R1"),
+            ("London Stock Exchange",     "LSEG", 16, 22, 16.0, False,
+             "○ Watch",
+             "LSE + Refinitiv data. Microsoft partnership. Re-rating story.",
+             False, 22, "R2"),
+            ("BV",               "BV",   12, 16, 12.0, False,
+             "○ Watch",
+             "Ethics investigation — CEO refused to disclose details on conf "
+             "call. Off limits until resolved. Analytical rank #10 globally "
+             "but disqualified on conduct.",
+             False, 20, "R2"),
         ]
 
         st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
@@ -3304,13 +3598,13 @@ def main() -> None:
         _hdr_row(_SAT_COL_RATIOS, _SAT_HDR_LABELS)
         _watch_idx_b = 0
         for row in _SAT_BEST:
-            (_n, _yf, _disp, _d, _f, _dpe, _ow, _slot, _note, _onn,
-             _sms, _r, _fcf) = row
+            (_n, _disp, _d, _f, _dpe, _ow, _slot, _note, _onn,
+             _sms, _r) = row
             _idx = -1 if _ow else _watch_idx_b
             if not _ow:
                 _watch_idx_b += 1
-            _render_sat_row("best", _idx, _n, _yf, _disp, _d, _f, _dpe,
-                            _ow, _slot, _note, _onn, _sms, _r, _fcf)
+            _render_sat_row("best", _idx, _n, _disp, _d, _f, _dpe,
+                            _ow, _slot, _note, _onn, _sms, _r)
 
         # ── Footer ────────────────────────────────────────────────────────
         st.markdown(
