@@ -2323,11 +2323,49 @@ _DEBATE_MACRO_CONTEXT = (
 )
 
 _DEBATE_SYSTEM_PROMPT = (
-    "You are a Munger-framework investment analyst. Generate a structured "
-    "bull/bear debate for the stock provided. Be direct, specific, and "
-    "intellectually honest. Do not hedge every statement. The bear case "
-    "should be as strong as the bull case. Reference the specific data "
-    "points provided."
+    "You are a Munger-framework investment analyst generating a structured "
+    "bull/bear debate. Be direct, specific, and intellectually honest; do not "
+    "hedge every statement. The bear case must be as strong as the bull case. "
+    "Reference only the data points in the LIVE DASHBOARD DATA block.\n\n"
+    "HARD RULES (follow exactly):\n"
+    "1. DATA — All quantitative claims must use the figures in the LIVE "
+    "DASHBOARD DATA block. Never substitute figures from your training data. If "
+    "a metric shows — or N/A, acknowledge it is unavailable rather than "
+    "estimating.\n"
+    "2. MUNGER — Charlie Munger passed away in January 2023. Do not write as if "
+    "consulting a living person and never write 'Munger would' or 'Would "
+    "Munger'. Frame the Munger Test as an application of his documented "
+    "investment principles — use phrasing like 'Applying Munger's framework' or "
+    "'What Munger's principles tell us'.\n"
+    "3. R SCORE — R1 = rate beneficiary: earns strong returns today, uphill in "
+    "a high-rate world. R2 = rate neutral: mixed sensitivity, neither clearly "
+    "helped nor hurt. R3 = rate sensitive: long-duration compounder, downhill "
+    "in a sustained high-rate environment, multiple-compression risk.\n"
+    "4. FCF GATE BY TIER — Tier 1 Pure Toll quality gate: FCFy 3.0-3.5%. Tier 2 "
+    "Embedded Infrastructure quality gate: FCFy 3.5-4.0%. Tier 3 Regulatory "
+    "Network quality gate: FCFy 4.0-5.0%. Use the row's Tier to pick the "
+    "correct threshold when evaluating the FCFy gate — never a flat 3.5%.\n"
+    "5. SIGNAL — Open the Signal Verdict by restating the dashboard Signal "
+    "exactly as shown in the data block, and close by confirming it or "
+    "explicitly challenging it with reasoning. Do not derive an independent "
+    "signal that contradicts the dashboard without explanation.\n"
+    "6. SLOT STATUS — If Slot Status is ● OWNED, acknowledge the existing "
+    "position and frame the verdict as hold / add / trim (not buy / avoid). If "
+    "○ Watching, frame as entry / wait. If K's Notes say 'do not add' or 'value "
+    "trade', respect that constraint explicitly.\n"
+    "7. BRK.B — If the ticker is BRK.B the valuation metric is P/B, not P/E. Use "
+    "P/B everywhere and note that FCF yield is not applicable for a holding-"
+    "company structure."
+)
+
+_DEBATE_SYSTEM_PROMPT_BV = (
+    "You are a Munger-framework investment analyst. The stock under review is "
+    "off limits due to an active ethics investigation. Do NOT produce a "
+    "bull/bear debate — produce a conduct risk assessment using exactly the four "
+    "sections requested. Use only the figures in the LIVE DASHBOARD DATA block; "
+    "if a metric is — or N/A, say so rather than estimating. Charlie Munger "
+    "passed away in January 2023 — frame any reference to his principles as "
+    "documented philosophy, not a conversation."
 )
 
 _DEBATE_SIGNAL_FRAMING = {
@@ -2338,6 +2376,178 @@ _DEBATE_SIGNAL_FRAMING = {
     "WAIT":  ("This stock is above fair value. The debate is what would need "
               "to change to make this actionable."),
 }
+
+# Business-model tier classification used in the debate data block. Drives the
+# tier-specific FCF-yield quality gate the model must apply.
+_SAT_TIER_CLASS = {
+    "V": "Tier 1 Pure Toll", "MA": "Tier 1 Pure Toll",
+    "MCO": "Tier 1 Pure Toll", "SPGI": "Tier 1 Pure Toll",
+    "VRSN": "Tier 1 Pure Toll", "MSCI": "Tier 1 Pure Toll",
+    "CME": "Tier 1 Pure Toll", "ICE": "Tier 1 Pure Toll",
+    "LSEG": "Tier 1 Pure Toll",
+    "WTKWY": "Tier 2 Embedded Infrastructure",
+    "RELX": "Tier 2 Embedded Infrastructure",
+    "VRSK": "Tier 2 Embedded Infrastructure",
+    "ASR": "Tier 3 Regulatory Network",
+    "BV": "Tier 3 Regulatory Network",
+    "BRK.B": "Anchor (Conglomerate)",
+}
+
+_TIER_FCF_GATE = {
+    "Tier 1 Pure Toll": "3.0-3.5%",
+    "Tier 2 Embedded Infrastructure": "3.5-4.0%",
+    "Tier 3 Regulatory Network": "4.0-5.0%",
+}
+
+
+def _debate_tier(ticker: str) -> str:
+    return _SAT_TIER_CLASS.get(ticker, "Tier 1 Pure Toll")
+
+
+def _build_data_block(data: dict) -> str:
+    """Format the LIVE DASHBOARD DATA block injected at the top of every debate
+    prompt. All values are pre-formatted display strings from the dashboard row
+    so the model uses the exact figures shown to the user."""
+    L = data.get("pe_label", "P/E")
+    fields = [
+        f"Ticker: {data['ticker']}",
+        f"Company Name: {data['name']}",
+        f"Price: {data['price']}",
+        f"Current {L}: {data['current_pe']}",
+        f"Dream {L}: {data['dream_pe']}",
+        f"Fair {L}: {data['fair_pe']}",
+        f"Fair$: {data['fair_dollar']}",
+        f"Dream$: {data['dream_dollar']}",
+        f"Discount: {data['discount']}",
+        f"Signal: {data['signal']}",
+        f"SMS: {data['sms']}",
+        f"R: {data['r']}",
+        f"ROIC: {data['roic']}",
+        f"FCFy: {data['fcfy']}",
+        f"RevGr: {data['revgr']}",
+        f"GM: {data['gm']}",
+        f"Ins%: {data['ins']}",
+        f"D/E: {data['de']}",
+        f"Quality: {data['quality']}",
+        f"Red Flags: {data['red_flags']}",
+        f"Tier: {data['tier']}",
+        f"Slot Status: {data['slot_status']}",
+        f"K's Notes: {data['k_notes']}",
+    ]
+    return (
+        "LIVE DASHBOARD DATA (use these figures — do not substitute training data):\n"
+        f"> {' | '.join(fields)}\n\n"
+        "All quantitative claims in your analysis must use the figures in the "
+        "data block above. Do not substitute figures from your training data. If "
+        "a metric shows — or N/A, acknowledge it is unavailable rather than "
+        "estimating.\n"
+    )
+
+
+def _slot_directive(data: dict) -> str:
+    """Verdict-framing directive driven by Slot Status and K's Notes."""
+    slot = (data.get("slot_status") or "")
+    notes = (data.get("k_notes") or "").lower()
+    if "owned" in slot.lower() or "●" in slot:
+        out = ("This is an OWNED position — frame the verdict as hold / add / "
+               "trim (not buy / avoid) and acknowledge the existing holding.")
+    else:
+        out = "This is a WATCHING slot — frame the verdict as entry / wait."
+    if "do not add" in notes or "value trade" in notes or "off limits" in notes:
+        out += (" K's Notes impose a constraint ('do not add' / 'value trade') "
+                "— respect it explicitly in the verdict.")
+    return out
+
+
+def _build_debate_prompt(data: dict) -> str:
+    """Standard four-section bull/bear prompt built from the dashboard row."""
+    L = data.get("pe_label", "P/E")
+    is_brk = data.get("ticker") == "BRK.B" or L == "P/B"
+    tier_gate = _TIER_FCF_GATE.get(data.get("tier", ""), "3.0-3.5%")
+    if is_brk:
+        fcf_gate_cells = "FCF Yield | n/a (holding company) | — | n/a"
+    else:
+        fcf_gate_cells = f"FCF Yield | ≥{tier_gate} | {data['fcfy']} | ✅/❌"
+    return (
+        _build_data_block(data) + "\n"
+        f"Macro thesis context: {_DEBATE_MACRO_CONTEXT}\n\n"
+        f"Signal framing: {_DEBATE_SIGNAL_FRAMING.get(data['signal'], '')}\n\n"
+        "Produce a structured debate using exactly these four markdown sections "
+        "in this order:\n\n"
+        "## 1. BULL CASE\n"
+        "*Why this business wins in K's stagflationary decade*\n"
+        "- Why the moat is durable\n"
+        "- Why pricing power holds under inflation\n"
+        "- Why the SMS score reflects a real structural advantage\n"
+        f"- Why the current {L} valuation is compelling or worth monitoring\n\n"
+        "## 2. BEAR CASE\n"
+        "*What has to go wrong for this to be a mistake*\n"
+        "- The most credible threat to the moat\n"
+        "- Why the R score matters here (apply the hard-coded R-score definition)\n"
+        "- Regulatory, AI disruption, or cyclicality risks specific to this business\n"
+        "- What the market may be seeing that the bull case ignores\n\n"
+        "## 3. MUNGER TEST\n"
+        "*Applying Munger's framework — is this a 10-year hold?*\n"
+        "One paragraph. State plainly whether his documented principles support "
+        "holding this business untouched for 10 years, and why. This is an "
+        "application of his published philosophy, not a conversation with a "
+        "living person. Reference the specific moat type (network, regulatory, "
+        "physical, cognitive).\n\n"
+        "## 4. SIGNAL VERDICT\n"
+        "*What does the dashboard say to do right now?*\n"
+        f"Open by restating the dashboard Signal exactly: **{data['signal']}**. "
+        "Then synthesize the debate against the gates and include this gate "
+        "table (fill the Pass? column with ✅ or ❌ using the tier-correct "
+        "threshold):\n\n"
+        "| Gate | Threshold | Current | Pass? |\n"
+        "| --- | --- | --- | --- |\n"
+        f"| {L} vs Fair | ≤{data['fair_pe']} | {data['current_pe']} | ✅/❌ |\n"
+        f"| {fcf_gate_cells} |\n"
+        f"| SMS Score | — | {data['sms']}/30 | ✅/❌ |\n\n"
+        f"Close by confirming or explicitly challenging the {data['signal']} "
+        "signal with reasoning — do not contradict it silently. "
+        + _slot_directive(data)
+    )
+
+
+def _build_bv_prompt(data: dict) -> str:
+    """BV conduct risk assessment — replaces the bull/bear format entirely."""
+    return (
+        "This stock is currently off limits due to an active ethics "
+        "investigation where the CEO refused to disclose details on a public "
+        "conference call. Do not generate a standard bull/bear debate. Generate "
+        "a conduct risk assessment using the four sections specified.\n\n"
+        + _build_data_block(data) + "\n"
+        "Produce exactly these four markdown sections in this order:\n\n"
+        "## 1. Why BV Is Off Limits\n"
+        "Summarize the ethics investigation, the CEO's refusal to disclose "
+        "details on the conference call, and why conduct opacity is especially "
+        "damaging for an analytical / professional-services business whose moat "
+        "is built on trust.\n\n"
+        "## 2. What Resolution Would Look Like\n"
+        "Be concrete — not 'investigation resolves' but what specific "
+        "disclosure, what investigation outcome, and what management conduct "
+        "would need to occur, with what transparency and over what timeframe, "
+        "before BV could re-enter the investable universe.\n\n"
+        "## 3. Analytical Rank Preserved\n"
+        f"Acknowledge that BV's global analytical rank (#10) and SMS {data['sms']}/30 "
+        "represent real underlying business quality that would be worth "
+        "analyzing if the conduct gate were cleared.\n\n"
+        "## 4. Conditions For Re-Entry Analysis\n"
+        "List the specific, observable conditions that would trigger a full "
+        "bull/bear debate: full public disclosure of investigation findings, "
+        "CEO accountability or replacement, FCF yield crossing into positive "
+        "territory, and P/E compressing to a range where a margin-of-safety "
+        "calculation is possible.\n"
+    )
+
+
+def _build_debate_user_prompt(data: dict) -> tuple[str, str]:
+    """Return (system_prompt, user_prompt) for the row, dispatching BV to the
+    conduct-risk path and everything else to the bull/bear path."""
+    if data.get("is_bv") or data.get("ticker") == "BV":
+        return _DEBATE_SYSTEM_PROMPT_BV, _build_bv_prompt(data)
+    return _DEBATE_SYSTEM_PROMPT, _build_debate_prompt(data)
 
 
 def _anthropic_api_key() -> tuple[Optional[str], str]:
@@ -2358,68 +2568,6 @@ def _anthropic_api_key() -> tuple[Optional[str], str]:
     if env_v:
         return env_v, " | ".join(trace)
     return None, " | ".join(trace)
-
-
-def _build_debate_prompt(
-    name: str, ticker: str, current_pe: float, dream: float, fair: float,
-    signal: str, sms: Optional[int], r_score: Optional[str],
-    fcf: Optional[float], k_notes: str, pe_label: str = "P/E",
-) -> str:
-    sms_line = (
-        f"- SMS: {sms}/30 (AI-era moat durability — higher = more resilient "
-        "to AI disruption across six dimensions)"
-        if sms is not None else "- SMS: not scored"
-    )
-    r_line = {
-        "R1": "- R Score: R1 (earns returns today — uphill in high-rate regime)",
-        "R2": "- R Score: R2 (mixed rate sensitivity)",
-        "R3": ("- R Score: R3 (long-duration compounder — downhill in "
-               "high-rate environment, vulnerable to multiple compression)"),
-    }.get(r_score or "", "- R Score: not scored")
-    fcf_line = (
-        f"- FCF Yield: {fcf:.1f}% "
-        f"({'passes 3.5% quality gate' if fcf >= 3.5 else 'below 3.5% quality gate'})"
-        if fcf is not None else "- FCF Yield: not available"
-    )
-    framing = _DEBATE_SIGNAL_FRAMING.get(signal, "")
-    return (
-        f"Stock: {name} ({ticker})\n"
-        f"Current {pe_label}: {current_pe:g}\n"
-        f"Dream {pe_label}: {dream:g}\n"
-        f"Fair {pe_label}: {fair:g}\n"
-        f"Current Signal: {signal}\n"
-        f"{sms_line}\n"
-        f"{r_line}\n"
-        f"{fcf_line}\n"
-        f"K's Notes from dashboard: \"{k_notes}\"\n\n"
-        f"Macro thesis context: {_DEBATE_MACRO_CONTEXT}\n\n"
-        f"Signal framing: {framing}\n\n"
-        "Produce a structured debate using exactly these four markdown "
-        "sections in this order:\n\n"
-        "## 1. BULL CASE\n"
-        "*Why this business wins in K's stagflationary decade*\n"
-        "- Why the moat is durable\n"
-        "- Why pricing power holds under inflation\n"
-        "- Why the SMS score reflects a real structural advantage\n"
-        "- Why the current valuation is compelling or worth monitoring\n\n"
-        "## 2. BEAR CASE\n"
-        "*What has to go wrong for this to be a mistake*\n"
-        "- The most credible threat to the moat\n"
-        "- Why the R score matters here (rate sensitivity, multiple compression)\n"
-        "- Regulatory, AI disruption, or cyclicality risks specific to this business\n"
-        "- What the market may be seeing that the bull case ignores\n\n"
-        "## 3. MUNGER TEST\n"
-        "*Would Munger hold this with no news for 10 years?*\n"
-        "One paragraph. Direct yes or no with reasoning. Reference the "
-        "specific moat type (network, regulatory, physical, cognitive).\n\n"
-        "## 4. SIGNAL VERDICT\n"
-        "*What does the dashboard say to do right now?*\n"
-        "Synthesize the debate against the three gates. "
-        f"Signal is {signal} — address it directly:\n"
-        "- If DREAM: what has to go wrong for this to be a mistake at this price\n"
-        "- If FAIR: is this a Klarman-principle buy or wait for better margin of safety\n"
-        "- If WAIT: what price would make this actionable and why\n"
-    )
 
 
 def _generate_debate_cached(
@@ -2498,18 +2646,20 @@ def _debate_modal(ctx: dict) -> None:
             unsafe_allow_html=True,
         )
 
-    user_prompt = _build_debate_prompt(
-        name=name, ticker=ticker, current_pe=current_pe,
-        dream=ctx["dream"], fair=ctx["fair"], signal=signal,
-        sms=ctx.get("sms"), r_score=ctx.get("r_score"),
-        fcf=ctx.get("fcf"), k_notes=ctx.get("k_notes", ""),
-        pe_label=pe_label,
+    data = ctx.get("data") or {}
+    system_prompt, user_prompt = _build_debate_user_prompt(data)
+    # v2 cache namespace — the prompt template changed (data block, hardening).
+    cache_key = (
+        f"v2|{ticker}|{signal}|{current_pe:.2f}|{ctx['dream']:g}|{ctx['fair']:g}"
     )
-    cache_key = f"{ticker}|{signal}|{current_pe:.2f}|{ctx['dream']:g}|{ctx['fair']:g}"
 
-    with st.spinner("Generating debate via Claude…"):
+    spinner_label = (
+        "Generating conduct risk assessment via Claude…"
+        if data.get("is_bv") else "Generating debate via Claude…"
+    )
+    with st.spinner(spinner_label):
         ok, text = _generate_debate_cached(
-            cache_key, _DEBATE_SYSTEM_PROMPT, user_prompt,
+            cache_key, system_prompt, user_prompt,
         )
     if ok:
         st.markdown(text)
@@ -2733,24 +2883,61 @@ def _norm_selected(sr) -> list:
 
 
 def _open_debate_from_row(row: dict) -> None:
-    """Open the Bull/Bear debate modal for a selected AgGrid row."""
+    """Open the debate modal for a selected AgGrid row, building the structured
+    LIVE DASHBOARD DATA block from the row's current (formatted) values."""
     def _num(v, d=0.0):
         try:
             return float(v)
         except (TypeError, ValueError):
             return d
+
+    def _clean(v):
+        """Strip the stale ⚠ marker and ROIC estimate superscript for the
+        clean figure injected into the data block."""
+        if v is None:
+            return "—"
+        return str(v).replace(" ⚠", "").replace("ᵉ", "").strip() or "—"
+
+    ticker = row.get("Ticker", "")
+    pe_label = row.get("_pe_label", "P/E")
+    cur_pe_num = _num(row.get("Current P/E"))
+    data = {
+        "ticker": ticker,
+        "name": row.get("_name") or ticker,
+        "tier": _debate_tier(ticker),
+        "slot_status": _clean(row.get("Slot Status", "—")),
+        "signal": row.get("Signal", "WAIT"),
+        "price": _clean(row.get("Price", "—")),
+        "current_pe": f"{cur_pe_num:.2f}",
+        "dream_pe": _clean(row.get("Dream P/E", "—")),
+        "fair_pe": _clean(row.get("Fair P/E", "—")),
+        "fair_dollar": _clean(row.get("Fair$", "—")),
+        "dream_dollar": _clean(row.get("Dream$", "—")),
+        "discount": _clean(row.get("Discount", "—")),
+        "sms": _clean(row.get("SMS", "—")),
+        "r": _clean(row.get("R", "—")),
+        "roic": _clean(row.get("ROIC", "—")),
+        "fcfy": _clean(row.get("FCFy", "—")),
+        "revgr": _clean(row.get("RevGr", "—")),
+        "gm": _clean(row.get("GM", "—")),
+        "ins": _clean(row.get("Ins%", "—")),
+        "de": _clean(row.get("D/E", "—")),
+        "quality": _clean(row.get("Quality", "—")),
+        "red_flags": _clean(row.get("Red Flags", "—")),
+        "k_notes": row.get("_notes_full") or _clean(row.get("Notes", "")),
+        "pe_label": pe_label,
+        "is_bv": bool(row.get("_is_bv")) or ticker == "BV",
+        "fcfy_raw": row.get("_fcfy_raw"),
+    }
     _debate_modal({
-        "name": row.get("_name") or row.get("Ticker", ""),
-        "ticker": row.get("Ticker", ""),
-        "current_pe": _num(row.get("Current P/E")),
+        "name": data["name"],
+        "ticker": ticker,
+        "current_pe": cur_pe_num,
         "dream": _num(row.get("Dream P/E")),
         "fair": _num(row.get("Fair P/E")),
-        "signal": row.get("Signal", "WAIT"),
-        "sms": int(_num(row.get("SMS"))),
-        "r_score": row.get("R", "—"),
-        "fcf": row.get("_fcfy_raw"),
-        "k_notes": row.get("_notes_full") or row.get("Notes", ""),
-        "pe_label": row.get("_pe_label", "P/E"),
+        "signal": data["signal"],
+        "pe_label": pe_label,
+        "data": data,
     })
 
 
