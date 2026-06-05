@@ -2778,11 +2778,6 @@ _SAT_HEADER_TOOLTIPS = {
     "K's Notes": "K's Notes — conviction notes",
 }
 
-# Sorting is enabled only on these columns (menu/filter icons are suppressed
-# globally in the defaultColDef).
-_SAT_SORTABLE = {"Price", "Current P/E", "ROIC", "FCFy", "Discount", "Signal"}
-
-
 # BRK.B uses P/B not P/E — the anchor grid relabels these three columns (the
 # df field names stay "* P/E" so edit/persistence logic is unaffected).
 _SAT_PB_HEADER_NAMES = {
@@ -2801,11 +2796,10 @@ def _build_sat_grid_options(df: pd.DataFrame, pb: bool = False) -> dict:
     """Configure AgGrid columns/widths/styling for one satellite section.
 
     Widths are compact — just wide enough that every header label renders in
-    full. The column menu and filter icons are suppressed globally (via the
-    defaultColDef) so no header space is lost to icons; the 6 numeric columns
-    worth ranking keep sorting enabled. Every column carries a headerTooltip.
-    When pb=True (BRK.B anchor), the three valuation columns are relabelled P/B
-    and their tooltips reference book value."""
+    full. Sorting and the column menu / filter icons are all suppressed globally
+    (via the defaultColDef) so no header space is lost to icons. Every column
+    carries a headerTooltip. When pb=True (BRK.B anchor), the three valuation
+    columns are relabelled P/B and their tooltips reference book value."""
     def _col(field, **kw):
         if pb and field in _SAT_PB_HEADER_NAMES:
             kw["header_name"] = _SAT_PB_HEADER_NAMES[field]
@@ -2814,7 +2808,6 @@ def _build_sat_grid_options(df: pd.DataFrame, pb: bool = False) -> dict:
             tip = _SAT_HEADER_TOOLTIPS.get(kw.get("header_name", field))
             if tip:
                 kw.setdefault("headerTooltip", tip)
-        kw["sortable"] = field in _SAT_SORTABLE
         gb.configure_column(field, **kw)
 
     gb = GridOptionsBuilder.from_dataframe(df)
