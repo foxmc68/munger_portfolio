@@ -2633,17 +2633,36 @@ _SAT_SUPPRESS_MENU = {"Dream P/E", "Fair P/E", "SMS", "R", "Signal"}
 _SAT_SORTABLE = {"Price", "Current P/E", "ROIC", "FCFy", "Discount", "Signal"}
 
 
-def _build_sat_grid_options(df: pd.DataFrame) -> dict:
+# BRK.B uses P/B not P/E — the anchor grid relabels these three columns (the
+# df field names stay "* P/E" so edit/persistence logic is unaffected).
+_SAT_PB_HEADER_NAMES = {
+    "Current P/E": "Current P/B",
+    "Dream P/E": "Dream P/B",
+    "Fair P/E": "Fair P/B",
+}
+_SAT_PB_HEADER_TOOLTIPS = {
+    "Current P/E": "Current P/B — trailing price-to-book ratio (Berkshire is valued on P/B, not P/E)",
+    "Dream P/E": "Dream P/B — K's crisis-level entry price-to-book (book value multiple)",
+    "Fair P/E": "Fair P/B — K's normal Munger buying zone price-to-book (book value multiple)",
+}
+
+
+def _build_sat_grid_options(df: pd.DataFrame, pb: bool = False) -> dict:
     """Configure AgGrid columns/widths/styling for one satellite section.
 
-    Widths are deliberately generous so every header label renders in full
-    (room for the sort arrow / menu icon). The 5 columns where filtering adds
-    no value suppress their menu icon; the 6 numeric columns worth ranking keep
-    sorting enabled. Every column carries a headerTooltip."""
+    Widths are compact — just wide enough that every header label renders in
+    full. The 5 columns where filtering adds no value suppress their menu icon;
+    the 6 numeric columns worth ranking keep sorting enabled. Every column
+    carries a headerTooltip. When pb=True (BRK.B anchor), the three valuation
+    columns are relabelled P/B and their tooltips reference book value."""
     def _col(field, **kw):
-        tip = _SAT_HEADER_TOOLTIPS.get(kw.get("header_name", field))
-        if tip:
-            kw.setdefault("headerTooltip", tip)
+        if pb and field in _SAT_PB_HEADER_NAMES:
+            kw["header_name"] = _SAT_PB_HEADER_NAMES[field]
+            kw["headerTooltip"] = _SAT_PB_HEADER_TOOLTIPS[field]
+        else:
+            tip = _SAT_HEADER_TOOLTIPS.get(kw.get("header_name", field))
+            if tip:
+                kw.setdefault("headerTooltip", tip)
         kw["sortable"] = field in _SAT_SORTABLE
         if field in _SAT_SUPPRESS_MENU:
             kw["suppressMenu"] = True
@@ -2653,34 +2672,34 @@ def _build_sat_grid_options(df: pd.DataFrame) -> dict:
     gb = GridOptionsBuilder.from_dataframe(df)
     gb.configure_default_column(
         editable=False, sortable=False, filter=True, resizable=True,
-        width=90, cellStyle=_SAT_CENTER_STYLE,
+        width=75, cellStyle=_SAT_CENTER_STYLE,
     )
     for col in df.columns:
         if col.startswith("_"):
             gb.configure_column(col, hide=True)
-    _col("Ticker", width=100, pinned="left", cellStyle=_SAT_LEFT_STYLE)
-    _col("Price", width=100)
-    _col("Current P/E", editable=True, width=125, type=["numericColumn"],
+    _col("Ticker", width=70, pinned="left", cellStyle=_SAT_LEFT_STYLE)
+    _col("Price", width=80)
+    _col("Current P/E", editable=True, width=95, type=["numericColumn"],
          valueParser=JsCode(
              "function(p){var n=Number(p.newValue);return isNaN(n)?p.oldValue:n;}"))
-    _col("Dream P/E", width=110)
-    _col("Fair P/E", width=100)
-    _col("Fair$", width=100)
-    _col("Dream$", width=105)
-    _col("Discount", width=115, cellStyle=_SAT_DISC_STYLE)
-    _col("Signal", width=110, cellStyle=_SAT_SIGNAL_STYLE)
-    _col("SMS", width=85, cellStyle=_SAT_SMS_STYLE)
-    _col("R", width=72, cellStyle=_SAT_R_STYLE)
-    _col("ROIC", width=100)
-    _col("FCFy", width=100, cellStyle=_SAT_FCFY_STYLE)
-    _col("RevGr", width=100)
-    _col("GM", width=85)
-    _col("Ins%", width=92)
-    _col("D/E", width=85)
-    _col("Quality", width=105, cellStyle=_SAT_QUALITY_STYLE)
-    _col("Red Flags", width=120)
-    _col("Slot Status", width=185, cellStyle=_SAT_LEFT_STYLE)
-    _col("Notes", header_name="K's Notes", width=300,
+    _col("Dream P/E", width=90)
+    _col("Fair P/E", width=85)
+    _col("Fair$", width=85)
+    _col("Dream$", width=90)
+    _col("Discount", width=85, cellStyle=_SAT_DISC_STYLE)
+    _col("Signal", width=80, cellStyle=_SAT_SIGNAL_STYLE)
+    _col("SMS", width=75, cellStyle=_SAT_SMS_STYLE)
+    _col("R", width=55, cellStyle=_SAT_R_STYLE)
+    _col("ROIC", width=75)
+    _col("FCFy", width=70, cellStyle=_SAT_FCFY_STYLE)
+    _col("RevGr", width=70)
+    _col("GM", width=65)
+    _col("Ins%", width=65)
+    _col("D/E", width=60)
+    _col("Quality", width=75, cellStyle=_SAT_QUALITY_STYLE)
+    _col("Red Flags", width=85)
+    _col("Slot Status", width=140, cellStyle=_SAT_LEFT_STYLE)
+    _col("Notes", header_name="K's Notes", width=220,
          tooltipField="_notes_full", cellStyle=_SAT_LEFT_STYLE)
     gb.configure_selection("single", use_checkbox=False)
     gb.configure_grid_options(
@@ -2737,15 +2756,16 @@ def _open_debate_from_row(row: dict) -> None:
 
 
 def _render_sat_grid(section_key: str, df: pd.DataFrame, passed_pe: dict,
-                     on_pe_edit, height: int) -> None:
+                     on_pe_edit, height: int, pb: bool = False) -> None:
     """Render one satellite section as an AgGrid with a Debate button above it.
 
     Edits to the Current P/E column are persisted via on_pe_edit(ticker, value)
     and trigger a rerun so derived columns (Signal) recompute. The Debate button
-    activates for the currently selected row (grayed out when none selected)."""
+    activates for the currently selected row (grayed out when none selected).
+    pb=True relabels the three valuation columns P/B (BRK.B anchor only)."""
     btn_ph = st.empty()
     grid = AgGrid(
-        df, gridOptions=_build_sat_grid_options(df),
+        df, gridOptions=_build_sat_grid_options(df, pb=pb),
         key=f"sat_aggrid_{section_key}",
         allow_unsafe_jscode=True, enable_enterprise_modules=False,
         update_mode=GridUpdateMode.MODEL_CHANGED | GridUpdateMode.SELECTION_CHANGED,
@@ -3419,7 +3439,7 @@ def main() -> None:
         _render_sat_grid(
             "brk", _brk_df,
             {"BRK.B": float(_brk_df.iloc[0]["Current P/E"])},
-            _brk_pe_edit, height=36 + 38 + 24,
+            _brk_pe_edit, height=36 + 38 + 24, pb=True,
         )
         if st.session_state.get("sat_brk_pb_fallback"):
             st.markdown(
