@@ -1,6 +1,8 @@
 yfinance
 streamlit
+altair>=5
 pandas
 requests
 streamlit-autorefresh
+streamlit-aggrid
 anthropic
