@@ -2582,14 +2582,16 @@ function(p){
 }
 """)
 
-_SAT_SMS_RENDERER = JsCode("""
+# SMS — plain number with a bucket-coloured cell background (no circle graphic).
+# Uses the hidden _sms_bg / _sms_fg fields precomputed in Python via _sms_colors.
+_SAT_SMS_STYLE = JsCode("""
 function(p){
-  if(p.value===null||p.value===undefined||p.value===''){return '';}
-  var bg=(p.data&&p.data._sms_bg)?p.data._sms_bg:'#c0c0c0';
-  var fg=(p.data&&p.data._sms_fg)?p.data._sms_fg:'#333333';
-  return '<span style="display:inline-flex;width:26px;height:26px;border-radius:50%;'
-       + 'background:'+bg+';color:'+fg+';align-items:center;justify-content:center;'
-       + 'font-weight:700;font-size:0.72rem">'+p.value+'</span>';
+  var s={display:'flex',alignItems:'center',justifyContent:'center',fontWeight:'700'};
+  if(p.data){
+    if(p.data._sms_bg){s.backgroundColor=p.data._sms_bg;}
+    if(p.data._sms_fg){s.color=p.data._sms_fg;}
+  }
+  return s;
 }
 """)
 
@@ -2600,45 +2602,86 @@ function(p){
 }
 """)
 
+# Full-name + brief-description header tooltips (shown on header hover).
+_SAT_HEADER_TOOLTIPS = {
+    "Ticker": "Ticker — stock ticker symbol",
+    "Price": "Price — current market price in USD",
+    "Current P/E": "Current P/E — trailing P/E ratio (never forward)",
+    "Dream P/E": "Dream P/E — K's crisis-level entry P/E",
+    "Fair P/E": "Fair P/E — K's normal Munger buying zone P/E",
+    "Fair$": "Fair$ — Fair P/E × EPS (target entry price)",
+    "Dream$": "Dream$ — Dream P/E × EPS (crisis entry price)",
+    "Discount": "Discount — (Fair$ − Price) / Fair$ (green if cheap, red if expensive)",
+    "Signal": "Signal — DREAM / FAIR / WAIT based on current P/E vs thresholds",
+    "SMS": "SMS — AI-era moat durability score 1-30 across 6 dimensions",
+    "R": "R — rate-era moat durability (R1 benefits from high rates, R2 neutral, R3 sensitive)",
+    "ROIC": "ROIC — return on invested capital",
+    "FCFy": "FCFy — free cash flow yield (green if ≥3.5%)",
+    "RevGr": "RevGr — trailing revenue growth",
+    "GM": "GM — gross margin",
+    "Ins%": "Ins% — insider ownership percentage",
+    "D/E": "D/E — debt to equity ratio",
+    "Quality": "Quality — PASS/FAIL from three-gate quality system",
+    "Red Flags": "Red Flags — manual review (insider selling, accounting issues, regulatory threats)",
+    "Slot Status": "Slot Status — ● OWNED or ○ Watching",
+    "K's Notes": "K's Notes — conviction notes",
+}
+
+# Filtering these columns is not useful → suppress their menu icon.
+_SAT_SUPPRESS_MENU = {"Dream P/E", "Fair P/E", "SMS", "R", "Signal"}
+# Sorting is enabled only on these columns.
+_SAT_SORTABLE = {"Price", "Current P/E", "ROIC", "FCFy", "Discount", "Signal"}
+
 
 def _build_sat_grid_options(df: pd.DataFrame) -> dict:
-    """Configure AgGrid columns/widths/styling for one satellite section."""
+    """Configure AgGrid columns/widths/styling for one satellite section.
+
+    Widths are deliberately generous so every header label renders in full
+    (room for the sort arrow / menu icon). The 5 columns where filtering adds
+    no value suppress their menu icon; the 6 numeric columns worth ranking keep
+    sorting enabled. Every column carries a headerTooltip."""
+    def _col(field, **kw):
+        tip = _SAT_HEADER_TOOLTIPS.get(kw.get("header_name", field))
+        if tip:
+            kw.setdefault("headerTooltip", tip)
+        kw["sortable"] = field in _SAT_SORTABLE
+        if field in _SAT_SUPPRESS_MENU:
+            kw["suppressMenu"] = True
+            kw["filter"] = False
+        gb.configure_column(field, **kw)
+
     gb = GridOptionsBuilder.from_dataframe(df)
     gb.configure_default_column(
-        editable=False, sortable=False, filter=False, resizable=True,
-        suppressMenu=True, width=80, cellStyle=_SAT_CENTER_STYLE,
+        editable=False, sortable=False, filter=True, resizable=True,
+        width=90, cellStyle=_SAT_CENTER_STYLE,
     )
     for col in df.columns:
         if col.startswith("_"):
             gb.configure_column(col, hide=True)
-    gb.configure_column("Ticker", width=92, pinned="left", cellStyle=_SAT_LEFT_STYLE)
-    gb.configure_column("Price", width=90)
-    gb.configure_column(
-        "Current P/E", editable=True, width=98, type=["numericColumn"],
-        valueParser=JsCode(
-            "function(p){var n=Number(p.newValue);return isNaN(n)?p.oldValue:n;}"),
-    )
-    gb.configure_column("Dream P/E", width=84)
-    gb.configure_column("Fair P/E", width=80)
-    gb.configure_column("Fair$", width=90)
-    gb.configure_column("Dream$", width=90)
-    gb.configure_column("Discount", width=88, cellStyle=_SAT_DISC_STYLE)
-    gb.configure_column("Signal", width=88, cellStyle=_SAT_SIGNAL_STYLE)
-    gb.configure_column("SMS", width=72, cellRenderer=_SAT_SMS_RENDERER)
-    gb.configure_column("R", width=64, cellStyle=_SAT_R_STYLE)
-    gb.configure_column("ROIC", width=86)
-    gb.configure_column("FCFy", width=82, cellStyle=_SAT_FCFY_STYLE)
-    gb.configure_column("RevGr", width=80)
-    gb.configure_column("GM", width=70)
-    gb.configure_column("Ins%", width=74)
-    gb.configure_column("D/E", width=70)
-    gb.configure_column("Quality", width=84, cellStyle=_SAT_QUALITY_STYLE)
-    gb.configure_column("Red Flags", width=88)
-    gb.configure_column("Slot Status", width=168, cellStyle=_SAT_LEFT_STYLE)
-    gb.configure_column(
-        "Notes", header_name="K's Notes", width=270,
-        tooltipField="_notes_full", cellStyle=_SAT_LEFT_STYLE,
-    )
+    _col("Ticker", width=100, pinned="left", cellStyle=_SAT_LEFT_STYLE)
+    _col("Price", width=100)
+    _col("Current P/E", editable=True, width=125, type=["numericColumn"],
+         valueParser=JsCode(
+             "function(p){var n=Number(p.newValue);return isNaN(n)?p.oldValue:n;}"))
+    _col("Dream P/E", width=110)
+    _col("Fair P/E", width=100)
+    _col("Fair$", width=100)
+    _col("Dream$", width=105)
+    _col("Discount", width=115, cellStyle=_SAT_DISC_STYLE)
+    _col("Signal", width=110, cellStyle=_SAT_SIGNAL_STYLE)
+    _col("SMS", width=85, cellStyle=_SAT_SMS_STYLE)
+    _col("R", width=72, cellStyle=_SAT_R_STYLE)
+    _col("ROIC", width=100)
+    _col("FCFy", width=100, cellStyle=_SAT_FCFY_STYLE)
+    _col("RevGr", width=100)
+    _col("GM", width=85)
+    _col("Ins%", width=92)
+    _col("D/E", width=85)
+    _col("Quality", width=105, cellStyle=_SAT_QUALITY_STYLE)
+    _col("Red Flags", width=120)
+    _col("Slot Status", width=185, cellStyle=_SAT_LEFT_STYLE)
+    _col("Notes", header_name="K's Notes", width=300,
+         tooltipField="_notes_full", cellStyle=_SAT_LEFT_STYLE)
     gb.configure_selection("single", use_checkbox=False)
     gb.configure_grid_options(
         rowHeight=38, headerHeight=36, enableBrowserTooltips=True,
