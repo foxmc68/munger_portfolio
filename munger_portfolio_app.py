@@ -2627,9 +2627,8 @@ _SAT_HEADER_TOOLTIPS = {
     "K's Notes": "K's Notes — conviction notes",
 }
 
-# Filtering these columns is not useful → suppress their menu icon.
-_SAT_SUPPRESS_MENU = {"Dream P/E", "Fair P/E", "SMS", "R", "Signal"}
-# Sorting is enabled only on these columns.
+# Sorting is enabled only on these columns (menu/filter icons are suppressed
+# globally in the defaultColDef).
 _SAT_SORTABLE = {"Price", "Current P/E", "ROIC", "FCFy", "Discount", "Signal"}
 
 
@@ -2651,10 +2650,11 @@ def _build_sat_grid_options(df: pd.DataFrame, pb: bool = False) -> dict:
     """Configure AgGrid columns/widths/styling for one satellite section.
 
     Widths are compact — just wide enough that every header label renders in
-    full. The 5 columns where filtering adds no value suppress their menu icon;
-    the 6 numeric columns worth ranking keep sorting enabled. Every column
-    carries a headerTooltip. When pb=True (BRK.B anchor), the three valuation
-    columns are relabelled P/B and their tooltips reference book value."""
+    full. The column menu and filter icons are suppressed globally (via the
+    defaultColDef) so no header space is lost to icons; the 6 numeric columns
+    worth ranking keep sorting enabled. Every column carries a headerTooltip.
+    When pb=True (BRK.B anchor), the three valuation columns are relabelled P/B
+    and their tooltips reference book value."""
     def _col(field, **kw):
         if pb and field in _SAT_PB_HEADER_NAMES:
             kw["header_name"] = _SAT_PB_HEADER_NAMES[field]
@@ -2664,15 +2664,14 @@ def _build_sat_grid_options(df: pd.DataFrame, pb: bool = False) -> dict:
             if tip:
                 kw.setdefault("headerTooltip", tip)
         kw["sortable"] = field in _SAT_SORTABLE
-        if field in _SAT_SUPPRESS_MENU:
-            kw["suppressMenu"] = True
-            kw["filter"] = False
         gb.configure_column(field, **kw)
 
     gb = GridOptionsBuilder.from_dataframe(df)
+    # Suppress the column menu + filter icons on ALL columns globally so header
+    # space isn't lost to icons (frees room for full labels without truncation).
     gb.configure_default_column(
-        editable=False, sortable=False, filter=True, resizable=True,
-        width=75, cellStyle=_SAT_CENTER_STYLE,
+        editable=False, sortable=False, filter=False, resizable=True,
+        suppressMenu=True, width=75, cellStyle=_SAT_CENTER_STYLE,
     )
     for col in df.columns:
         if col.startswith("_"):
