@@ -2383,13 +2383,14 @@ _SAT_TIER_CLASS = {
     "V": "Tier 1 Pure Toll", "MA": "Tier 1 Pure Toll",
     "MCO": "Tier 1 Pure Toll", "SPGI": "Tier 1 Pure Toll",
     "VRSN": "Tier 1 Pure Toll", "MSCI": "Tier 1 Pure Toll",
-    "CME": "Tier 1 Pure Toll", "ICE": "Tier 1 Pure Toll",
-    "LSEG": "Tier 1 Pure Toll",
+    "VRSK": "Tier 1 Pure Toll",
     "WTKWY": "Tier 2 Embedded Infrastructure",
     "RELX": "Tier 2 Embedded Infrastructure",
-    "VRSK": "Tier 2 Embedded Infrastructure",
     "ASR": "Tier 3 Regulatory Network",
     "BV": "Tier 3 Regulatory Network",
+    "CME": "Tier 3 Regulatory Network",
+    "ICE": "Tier 3 Regulatory Network",
+    "LSEG": "Tier 3 Regulatory Network",
     "BRK.B": "Anchor (Conglomerate)",
 }
 
