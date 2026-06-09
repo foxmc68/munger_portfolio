@@ -2817,18 +2817,30 @@ def _build_sat_grid_options(df: pd.DataFrame, pb: bool = False,
                 kw.setdefault("headerTooltip", tip)
         if field in saved_widths:
             kw["width"] = saved_widths[field]
+        # Force header-icon suppression on EVERY individual column definition
+        # (not just the defaultColDef). These are set unconditionally — they
+        # cannot be re-enabled by a per-column override.
+        kw["sortable"] = False
+        kw["filter"] = False
+        kw["suppressMenu"] = True
+        kw["floatingFilter"] = False
         gb.configure_column(field, **kw)
 
     gb = GridOptionsBuilder.from_dataframe(df)
     # Suppress the column menu + filter icons on ALL columns globally so header
     # space isn't lost to icons (frees room for full labels without truncation).
     gb.configure_default_column(
-        editable=False, sortable=False, filter=False, resizable=True,
-        suppressMenu=True, width=75, cellStyle=_SAT_CENTER_STYLE,
+        editable=False, sortable=False, filter=False, floatingFilter=False,
+        resizable=True, suppressMenu=True, width=75, cellStyle=_SAT_CENTER_STYLE,
     )
+    # Hidden helper columns also carry the suppression flags so the generated
+    # gridOptions has NO column with filter/sortable/suppressMenu mis-set.
     for col in df.columns:
         if col.startswith("_"):
-            gb.configure_column(col, hide=True)
+            gb.configure_column(
+                col, hide=True, sortable=False, filter=False,
+                suppressMenu=True, floatingFilter=False,
+            )
     _col("Ticker", width=70, pinned="left", cellStyle=_SAT_LEFT_STYLE)
     _col("Price", width=80)
     _col("Current P/E", editable=True, width=95, type=["numericColumn"],
@@ -2859,6 +2871,27 @@ def _build_sat_grid_options(df: pd.DataFrame, pb: bool = False,
         getRowStyle=_SAT_ROWSTYLE_BV, suppressMovableColumns=True,
     )
     return gb.build()
+
+
+def _sat_widths_from_state(columns_state) -> dict:
+    """Extract a {field: width} map from an AgGrid columns_state payload.
+
+    columns_state is the list of column-state dicts the grid posts back when an
+    onColumnResized event fires (subscribed via GridUpdateMode.COLUMN_RESIZED).
+    Hidden helper columns (colId starting with '_') and entries without a numeric
+    width are skipped."""
+    widths: dict = {}
+    if not columns_state:
+        return widths
+    for c in columns_state:
+        cid = c.get("colId")
+        w = c.get("width")
+        if cid and not cid.startswith("_") and w:
+            try:
+                widths[cid] = int(w)
+            except (TypeError, ValueError):
+                continue
+    return widths
 
 
 def _grid_get(grid, key):
@@ -2953,11 +2986,13 @@ def _render_sat_grid(section_key: str, df: pd.DataFrame, passed_pe: dict,
     activates for the currently selected row (grayed out when none selected).
     pb=True relabels the three valuation columns P/B (BRK.B anchor only).
 
-    User column-resize events are persisted to st.session_state (keyed by
-    section) and re-applied as column widths on the next render, so manually
-    adjusted widths survive a page refresh within the session."""
+    User column-resize events are captured via the grid's onColumnResized
+    callback (subscribed through GridUpdateMode.COLUMN_RESIZED), persisted to
+    st.session_state keyed by the grid name, and re-applied as column widths on
+    the next render — so manually adjusted widths survive a page refresh within
+    the session."""
     colw_key = f"sat_colw_{section_key}"
-    saved_widths = st.session_state.get(colw_key, {})
+    saved_widths = dict(st.session_state.get(colw_key, {}))
     btn_ph = st.empty()
     grid = AgGrid(
         df, gridOptions=_build_sat_grid_options(df, pb=pb, saved_widths=saved_widths),
@@ -2970,17 +3005,13 @@ def _render_sat_grid(section_key: str, df: pd.DataFrame, passed_pe: dict,
         custom_css=_SAT_AGGRID_CSS, reload_data=False,
     )
 
-    # Persist user-resized column widths so they survive a page refresh.
-    cstate = _grid_get(grid, "columns_state")
-    if cstate:
-        widths = {}
-        for _c in cstate:
-            _cid = _c.get("colId")
-            _w = _c.get("width")
-            if _cid and not _cid.startswith("_") and _w:
-                widths[_cid] = int(_w)
-        if widths and widths != saved_widths:
-            st.session_state[colw_key] = widths
+    # onColumnResized → grid posts its columns_state back here; persist the new
+    # widths (merged over any prior saved widths) keyed by the grid name.
+    new_widths = _sat_widths_from_state(_grid_get(grid, "columns_state"))
+    if new_widths:
+        merged = {**saved_widths, **new_widths}
+        if merged != saved_widths:
+            st.session_state[colw_key] = merged
 
     # Persist Current P/E edits, then rerun so Signal/derived columns refresh.
     data = _grid_get(grid, "data")
@@ -3735,8 +3766,8 @@ def main() -> None:
             f"<div style='background:#2c3e50;color:#fff;padding:12px 16px;"
             f"border-radius:6px;margin-bottom:10px;display:flex;"
             f"justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px'>"
-            f"<span><strong>Munger Satellite</strong> &nbsp;—&nbsp; 6 Slots Max / "
-            f"20% Total &nbsp;—&nbsp; Tier 1 Oligopolies Only</span>"
+            f"<span><strong>Munger Satellite</strong> &nbsp;—&nbsp; "
+            f"K's 12 — Munger Master List</span>"
             f"<span style='background:#5a7a9b;padding:4px 12px;border-radius:14px;"
             f"font-size:0.85rem;font-weight:600;letter-spacing:0.02em'>"
             f"{_filled} of {_slots_max} Filled &nbsp;—&nbsp; {_empty_slots} slots held as SGOV"
