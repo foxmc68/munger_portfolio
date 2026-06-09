@@ -3383,14 +3383,15 @@ def main() -> None:
             ("SPGI",  False), ("VRSN",  False), ("WTKWY", False),
             ("RELX",  False), ("VRSK",  False), ("MSCI",  False),
             ("CME",   False), ("ASR",   False), ("ICE",   False),
-            ("LSEG.L", False), ("BV",   False), ("FICO",  False),
+            ("LSEG.L", False), ("BVI.PA", False), ("FICO",  False),
             ("BRK-B", True),
         ]
 
         # Map a yfinance symbol to the key used in the last-known store / row
-        # tuples. "LSEG.L" (London listing) fetches under the display/store
-        # key "LSEG" so the tab still shows "LSEG" to the user.
-        _SAT_STORE_KEY: dict[str, str] = {"LSEG.L": "LSEG"}
+        # tuples. "LSEG.L" (London listing) fetches under the display/store key
+        # "LSEG", and "BVI.PA" (Bureau Veritas, Paris listing) fetches under the
+        # display/store key "BV", so the tab still shows "LSEG" / "BV" to the user.
+        _SAT_STORE_KEY: dict[str, str] = {"LSEG.L": "LSEG", "BVI.PA": "BV"}
 
         def _sat_fetch_all(yf_ticker: str, use_pb: bool) -> dict:
             """Fetch the full Satellite metric bundle from yfinance .info.
