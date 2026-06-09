@@ -2792,14 +2792,21 @@ _SAT_PB_HEADER_TOOLTIPS = {
 }
 
 
-def _build_sat_grid_options(df: pd.DataFrame, pb: bool = False) -> dict:
+def _build_sat_grid_options(df: pd.DataFrame, pb: bool = False,
+                            saved_widths=None) -> dict:
     """Configure AgGrid columns/widths/styling for one satellite section.
 
     Widths are compact — just wide enough that every header label renders in
     full. Sorting and the column menu / filter icons are all suppressed globally
     (via the defaultColDef) so no header space is lost to icons. Every column
     carries a headerTooltip. When pb=True (BRK.B anchor), the three valuation
-    columns are relabelled P/B and their tooltips reference book value."""
+    columns are relabelled P/B and their tooltips reference book value.
+
+    saved_widths maps a column field → user-resized width (persisted in
+    st.session_state). When present, it overrides that column's default width so
+    user-adjusted widths survive a page refresh within the session."""
+    saved_widths = saved_widths or {}
+
     def _col(field, **kw):
         if pb and field in _SAT_PB_HEADER_NAMES:
             kw["header_name"] = _SAT_PB_HEADER_NAMES[field]
@@ -2808,6 +2815,8 @@ def _build_sat_grid_options(df: pd.DataFrame, pb: bool = False) -> dict:
             tip = _SAT_HEADER_TOOLTIPS.get(kw.get("header_name", field))
             if tip:
                 kw.setdefault("headerTooltip", tip)
+        if field in saved_widths:
+            kw["width"] = saved_widths[field]
         gb.configure_column(field, **kw)
 
     gb = GridOptionsBuilder.from_dataframe(df)
@@ -2942,17 +2951,36 @@ def _render_sat_grid(section_key: str, df: pd.DataFrame, passed_pe: dict,
     Edits to the Current P/E column are persisted via on_pe_edit(ticker, value)
     and trigger a rerun so derived columns (Signal) recompute. The Debate button
     activates for the currently selected row (grayed out when none selected).
-    pb=True relabels the three valuation columns P/B (BRK.B anchor only)."""
+    pb=True relabels the three valuation columns P/B (BRK.B anchor only).
+
+    User column-resize events are persisted to st.session_state (keyed by
+    section) and re-applied as column widths on the next render, so manually
+    adjusted widths survive a page refresh within the session."""
+    colw_key = f"sat_colw_{section_key}"
+    saved_widths = st.session_state.get(colw_key, {})
     btn_ph = st.empty()
     grid = AgGrid(
-        df, gridOptions=_build_sat_grid_options(df, pb=pb),
+        df, gridOptions=_build_sat_grid_options(df, pb=pb, saved_widths=saved_widths),
         key=f"sat_aggrid_{section_key}",
         allow_unsafe_jscode=True, enable_enterprise_modules=False,
-        update_mode=GridUpdateMode.MODEL_CHANGED | GridUpdateMode.SELECTION_CHANGED,
+        update_mode=GridUpdateMode.MODEL_CHANGED | GridUpdateMode.SELECTION_CHANGED
+        | GridUpdateMode.COLUMN_RESIZED,
         data_return_mode=DataReturnMode.AS_INPUT,
         fit_columns_on_grid_load=False, height=height, theme="streamlit",
         custom_css=_SAT_AGGRID_CSS, reload_data=False,
     )
+
+    # Persist user-resized column widths so they survive a page refresh.
+    cstate = _grid_get(grid, "columns_state")
+    if cstate:
+        widths = {}
+        for _c in cstate:
+            _cid = _c.get("colId")
+            _w = _c.get("width")
+            if _cid and not _cid.startswith("_") and _w:
+                widths[_cid] = int(_w)
+        if widths and widths != saved_widths:
+            st.session_state[colw_key] = widths
 
     # Persist Current P/E edits, then rerun so Signal/derived columns refresh.
     data = _grid_get(grid, "data")
@@ -3288,7 +3316,8 @@ def main() -> None:
             ("SPGI",  False), ("VRSN",  False), ("WTKWY", False),
             ("RELX",  False), ("VRSK",  False), ("MSCI",  False),
             ("CME",   False), ("ASR",   False), ("ICE",   False),
-            ("LSEG.L", False), ("BV",   False), ("BRK-B", True),
+            ("LSEG.L", False), ("BV",   False), ("FICO",  False),
+            ("BRK-B", True),
         ]
 
         # Map a yfinance symbol to the key used in the last-known store / row
@@ -3644,31 +3673,59 @@ def main() -> None:
         # Each row: (name, display_ticker, dream, fair, default_pe, owned,
         #            slot_status, note, on_notice, sms, r_score)
         _SAT_TIER1 = [
-            ("Visa",           "V",     15, 20, 28.4, False,
-             "○ Watching — Slot Open",
-             "Greatest legal monopoly. Klarman principle: buy at Fair.",
-             False, 26, "R1"),
-            ("Mastercard",     "MA",    16, 22, 35.8, False,
-             "○ Watching — Slot Open",
-             "Network duopoly. Fair value entry acceptable.",
-             False, 25, "R1"),
             ("Moody's",        "MCO",   16, 23, 37.6, False,
              "○ Watching — Slot Open",
              "Rating oligopoly. Dream entry preferred.",
-             False, 24, "R2"),
-            ("S&P Global",     "SPGI",  16, 23, 30.8, False,
-             "○ Watching — Slot Open",
-             "$16T index licensing + rating duopoly.",
              False, 24, "R2"),
             ("VeriSign",       "VRSN",  17, 25, 28.0, False,
              "○ Watching — Slot Open",
              "Domain-registry monopoly (.com/.net). ICANN-sanctioned price "
              "increases. Long-duration compounder.",
              False, 27, "R3"),
+            ("S&P Global",     "SPGI",  16, 23, 30.8, False,
+             "○ Watching — Slot Open",
+             "$16T index licensing + rating duopoly.",
+             False, 24, "R2"),
+            ("Visa",           "V",     15, 20, 28.4, False,
+             "○ Watching — Slot Open",
+             "Greatest legal monopoly. Klarman principle: buy at Fair.",
+             False, 26, "R1"),
+            ("Verisk Analytics", "VRSK", 18, 24, 24.2, False,
+             "○ Watching — Slot Open",
+             "ISO actuarial moat. 34% ROIC. Needs FCF yield >5% to enter.",
+             False, 25, "R1"),
+            ("RELX",           "RELX",  14, 20, 15.8, False,
+             "○ Watching — Slot Open",
+             "Strong AI product execution. ~5.9% FCF yield. Professional "
+             "information compounder.",
+             False, 21, "R3"),
             ("Wolters Kluwer", "WTKWY", 20, 30, 11.0, True,
              "● OWNED — Active Slot",
              "AI selloff overblown. Business unchanged. 7% organic growth.",
              False, 19, "R3"),
+            ("Mastercard",     "MA",    16, 22, 35.8, False,
+             "○ Watching — Slot Open",
+             "Network duopoly. Fair value entry acceptable.",
+             False, 25, "R1"),
+            ("MSCI",           "MSCI",  25, 35, 35.0, False,
+             "○ Watching — Slot Open",
+             "Index / ESG data oligopoly. Negative equity from buybacks. "
+             "Premium multiple — wait for a drawdown.",
+             False, 25, "R3"),
+            ("BV",             "BV",    12, 16, 12.0, False,
+             "○ Watching — Slot Open",
+             "Ethics investigation — CEO refused to disclose details on conf "
+             "call. Off limits until resolved. Analytical rank #10 globally "
+             "but disqualified on conduct.",
+             False, 20, "R2"),
+            ("London Stock Exchange",     "LSEG", 16, 22, 16.0, False,
+             "○ Watching — Slot Open",
+             "LSE + Refinitiv data. Microsoft partnership. Re-rating story.",
+             False, 22, "R2"),
+            ("Intercontinental Exchange", "ICE", 15, 21, 21.0, False,
+             "○ Watching — Slot Open",
+             "Exchange + mortgage-tech roll-up. Watch for fair entry.",
+             False, 24, "R1"),
         ]
         _filled = sum(1 for r in _SAT_TIER1 if r[5])
         _slots_max = 6
@@ -3702,42 +3759,20 @@ def main() -> None:
 
         # ── Section 3: Best of Rest ───────────────────────────────────────
         _SAT_BEST = [
-            ("RELX",             "RELX", 14, 20, 15.8, False,
-             "○ Watch",
-             "Strong AI product execution. ~5.9% FCF yield. Professional "
-             "information compounder.",
-             False, 21, "R3"),
-            ("Verisk Analytics", "VRSK", 18, 24, 24.2, False,
-             "○ Watch",
-             "ISO actuarial moat. 34% ROIC. Needs FCF yield >5% to enter.",
-             False, 25, "R1"),
-            ("MSCI",             "MSCI", 25, 35, 35.0, False,
-             "○ Watch",
-             "Index / ESG data oligopoly. Negative equity from buybacks. "
-             "Premium multiple — wait for a drawdown.",
-             False, 25, "R3"),
             ("CME Group",        "CME",  13, 18, 25.8, False,
-             "○ Watch",
+             "○ Watch — awaiting decision",
              "Futures exchange monopoly. Watch for fair entry.",
              False, 23, "R1"),
             ("ASR",              "ASR",  15, 20, 17.9, False,
-             "○ Watch — Best of Rest",
+             "○ Watch — awaiting decision",
              "Mexican airport concession. FAIR signal. Situational/value hold.",
              False, 26, "R1"),
-            ("Intercontinental Exchange", "ICE", 15, 21, 21.0, False,
-             "○ Watch",
-             "Exchange + mortgage-tech roll-up. Watch for fair entry.",
-             False, 24, "R1"),
-            ("London Stock Exchange",     "LSEG", 16, 22, 16.0, False,
-             "○ Watch",
-             "LSE + Refinitiv data. Microsoft partnership. Re-rating story.",
-             False, 22, "R2"),
-            ("BV",               "BV",   12, 16, 12.0, False,
-             "○ Watch",
-             "Ethics investigation — CEO refused to disclose details on conf "
-             "call. Off limits until resolved. Analytical rank #10 globally "
-             "but disqualified on conduct.",
-             False, 20, "R2"),
+            ("Fair Isaac",       "FICO", 28, 42, 42.0, False,
+             "○ Watch — awaiting decision",
+             "Credit scoring monopoly with near-zero competitive risk. 42× "
+             "still demanding even for a toll booth; waiting for recession-lite "
+             "multiple compression.",
+             False, 13, "R3"),
         ]
 
         st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
