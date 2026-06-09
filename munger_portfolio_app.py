@@ -14,6 +14,7 @@ import base64
 import json
 import math
 import os
+import re
 import requests
 from datetime import datetime
 from typing import Optional
@@ -2615,6 +2616,21 @@ def _generate_debate_api_call(
         return False, f"API error: {type(e).__name__}: {e}"
 
 
+def _md_safe(text: str) -> str:
+    """Make an LLM markdown response safe to render with st.markdown.
+
+    Streamlit's st.markdown treats ``$...$`` as LaTeX math, so dollar figures in
+    the debate prose (e.g. "fair value of $52" / "trading at $44") get swallowed
+    into a math span and render as raw, garbled text — dragging any adjacent
+    *italic* / **bold** markers in with them so the markup shows up literally.
+    Escaping each un-escaped ``$`` to ``\\$`` makes dollar signs render as
+    literal text and disables math mode, leaving every other markdown construct
+    (headings, bold, italics, tables, lists) fully intact."""
+    if not text:
+        return text
+    return re.sub(r"(?<!\\)\$", r"\\$", text)
+
+
 @st.dialog("⚖ Bull/Bear Debate", width="large")
 def _debate_modal(ctx: dict) -> None:
     name = ctx["name"]
@@ -2663,7 +2679,9 @@ def _debate_modal(ctx: dict) -> None:
             cache_key, system_prompt, user_prompt,
         )
     if ok:
-        st.markdown(text)
+        # Render the full API response as proper markdown. _md_safe only escapes
+        # bare '$' (LaTeX-math trigger) — all other markdown is passed through.
+        st.markdown(_md_safe(text))
     else:
         st.error(text)
 
@@ -2775,7 +2793,21 @@ _SAT_HEADER_TOOLTIPS = {
     "Quality": "Quality — PASS/FAIL from three-gate quality system",
     "Red Flags": "Red Flags — manual review (insider selling, accounting issues, regulatory threats)",
     "Slot Status": "Slot Status — ● OWNED or ○ Watching",
-    "K's Notes": "K's Notes — conviction notes",
+    "Notes": "K's Notes — conviction notes",
+}
+
+# Short header labels — compact enough to render in full at the column widths
+# below, so AG Grid never truncates a header to an ellipsis. Tooltips (looked up
+# by the original df field name) still carry the full label + description.
+_SAT_SHORT_HEADERS = {
+    "Current P/E": "P/E",
+    "Dream P/E": "Dream",
+    "Fair P/E": "Fair",
+    "Discount": "Disc%",
+    "Quality": "Qual",
+    "Red Flags": "Flags",
+    "Slot Status": "Status",
+    "Notes": "Notes",
 }
 
 # BRK.B uses P/B not P/E — the anchor grid relabels these three columns (the
@@ -2812,7 +2844,11 @@ def _build_sat_grid_options(df: pd.DataFrame, pb: bool = False,
             kw["header_name"] = _SAT_PB_HEADER_NAMES[field]
             kw["headerTooltip"] = _SAT_PB_HEADER_TOOLTIPS[field]
         else:
-            tip = _SAT_HEADER_TOOLTIPS.get(kw.get("header_name", field))
+            # Short display label (no ellipsis at compact widths); the tooltip is
+            # always keyed by the original df field so it keeps the full label.
+            if field in _SAT_SHORT_HEADERS:
+                kw.setdefault("header_name", _SAT_SHORT_HEADERS[field])
+            tip = _SAT_HEADER_TOOLTIPS.get(field)
             if tip:
                 kw.setdefault("headerTooltip", tip)
         if field in saved_widths:
@@ -2863,7 +2899,7 @@ def _build_sat_grid_options(df: pd.DataFrame, pb: bool = False,
     _col("Quality", width=75, cellStyle=_SAT_QUALITY_STYLE)
     _col("Red Flags", width=85)
     _col("Slot Status", width=140, cellStyle=_SAT_LEFT_STYLE)
-    _col("Notes", header_name="K's Notes", width=220,
+    _col("Notes", width=220,
          tooltipField="_notes_full", cellStyle=_SAT_LEFT_STYLE)
     gb.configure_selection("single", use_checkbox=False)
     gb.configure_grid_options(
@@ -3758,9 +3794,20 @@ def main() -> None:
              "Exchange + mortgage-tech roll-up. Watch for fair entry.",
              False, 24, "R1"),
         ]
-        _filled = sum(1 for r in _SAT_TIER1 if r[5])
-        _slots_max = 6
-        _empty_slots = _slots_max - _filled
+        _tier1_records = [
+            _build_sat_row_dict(_n, _disp, _d, _f, _dpe, _slot, _note, _sms, _r)
+            for (_n, _disp, _d, _f, _dpe, _ow, _slot, _note, _onn, _sms, _r)
+            in _SAT_TIER1
+        ]
+        _tier1_df = pd.DataFrame(_tier1_records)
+
+        # Banner bubble — dynamic from current signals: how many of K's 12 are at
+        # FAIR or better (DREAM + FAIR), of which how many are at DREAM.
+        _n_total = len(_tier1_records)
+        _n_dream = sum(1 for r in _tier1_records if r["Signal"] == "DREAM")
+        _n_fair_plus = sum(
+            1 for r in _tier1_records if r["Signal"] in ("DREAM", "FAIR")
+        )
 
         st.markdown(
             f"<div style='background:#2c3e50;color:#fff;padding:12px 16px;"
@@ -3770,17 +3817,11 @@ def main() -> None:
             f"K's 12 — Munger Master List</span>"
             f"<span style='background:#5a7a9b;padding:4px 12px;border-radius:14px;"
             f"font-size:0.85rem;font-weight:600;letter-spacing:0.02em'>"
-            f"{_filled} of {_slots_max} Filled &nbsp;—&nbsp; {_empty_slots} slots held as SGOV"
+            f"{_n_fair_plus} of {_n_total} at FAIR or better &nbsp;—&nbsp; "
+            f"{_n_dream} DREAM"
             f"</span></div>",
             unsafe_allow_html=True,
         )
-
-        _tier1_records = [
-            _build_sat_row_dict(_n, _disp, _d, _f, _dpe, _slot, _note, _sms, _r)
-            for (_n, _disp, _d, _f, _dpe, _ow, _slot, _note, _onn, _sms, _r)
-            in _SAT_TIER1
-        ]
-        _tier1_df = pd.DataFrame(_tier1_records)
         _render_sat_grid(
             "tier1", _tier1_df,
             {r["Ticker"]: float(r["Current P/E"]) for r in _tier1_records},
